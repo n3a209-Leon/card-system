@@ -1,32 +1,42 @@
-const CACHE = 'venus-card-v1';
-const PRECACHE = ['./', './index.html'];
+// 獎卡系統 Service Worker
+// HTML 永遠從網路取得最新版，CDN 資源才快取
+const CACHE = 'vc-cdn-v1';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)));
+  // 立即接管，不等舊 SW 結束
   self.skipWaiting();
 });
+
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));
-  self.clients.claim();
+  // 立即控制所有頁面
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  if (url.origin !== location.origin) {
+
+  // index.html 和同源頁面：永遠走網路，不快取
+  if (url.origin === location.origin) {
     e.respondWith(
-      fetch(e.request).then(r => {
-        const c = r.clone();
-        caches.open(CACHE).then(cache => cache.put(e.request, c));
-        return r;
-      }).catch(() => caches.match(e.request))
+      fetch(e.request).catch(() => caches.match(e.request))
     );
     return;
   }
+
+  // CDN 資源（Firebase、SheetJS、字體）：Cache First
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).then(nr => {
-      const c = nr.clone();
-      caches.open(CACHE).then(cache => cache.put(e.request, c));
-      return nr;
-    }))
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return res;
+      });
+    })
   );
 });
