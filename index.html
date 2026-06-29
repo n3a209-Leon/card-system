@@ -4,487 +4,616 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#2563EB">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>獎卡系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
+/* ══ BASE ══ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#F7F8FA;--bg2:#FFFFFF;--bg3:#EEF1F5;
-  --blue:#2563EB;--blue-light:#EFF6FF;--blue-dark:#1D4ED8;
+  --bg:#F0F4F8;--bg2:#FFFFFF;--bg3:#E8EDF2;--bg4:#DDE3EA;
+  --accent:#2563EB;--accent2:#1D4ED8;--accent-light:#EFF6FF;
   --green:#16A34A;--green-light:#F0FDF4;
   --orange:#EA580C;--orange-light:#FFF7ED;
   --red:#DC2626;--red-light:#FEF2F2;
   --gold:#D97706;--gold-light:#FFFBEB;
-  --gray:#6B7280;--border:#E5E7EB;
-  --text:#111827;--text2:#374151;--text3:#9CA3AF;
-  --radius:10px;
-  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
-  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
+  --purple:#7C3AED;--purple-light:#F5F3FF;
+  --text:#0F172A;--text2:#374151;--text3:#6B7280;--text4:#9CA3AF;
+  --border:#E2E8F0;--border2:#CBD5E1;
+  --radius:12px;--radius2:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  --safe-top:env(safe-area-inset-top,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);
+  --header-h:52px;--tabar-h:60px;
 }
-.dark{
-  --bg:#0F172A;--bg2:#1E293B;--bg3:#0F172A;
-  --blue:#3B82F6;--blue-light:#1E3A5F;--blue-dark:#2563EB;
-  --green:#22C55E;--green-light:#052E16;
-  --orange:#F97316;--orange-light:#431407;
-  --red:#F87171;--red-light:#450A0A;
-  --gold:#FCD34D;--gold-light:#451A03;
-  --gray:#9CA3AF;--border:#334155;
-  --text:#F1F5F9;--text2:#CBD5E1;--text3:#64748B;
-}
-body.nerv{
-  --bg:#040404;--bg2:#0a0a0a;--bg3:#111;
-  --blue:#3399FF;--blue-light:rgba(0,102,255,.12);--blue-dark:#2563EB;
-  --green:#00FF41;--green-light:rgba(0,255,65,.08);
-  --orange:#FF9900;--orange-light:rgba(255,153,0,.1);
+
+/* ══ NERV THEME ══ */
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes flicker{0%,95%,100%{opacity:1}96%,98%{opacity:.88}}
+@keyframes pulse-nerv{0%,100%{box-shadow:0 0 8px rgba(255,102,0,.4)}50%{box-shadow:0 0 18px rgba(255,102,0,.8)}}
+[data-theme="nerv"]{
+  --bg:#050200;--bg2:#0a0400;--bg3:#100500;--bg4:#160800;
+  --accent:#FF6600;--accent2:#FF4400;--accent-light:rgba(255,102,0,.12);
+  --green:#39FF14;--green-light:rgba(57,255,20,.08);
+  --orange:#FFCC00;--orange-light:rgba(255,204,0,.1);
   --red:#FF3600;--red-light:rgba(255,54,0,.1);
-  --gold:#FF9900;--gold-light:rgba(255,153,0,.1);
-  --gray:#666;--border:#1A1A1A;
-  --text:#E8E8E8;--text2:#AAAAAA;--text3:#555;
-  font-family:'Share Tech Mono',monospace;
+  --gold:#FFCC00;--gold-light:rgba(255,204,0,.1);
+  --purple:#FF6600;--purple-light:rgba(255,102,0,.1);
+  --text:#FF6600;--text2:#FF8844;--text3:#CC4400;--text4:#883300;
+  --border:rgba(255,102,0,.2);--border2:rgba(255,102,0,.4);
+  font-family:"Share Tech Mono","Noto Sans TC",monospace;
+  animation:flicker 8s infinite;
 }
-body.nerv .topbar{border-bottom-color:#FF3600;box-shadow:0 0 20px rgba(255,54,0,.2);}
-body.nerv .card{border-top:2px solid #FF3600;}
-body.nerv .tab.active{background:rgba(255,54,0,.15);color:#FF9900;}
-body.nerv th{background:rgba(255,54,0,.1);color:#FF9900;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-tap-highlight-color:transparent;}
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;height:52px;position:sticky;top:0;z-index:100;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.topbar::-webkit-scrollbar{display:none;}
-.topbar-title{font-weight:700;font-size:15px;color:var(--text);white-space:nowrap;margin-right:6px;flex-shrink:0;}
-.topbar-title span{color:var(--blue);}
-.tab{background:transparent;border:none;color:var(--text3);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;min-height:44px;display:flex;align-items:center;}
-.tab.active{background:var(--blue-light);color:var(--blue);font-weight:600;}
-.topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);}
-.sync-dot.syncing{background:var(--gold);animation:pulse 1s infinite;}
-.sync-dot.offline{background:var(--gray);}
-.icon-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;min-height:36px;white-space:nowrap;}
-.panel{display:none;padding:12px;max-width:1100px;margin:0 auto;padding-bottom:calc(16px + var(--safe-bottom));}
-.panel.active{display:block;}
-.card{background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
-.card-title{font-weight:700;font-size:14px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px;}
-.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);}
-.stat .num{font-size:24px;font-weight:700;color:var(--blue);}
-.stat .lbl{font-size:11px;color:var(--text3);margin-top:2px;}
-.stat.orange .num{color:var(--orange);}
-.stat.green .num{color:var(--green);}
-.stat.red .num{color:var(--red);}
-.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
-.stu-cell{background:var(--bg3);border-radius:8px;padding:10px;border:2px solid transparent;transition:all .15s;}
-.stu-cell.ready{border-color:var(--orange);background:var(--orange-light);}
-.stu-cell.warn{border-color:var(--red);background:var(--red-light);}
-.stu-no{font-size:10px;color:var(--text3);}
-.stu-name{font-weight:600;font-size:13px;}
-.stu-pts{font-size:18px;font-weight:700;color:var(--blue);margin-top:2px;}
-.stu-cell.ready .stu-pts{color:var(--orange);}
-.stu-sub{font-size:11px;color:var(--text3);margin-top:1px;}
-.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;}
-.form-group{display:flex;flex-direction:column;flex:1;min-width:100px;}
-.form-group label{font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
-input,select,textarea{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:9px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none;width:100%;transition:border .15s;-webkit-appearance:none;}
-input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
-.dark input,.dark select,.dark textarea{background:var(--bg3);}
-button{border:none;border-radius:7px;padding:10px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s;min-height:44px;}
-.btn-blue{background:var(--blue);color:#fff;}
-.btn-blue:hover{background:var(--blue-dark);}
-.btn-blue:active{opacity:.85;}
-.btn-green{background:var(--green);color:#fff;}
-.btn-green:active{opacity:.85;}
-.btn-orange{background:var(--orange);color:#fff;}
-.btn-orange:active{opacity:.85;}
-.btn-red{background:var(--red);color:#fff;}
-.btn-red:active{opacity:.85;}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2);}
-.btn-ghost:active{background:var(--bg3);}
-.btn-sm{padding:6px 12px;font-size:12px;min-height:36px;}
-table{width:100%;border-collapse:collapse;}
-th{background:var(--bg3);color:var(--text2);padding:8px 10px;font-size:11px;text-align:center;font-weight:600;border-bottom:2px solid var(--border);position:sticky;top:52px;z-index:5;}
-td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;}
-tr:hover td{background:var(--blue-light);}
-.sx{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
-.badge-blue{background:var(--blue-light);color:var(--blue);}
-.badge-green{background:var(--green-light);color:var(--green);}
-.badge-orange{background:var(--orange-light);color:var(--orange);}
-.badge-red{background:var(--red-light);color:var(--red);}
-.no-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-.no-btn{width:40px;height:40px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1.1;transition:all .15s;}
-.no-btn.cadre1{background:var(--green);border-color:var(--green);color:#fff;}
-.no-btn.cadre2{background:var(--orange);border-color:var(--orange);color:#fff;}
-.no-btn.sel{background:var(--green);border-color:var(--green);color:#fff;}
-.progress{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px;}
-.progress-bar{height:100%;background:var(--blue);border-radius:3px;transition:width .4s;}
-.score-input-area{border:2px dashed var(--border);border-radius:var(--radius);padding:12px;transition:border .15s;}
-.score-input-area:focus-within{border-color:var(--blue);background:var(--blue-light);}
-.paste-ta{font-size:13px;resize:none;height:80px;border:none;background:transparent;padding:0;}
-.paste-ta:focus{box-shadow:none;}
-.redeem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;}
-.redeem-card{border:1.5px solid var(--orange);border-radius:var(--radius);padding:12px;background:var(--orange-light);position:relative;}
-.redeem-card.skipped{border-color:var(--border);background:var(--bg3);opacity:.5;}
-.skip-btn{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:var(--border);border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;min-height:unset;padding:0;}
-.redeem-card.skipped .skip-btn{background:var(--orange);color:#fff;}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:12px;}
-.modal-bg.show{display:flex;}
-.modal{background:var(--bg2);border-radius:14px;padding:20px;width:100%;max-width:440px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;}
-.modal h3{font-size:16px;font-weight:700;margin-bottom:14px;}
-#offline-banner{display:none;background:var(--gold);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:6px 12px;position:sticky;top:52px;z-index:99;}
-#offline-banner.show{display:block;}
-#toast{position:fixed;bottom:calc(20px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg2);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;font-weight:500;white-space:nowrap;}
-#toast.show{opacity:1;}
-.login-card{text-align:center;padding:32px 20px;}
-.login-card h2{font-size:20px;font-weight:700;margin-bottom:8px;}
-.login-card p{color:var(--text3);font-size:13px;margin-bottom:20px;}
-.stu-list-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
-.stu-list-item:last-child{border-bottom:none;}
-.subj-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--blue-light);color:var(--blue);cursor:pointer;border:1.5px solid transparent;}
-.subj-tag.del{background:var(--red-light);color:var(--red);}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-@media(max-width:600px){
-  .panel{padding:10px;}
-  .stu-grid{grid-template-columns:repeat(3,1fr);}
-  .stat-row{grid-template-columns:repeat(3,1fr);}
-  .form-row{flex-direction:column;}
-  .form-group{min-width:unset;}
+[data-theme="nerv"]::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9998}
+[data-theme="nerv"] .app-header{background:linear-gradient(180deg,#120400,#080200);border-bottom:1px solid #FF6600;box-shadow:0 0 30px rgba(255,102,0,.25)}
+[data-theme="nerv"] .tab-bar{background:#080200;border-top:1px solid rgba(255,102,0,.3)}
+[data-theme="nerv"] .tab-btn.active{color:#FF6600;text-shadow:0 0 8px rgba(255,102,0,.8)}
+[data-theme="nerv"] .card{border:1px solid rgba(255,102,0,.15);background:#0a0400}
+[data-theme="nerv"] .btn-primary{background:rgba(255,102,0,.15);color:#FF6600;border:1px solid rgba(255,102,0,.5)}
+[data-theme="nerv"] .btn-primary:active{background:rgba(255,102,0,.3)}
+[data-theme="nerv"] .stu-cell{border-color:rgba(255,102,0,.2)}
+[data-theme="nerv"] .stu-cell.ready{border-color:#FFCC00;background:rgba(255,204,0,.08)}
+[data-theme="nerv"] input,[data-theme="nerv"] select,[data-theme="nerv"] textarea{background:#0a0400;border-color:rgba(255,102,0,.3);color:#FF6600}
+[data-theme="nerv"] .class-chip{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.4);color:#FF6600}
+
+/* ══ NEBULA THEME ══ */
+@keyframes purple-pulse{0%,100%{box-shadow:0 0 8px rgba(160,80,255,.5)}50%{box-shadow:0 0 18px rgba(180,100,255,.9)}}
+@keyframes nebula-drift{0%{transform:translate(0,0) scale(1);opacity:.6}50%{transform:translate(-6px,10px) scale(1.06);opacity:1}100%{transform:translate(0,0) scale(1);opacity:.6}}
+[data-theme="nebula"]{
+  --bg:#08051C;--bg2:#0E0A28;--bg3:#130D35;--bg4:#1A1240;
+  --accent:#A855F7;--accent2:#9333EA;--accent-light:rgba(168,85,247,.15);
+  --green:#4CD278;--green-light:rgba(76,210,120,.1);
+  --orange:#FB923C;--orange-light:rgba(251,146,60,.1);
+  --red:#F87171;--red-light:rgba(248,113,113,.1);
+  --gold:#FCD34D;--gold-light:rgba(252,211,77,.1);
+  --purple:#C084FC;--purple-light:rgba(192,132,252,.1);
+  --text:#E8D5FF;--text2:#C4AFEC;--text3:#8B7AB8;--text4:#5A4E80;
+  --border:rgba(168,85,247,.2);--border2:rgba(168,85,247,.4);
+}
+[data-theme="nebula"] .app-header{background:linear-gradient(180deg,rgba(14,10,40,.98),rgba(8,5,28,.95));border-bottom:1px solid rgba(168,85,247,.3);box-shadow:0 0 30px rgba(120,60,220,.2)}
+[data-theme="nebula"] .tab-bar{background:rgba(8,5,28,.97);border-top:1px solid rgba(168,85,247,.2)}
+[data-theme="nebula"] .tab-btn.active{color:#C084FC;text-shadow:0 0 8px rgba(192,132,252,.6)}
+[data-theme="nebula"] .card{border:1px solid rgba(168,85,247,.15);background:rgba(14,10,40,.8);backdrop-filter:blur(10px)}
+[data-theme="nebula"] .stu-cell.ready{border-color:#FCD34D;background:rgba(252,211,77,.08)}
+[data-theme="nebula"] input,[data-theme="nebula"] select,[data-theme="nebula"] textarea{background:rgba(19,13,53,.8);border-color:rgba(168,85,247,.3);color:#E8D5FF}
+[data-theme="nebula"] .class-chip{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.35);color:#C084FC}
+
+/* ══ BODY ══ */
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif;font-size:14px;line-height:1.5}
+.app{display:flex;flex-direction:column;height:100%;height:100dvh}
+
+/* ══ HEADER ══ */
+.app-header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 12px;height:var(--header-h);
+  display:flex;align-items:center;gap:8px;
+  position:relative;z-index:100;flex-shrink:0;
+  padding-top:var(--safe-top);
+}
+.header-title{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--text);white-space:nowrap}
+.header-title span{color:var(--accent)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+.sync-dot.off{background:var(--text4)}
+.sync-dot.ing{background:var(--gold);animation:pulse-nerv 1s infinite}
+.theme-btn{background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;min-height:36px;font-family:inherit;white-space:nowrap}
+.login-btn{background:var(--accent-light);border:1px solid var(--border);color:var(--accent);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;min-height:36px;font-family:inherit;font-weight:600;white-space:nowrap}
+
+/* ══ CLASS SWITCHER ══ */
+.class-switcher{position:relative;flex-shrink:0}
+.class-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1.5px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;min-height:36px;white-space:nowrap}
+.class-chip .arrow{font-size:9px;opacity:.7;transition:transform .2s}
+.class-chip.open .arrow{transform:rotate(180deg)}
+.class-dropdown{position:absolute;top:calc(100% + 6px);left:0;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.15);z-index:9999;overflow:hidden;animation:drop-in .15s ease}
+@keyframes drop-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.cd-hdr{padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:2px}
+.cd-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.cd-item:last-child{border-bottom:none}
+.cd-item:hover{background:var(--accent-light)}
+.cd-item.active{background:var(--accent-light)}
+.cd-name{font-size:13px;font-weight:700;flex:1}
+.cd-sub{font-size:11px;color:var(--text4)}
+.cd-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-light);color:var(--green)}
+
+/* ══ SCROLL AREA ══ */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll-area::-webkit-scrollbar{width:3px}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.panel{display:none;padding:12px;max-width:900px;margin:0 auto}
+.panel.active{display:block}
+
+/* ══ TAB BAR ══ */
+.tab-bar{
+  background:var(--bg2);border-top:1px solid var(--border);
+  display:flex;align-items:stretch;height:var(--tabar-h);
+  padding-bottom:var(--safe-bottom);flex-shrink:0;
+}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;color:var(--text4);cursor:pointer;font-family:inherit;font-size:10px;font-weight:600;padding:4px 2px;transition:color .15s;position:relative}
+.tab-btn .icon{font-size:22px;line-height:1}
+.tab-btn.active{color:var(--accent)}
+.tab-btn.active::before{content:"";position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:0 0 2px 2px}
+
+/* ══ CARDS ══ */
+.card{background:var(--bg2);border-radius:var(--radius);padding:14px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.card-title{font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title .ct-right{margin-left:auto}
+
+/* ══ STAT ROW ══ */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:10px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:10px 12px;box-shadow:var(--shadow)}
+.stat .sn{font-size:22px;font-weight:800;color:var(--accent)}
+.stat .sl{font-size:11px;color:var(--text4);margin-top:1px}
+.stat.ora .sn{color:var(--orange)}
+.stat.grn .sn{color:var(--green)}
+.stat.red .sn{color:var(--red)}
+.stat.gld .sn{color:var(--gold)}
+
+/* ══ STUDENT GRID ══ */
+.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
+.stu-cell{background:var(--bg3);border-radius:10px;padding:10px;border:2px solid transparent;cursor:pointer;transition:all .15s;position:relative}
+.stu-cell:active{transform:scale(.97)}
+.stu-cell.ready{border-color:var(--orange);background:var(--orange-light)}
+.stu-cell.can-much{border-color:var(--gold);background:var(--gold-light)}
+.stu-no{font-size:10px;color:var(--text4);font-weight:600}
+.stu-pts{font-size:19px;font-weight:800;color:var(--accent);margin:2px 0}
+.stu-cell.ready .stu-pts{color:var(--orange)}
+.stu-info{font-size:10px;color:var(--text4)}
+.stu-badge{position:absolute;top:6px;right:6px;font-size:11px;font-weight:700;color:var(--green)}
+.progress{height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden}
+.progress-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .4s}
+.stu-cell.ready .progress-bar{background:var(--orange)}
+
+/* ══ FORMS ══ */
+.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;flex:1;min-width:90px}
+.fg label{font-size:11px;font-weight:600;color:var(--text4);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+input,select,textarea{background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none;width:100%;transition:border .15s;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+textarea{resize:none}
+
+/* ══ BUTTONS ══ */
+button{border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s;min-height:44px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:active{opacity:.85}
+.btn-green{background:var(--green);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+.btn-ghost:active{background:var(--bg3)}
+.btn-sm{padding:6px 12px;font-size:12px;min-height:36px}
+.btn-xs{padding:4px 8px;font-size:11px;min-height:28px}
+.btn-block{width:100%}
+
+/* ══ NO-PICKER (座號格子) ══ */
+.no-picker{display:flex;flex-wrap:wrap;gap:6px}
+.no-btn{width:44px;height:44px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;min-height:unset}
+.no-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+.no-btn.leader{background:var(--red);border-color:var(--red);color:#fff}
+.no-btn.sec{background:var(--orange);border-color:var(--orange);color:#fff}
+.no-btn.absent{background:var(--bg4);border-color:var(--border);color:var(--text4);opacity:.4}
+.no-btn.cadre1{background:var(--green);border-color:var(--green);color:#fff}
+.no-btn.cadre2{background:var(--orange);border-color:var(--orange);color:#fff}
+
+/* ══ TABLE ══ */
+.sx{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius2)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg3);color:var(--text3);padding:7px 8px;font-size:11px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2}
+td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:center}
+tr:hover td{background:var(--accent-light)}
+.td-name{font-weight:700;text-align:left!important;color:var(--text)}
+
+/* ══ BADGE ══ */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-blue{background:var(--accent-light);color:var(--accent)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-orange{background:var(--orange-light);color:var(--orange)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-gold{background:var(--gold-light);color:var(--gold)}
+
+/* ══ REDEEM CARDS ══ */
+.rdm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.rdm-card{border:2px solid var(--orange);border-radius:var(--radius);padding:12px;background:var(--orange-light);position:relative}
+.rdm-card.skip{border-color:var(--border);background:var(--bg3);opacity:.5}
+.rdm-skip-btn{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.1);border:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;min-height:unset;padding:0}
+
+/* ══ UPLOAD AREA ══ */
+.upload-area{border:2px dashed var(--border2);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.upload-area:hover,.upload-area.drag{border-color:var(--accent);background:var(--accent-light)}
+.upload-area input[type=file]{display:none}
+.upload-icon{font-size:36px;margin-bottom:8px}
+.upload-hint{font-size:12px;color:var(--text4);margin-top:4px}
+
+/* ══ SHEET SELECT ══ */
+.sheet-list{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.sheet-tag{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s}
+.sheet-tag.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ══ MODAL ══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
+.modal-bg.show{display:flex}
+.modal{background:var(--bg2);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.2)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px}
+.modal-center{align-items:center}
+.modal.center-modal{border-radius:16px;max-width:440px;margin:auto}
+.modal-bg.center .modal{border-radius:16px;max-width:440px;margin:auto;padding-bottom:20px}
+
+/* ══ MORE SHEET ══ */
+.more-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;font-weight:600;font-size:14px}
+.more-item:last-child{border-bottom:none}
+.more-item .mi-icon{font-size:20px;width:36px;text-align:center}
+.more-item .mi-arr{margin-left:auto;color:var(--text4);font-size:12px}
+
+/* ══ OFFLINE BANNER ══ */
+#offline-banner{display:none;background:var(--gold);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:5px 12px;flex-shrink:0}
+#offline-banner.show{display:block}
+
+/* ══ TOAST ══ */
+#toast{position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg2);padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;font-weight:600;white-space:nowrap;max-width:85vw;text-align:center}
+#toast.show{opacity:1}
+
+/* ══ SETTINGS TABS ══ */
+.stab-row{display:flex;gap:4px;margin-bottom:14px;background:var(--bg3);padding:3px;border-radius:9px}
+.stab{flex:1;padding:8px;border:none;background:transparent;border-radius:7px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s}
+.stab.active{background:var(--bg2);color:var(--accent);box-shadow:var(--shadow)}
+
+/* ══ MISC ══ */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sep{border:none;border-top:1px solid var(--border);margin:12px 0}
+.tip{background:var(--accent-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.6}
+.tip.orange{background:var(--orange-light);color:var(--orange)}
+.tip.green{background:var(--green-light);color:var(--green)}
+.empty{text-align:center;color:var(--text4);font-size:13px;padding:28px 0}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media(max-width:480px){
+  .stu-grid{grid-template-columns:repeat(3,1fr)}
+  .stat-row{grid-template-columns:repeat(3,1fr)}
 }
 </style>
 </head>
 <body>
+<div class="app" id="app">
 
-<div class="topbar">
-  <div class="topbar-title" id="app-title">獎卡<span>系統</span></div>
-  <button class="tab active" onclick="goTab('overview',this)">總覽</button>
-  <button class="tab" onclick="goTab('score',this)">貼成績</button>
-  <button class="tab" onclick="goTab('redeem',this)">兌換獎卡</button>
-  <button class="tab" onclick="goTab('give',this)">手動給卡</button>
-  <button class="tab" onclick="goTab('noon',this)">午休記錄</button>
-  <button class="tab" onclick="goTab('table',this)">成績總表</button>
-  <button class="tab" onclick="goTab('log',this)">紀錄查詢</button>
-  <button class="tab" onclick="goTab('settings',this)">⚙️設定</button>
-  <div class="topbar-right">
-    <span class="sync-dot offline" id="sync-dot" title="同步狀態"></span>
-    <button class="icon-btn" id="login-btn" onclick="doLogin()">登入</button>
-    <button class="icon-btn" id="mode-btn" onclick="toggleMode()">🎌 EVA</button>
-  </div>
-</div>
-
-<div id="offline-banner">✈️ 離線模式 — 資料已儲存在本機，上線後自動同步</div>
-
-<!-- 總覽 -->
-<div id="tab-overview" class="panel active">
-  <div class="stat-row" id="stat-row"></div>
-  <div class="card">
-    <div class="card-title">👥 全班點數一覽
-      <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">橘色＝可換卡</span>
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="class-switcher" id="class-switcher">
+      <button class="class-chip" id="class-chip" onclick="toggleClassDD()">
+        <span id="chip-text">選擇班級</span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="class-dropdown" id="class-dd" style="display:none"></div>
     </div>
-    <div class="stu-grid" id="stu-grid"></div>
-  </div>
-</div>
-
-<!-- 貼成績 -->
-<div id="tab-score" class="panel">
-  <div class="card">
-    <div class="card-title">📋 貼上成績</div>
-    <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--blue);margin-bottom:12px;line-height:1.7">
-      Excel 選取全班分數直欄（座號由小到大，缺席留空行）→ Ctrl+C → 貼到下方 → 送出
+    <div class="header-right">
+      <span class="sync-dot off" id="sync-dot"></span>
+      <button class="theme-btn" id="theme-btn" onclick="cycleTheme()">☀️</button>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">登入</button>
     </div>
-    <div class="form-row">
-      <div class="form-group" style="max-width:180px">
-        <label>科目</label>
-        <select id="sc-subj"></select>
+  </header>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner">✈️ 離線模式 — 恢復網路後自動同步</div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- 總覽 -->
+    <div class="panel active" id="tab-overview">
+      <div class="stat-row" id="stat-row"></div>
+      <div class="card">
+        <div class="card-title">👥 全班點數
+          <span style="font-size:11px;font-weight:400;color:var(--text4)">橘色可換卡</span>
+        </div>
+        <div class="stu-grid" id="stu-grid"></div>
       </div>
-      <div class="form-group">
-        <label>貼上全班分數（缺席留空行）</label>
-        <div class="score-input-area">
-          <textarea class="paste-ta" id="sc-paste" placeholder="Ctrl+V 貼入，每行一個數字"></textarea>
+    </div>
+
+    <!-- 成績 -->
+    <div class="panel" id="tab-score">
+      <div class="card">
+        <div class="card-title">📤 上傳 Excel 成績檔</div>
+        <div class="tip">上傳成績 Excel（.xlsx）→ App 自動讀取「<b>獎卡兌換</b>」工作表 → 全部覆蓋更新。每次更新 Excel 後重新上傳即可。</div>
+        <label class="upload-area" id="upload-area">
+          <div class="upload-icon">📊</div>
+          <div style="font-weight:700;font-size:14px">點此選取 Excel 檔案</div>
+          <div class="upload-hint">支援 .xlsx 格式</div>
+          <input type="file" id="xlsx-input" accept=".xlsx" onchange="handleXlsx(this)">
+        </label>
+        <div id="xlsx-preview" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📚 已匯入考試
+          <button class="btn-ghost btn-sm ct-right" onclick="if(confirm('確定清除全部成績？'))clearScores()">清除全部</button>
+        </div>
+        <div id="score-log-area"><div class="empty">尚未匯入任何成績</div></div>
+      </div>
+    </div>
+
+    <!-- 兌換 -->
+    <div class="panel" id="tab-redeem">
+      <div class="card">
+        <div class="card-title">🎴 點數換卡
+          <button class="btn-ghost btn-sm ct-right" onclick="renderRedeem()">重整</button>
+        </div>
+        <div id="redeem-area"><div class="empty">載入中...</div></div>
+        <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
+        <button class="btn-orange btn-block" id="btn-redeem" style="display:none;font-size:14px" onclick="doRedeem()">🎴 一鍵兌換</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 兌換紀錄</div>
+        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>扣點</th><th>獲卡</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 給卡 -->
+    <div class="panel" id="tab-give">
+      <div class="card">
+        <div class="card-title">⚡ 每週給卡</div>
+        <div style="font-weight:600;font-size:12px;color:var(--text3);margin-bottom:8px">🏅 幹部（點一下×1綠，再點×2橘，第三下取消）</div>
+        <div class="no-picker" id="cadre-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <span id="cadre-hint" style="font-size:11px;color:var(--text4);flex:1"></span>
+          <button class="btn-green btn-sm" onclick="giveWeekly('cadre')">🏅 幹部週給</button>
+        </div>
+        <hr class="sep">
+        <div style="font-weight:600;font-size:12px;color:var(--text3);margin-bottom:8px">🚽 廁所（最多6人）</div>
+        <div class="no-picker" id="toilet-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <span id="toilet-count" style="font-size:11px;color:var(--text4);flex:1">已選 0/6</span>
+          <button class="btn-primary btn-sm" onclick="giveWeekly('toilet')">🚽 廁所週給</button>
         </div>
       </div>
-      <div style="align-self:flex-end;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-ghost btn-sm" onclick="document.getElementById('fill-modal').classList.add('show')">全班同分</button>
-        <button class="btn-green" onclick="pasteScore()">✅ 貼入儲存</button>
+      <div class="card">
+        <div class="card-title">✏️ 手動調整</div>
+        <div class="form-row">
+          <div class="fg" style="max-width:100px">
+            <label>座號</label>
+            <select id="give-no"></select>
+          </div>
+          <div class="fg" style="max-width:120px">
+            <label>類型</label>
+            <select id="give-type">
+              <option value="幹部">🏅 幹部</option>
+              <option value="廁所">🚽 廁所</option>
+              <option value="特殊">⭐ 特殊</option>
+              <option value="調整">🔧 調整</option>
+            </select>
+          </div>
+          <div class="fg" style="max-width:80px">
+            <label>張數</label>
+            <input type="number" id="give-cards" value="1" min="-99" max="99">
+          </div>
+          <div class="fg">
+            <label>備註</label>
+            <input type="text" id="give-note" placeholder="選填">
+          </div>
+          <div style="align-self:flex-end">
+            <button class="btn-orange" onclick="giveManual()">送出</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 全班持卡明細</div>
+        <div class="sx"><table><thead><tr>
+          <th>座號</th><th>成績點</th><th>扣點</th><th>午休扣</th><th>剩餘點</th>
+          <th>幹部</th><th>廁所</th><th>特殊</th><th>兌換</th>
+          <th style="color:var(--gold)">總持有</th>
+        </tr></thead><tbody id="give-detail"></tbody></table></div>
       </div>
     </div>
-    <div id="sc-msg" style="font-size:12px;min-height:18px;margin-top:4px"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">📚 已貼入紀錄
-      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="if(confirm('確定清除全部成績？'))clearScores()">清除全部成績</button>
-    </div>
-    <div id="score-log-area"></div>
-  </div>
-</div>
 
-<!-- 兌換獎卡 -->
-<div id="tab-redeem" class="panel">
-  <div class="card">
-    <div class="card-title">🎴 點數兌換獎卡</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">點擊「✕」標記本次不兌換，其餘達標學生按「一鍵兌換」。</p>
-    <div id="redeem-area"></div>
-    <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px;background:var(--blue-light);border-radius:8px;font-size:12px;"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-orange" id="btn-redeem" onclick="doRedeem()" style="display:none;font-size:14px;padding:10px 24px">🎴 一鍵兌換</button>
-      <button class="btn-ghost btn-sm" onclick="renderRedeem()">重新整理</button>
+    <!-- 更多 -->
+    <div class="panel" id="tab-more">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('noon')">
+          <span class="mi-icon">😴</span>
+          <span>午休記錄</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('table')">
+          <span class="mi-icon">📊</span>
+          <span>成績總表</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('log')">
+          <span class="mi-icon">📝</span>
+          <span>紀錄查詢</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('settings')">
+          <span class="mi-icon">⚙️</span>
+          <span>設定</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="exportCSV()">
+          <span class="mi-icon">📤</span>
+          <span>匯出 CSV</span>
+          <span class="mi-arr">›</span>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📋 兌換紀錄</div>
-    <div class="sx"><table><thead><tr><th>時間</th><th>學生</th><th>扣點</th><th>獲卡</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
-  </div>
-</div>
 
-<!-- 手動給卡 -->
-<div id="tab-give" class="panel">
-  <div class="card">
-    <div class="card-title">⚡ 每週一鍵給卡</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">整學期設定一次名單，每週按一個按鈕即可。</p>
-    <div style="margin-bottom:16px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--blue)">🏅 幹部名單</div>
-      <div class="no-picker" id="cadre-picker"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
-        <span id="cadre-hint" style="font-size:11px;color:var(--text3);flex:1">點一下×1（綠）、再點×2（橘）、第三下移除</span>
-        <button class="btn-blue" onclick="giveWeekly('cadre')">🏅 幹部週給</button>
+    <!-- 午休 (sub-panel) -->
+    <div class="panel" id="tab-noon">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">😴 午休記錄</div>
+      </div>
+      <div class="card">
+        <div class="tip orange">每筆記錄扣 <b id="noon-thr-label">300</b> 點，可事後補記。</div>
+        <div class="form-row">
+          <div class="fg" style="max-width:100px"><label>座號</label><select id="noon-no"></select></div>
+          <div class="fg" style="max-width:160px"><label>事發時間</label><input type="text" id="noon-time" placeholder="例：5/28 午休"></div>
+          <div class="fg"><label>事由</label><input type="text" id="noon-note" placeholder="說話、玩鬧..."></div>
+          <div style="align-self:flex-end"><button class="btn-red" onclick="addNoon()">記錄扣點</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">記錄列表</div>
+        <div class="sx"><table><thead><tr><th>登記時間</th><th>事發時間</th><th>座號</th><th>事由</th><th>扣點</th><th>刪</th></tr></thead><tbody id="noon-list"></tbody></table></div>
       </div>
     </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
-    <div>
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--green)">🚽 廁所名單（最多6人）</div>
-      <div class="no-picker" id="toilet-picker"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
-        <span id="toilet-count" style="font-size:11px;color:var(--text3);flex:1">已選 0/6 人</span>
-        <button class="btn-green" onclick="giveWeekly('toilet')">🚽 廁所週給</button>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">✏️ 單人手動給卡</div>
-    <div class="form-row">
-      <div class="form-group" style="max-width:170px">
-        <label>學生</label>
-        <select id="give-stu"></select>
-      </div>
-      <div class="form-group" style="max-width:140px">
-        <label>類型</label>
-        <select id="give-type">
-          <option value="\u5e79\u90e8">🏅 幹部</option>
-          <option value="\u5ec1\u6240">🚽 廁所</option>
-          <option value="\u7279\u6b8a">⭐ 特殊事蹟</option>
-          <option value="\u8abf\u6574">🔧 人工調整</option>
-        </select>
-      </div>
-      <div class="form-group" style="max-width:90px">
-        <label>張數（正/負）</label>
-        <input type="number" id="give-cards" value="1" min="-99" max="99">
-      </div>
-      <div class="form-group">
-        <label>備註</label>
-        <input type="text" id="give-note" placeholder="選填">
-      </div>
-      <div style="align-self:flex-end">
-        <button class="btn-orange" onclick="giveManual()">送出</button>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📊 全班獎卡明細</div>
-    <div class="sx"><table><thead><tr>
-      <th>座號</th><th>姓名</th><th>成績點</th><th>已兌換點</th><th>午休扣點</th><th>剩餘點</th>
-      <th>幹部</th><th>廁所</th><th>特殊</th><th>兌換</th>
-      <th style="background:var(--gold-light);color:var(--gold)">總持有</th>
-    </tr></thead><tbody id="give-detail"></tbody></table></div>
-  </div>
-</div>
 
-<!-- 午休記錄 -->
-<div id="tab-noon" class="panel">
-  <div class="card">
-    <div class="card-title">😴 午休不乖記錄
-      <span id="noon-deduct-label" style="font-size:11px;font-weight:400;color:var(--text3)">每筆扣 300 點</span>
-    </div>
-    <div style="background:var(--red-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--red);margin-bottom:12px">
-      可事後補記，時間自行填寫。每筆記錄自動扣點。
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>學生</label>
-        <select id="noon-stu"></select>
+    <!-- 成績總表 (sub-panel) -->
+    <div class="panel" id="tab-table">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">📊 成績總表</div>
+        <button class="btn-orange btn-sm" style="margin-left:auto" onclick="exportCSV()">匯出 CSV</button>
       </div>
-      <div class="form-group" style="max-width:180px">
-        <label>事發時間（手動填）</label>
-        <input type="text" id="noon-time" placeholder="例：5/28 午休">
-      </div>
-      <div class="form-group">
-        <label>事由（選填）</label>
-        <input type="text" id="noon-note" placeholder="例：說話、玩鬧">
-      </div>
-      <div style="align-self:flex-end">
-        <button class="btn-red" onclick="addNoon()">記錄並扣點</button>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="sx"><table><thead id="table-thead"></thead><tbody id="table-tbody"></tbody></table></div>
       </div>
     </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📋 午休記錄列表</div>
-    <div class="sx"><table><thead><tr><th>登記時間</th><th>事發時間</th><th>學生</th><th>事由</th><th>扣點</th><th>刪</th></tr></thead><tbody id="noon-list"></tbody></table></div>
-  </div>
-</div>
 
-<!-- 成績總表 -->
-<div id="tab-table" class="panel">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin:0">📊 成績總表</div>
-      <button class="btn-orange btn-sm" onclick="exportCSV()">📤 匯出 CSV</button>
-    </div>
-    <div class="sx"><table><thead id="score-thead"></thead><tbody id="score-tbody"></tbody></table></div>
-  </div>
-</div>
-
-<!-- 紀錄查詢 -->
-<div id="tab-log" class="panel">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin:0">📝 所有紀錄</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <select id="log-type" onchange="renderLog()" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-height:36px">
-          <option value="">全部類型</option>
-          <option value="\u6210\u7e3e">成績貼入</option>
-          <option value="\u5e79\u90e8">幹部給卡</option>
-          <option value="\u5ec1\u6240">廁所給卡</option>
-          <option value="\u7279\u6b8a">特殊事蹟</option>
-          <option value="\u5151\u63db">300點兌換</option>
-          <option value="\u4e0d\u5151\u63db">本次不兌換</option>
-          <option value="\u5348\u4f11">午休扣點</option>
-          <option value="\u8abf\u6574">人工調整</option>
-        </select>
-        <select id="log-stu" onchange="renderLog()" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-height:36px">
-          <option value="">全部學生</option>
-        </select>
-        <button class="btn-red btn-sm" onclick="if(confirm('\u78ba\u5b9a\u6e05\u9664\u5168\u90e8\u7d00\u9304\uff1f'))clearAll()">清除全部</button>
+    <!-- 紀錄查詢 (sub-panel) -->
+    <div class="panel" id="tab-log">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">📝 紀錄查詢</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="log-type" onchange="renderLog()" style="font-size:12px;padding:5px 8px;min-height:36px;flex:1">
+            <option value="">全部類型</option>
+            <option value="成績">成績匯入</option>
+            <option value="幹部">幹部</option>
+            <option value="廁所">廁所</option>
+            <option value="特殊">特殊</option>
+            <option value="兌換">兌換</option>
+            <option value="午休">午休扣點</option>
+            <option value="調整">人工調整</option>
+          </select>
+          <select id="log-no" onchange="renderLog()" style="font-size:12px;padding:5px 8px;min-height:36px;flex:1">
+            <option value="">全部座號</option>
+          </select>
+          <button class="btn-red btn-sm" onclick="if(confirm('確定清除全部紀錄？'))clearLogs()">清除</button>
+        </div>
+        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>類型</th><th>說明</th><th>點/張</th><th>刪</th></tr></thead><tbody id="log-tbody"></tbody></table></div>
       </div>
     </div>
-    <div class="sx"><table><thead><tr><th>時間</th><th>事由</th><th>學生</th><th>類型</th><th>說明</th><th>點/張</th><th>刪</th></tr></thead><tbody id="log-tbody"></tbody></table></div>
-  </div>
-</div>
 
-<!-- 設定 -->
-<div id="tab-settings" class="panel">
-  <div class="card">
-    <div class="card-title">📋 基本設定</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>班級名稱（顯示在標題）</label>
-        <input type="text" id="set-classname" placeholder="例：五年壬班">
+    <!-- 設定 (sub-panel) -->
+    <div class="panel" id="tab-settings">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">⚙️ 設定</div>
       </div>
-      <div class="form-group" style="max-width:140px">
-        <label>換卡閾值（點數）</label>
-        <input type="number" id="set-threshold" value="300" min="1">
+      <div class="stab-row">
+        <button class="stab active" id="stab-basic" onclick="switchStab('basic')">基本設定</button>
+        <button class="stab" id="stab-nos" onclick="switchStab('nos')">座號管理</button>
+        <button class="stab" id="stab-sync" onclick="switchStab('sync')">同步</button>
       </div>
-      <div style="align-self:flex-end">
-        <button class="btn-blue" onclick="saveSettings()">儲存設定</button>
+      <!-- 基本設定 -->
+      <div id="stab-panel-basic">
+        <div class="card">
+          <div class="card-title">⚙️ 基本設定</div>
+          <div class="form-row">
+            <div class="fg">
+              <label>換卡閾值（點數）</label>
+              <input type="number" id="set-thr" value="300" min="1">
+            </div>
+            <div style="align-self:flex-end">
+              <button class="btn-primary" onclick="saveBasic()">儲存</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📤 資料匯出</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-ghost btn-sm" onclick="exportCSV()">成績 CSV</button>
+            <button class="btn-ghost btn-sm" onclick="exportLogCSV()">紀錄 CSV</button>
+          </div>
+        </div>
+      </div>
+      <!-- 座號管理 -->
+      <div id="stab-panel-nos" style="display:none">
+        <div class="card">
+          <div class="card-title">🔢 座號管理
+            <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">灰色＝不存在</span>
+          </div>
+          <div class="tip">先填總人數，系統自動產生所有座號；點選格子切換「存在/不存在」。</div>
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="fg" style="max-width:120px">
+              <label>總人數</label>
+              <input type="number" id="set-total" min="1" max="60" placeholder="例：35">
+            </div>
+            <div style="align-self:flex-end">
+              <button class="btn-primary btn-sm" onclick="genNos()">產生座號</button>
+            </div>
+          </div>
+          <div class="no-picker" id="nos-picker"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn-green btn-sm" onclick="saveNos()">✅ 儲存座號</button>
+            <span id="nos-count" style="font-size:12px;color:var(--text4);align-self:center"></span>
+          </div>
+        </div>
+      </div>
+      <!-- 同步 -->
+      <div id="stab-panel-sync" style="display:none">
+        <div class="card">
+          <div class="card-title">☁️ 雲端同步（Firebase）</div>
+          <div id="sync-status" style="font-size:13px;color:var(--text3);margin-bottom:12px">未登入</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" id="set-login-btn" onclick="doLogin()">Google 登入</button>
+            <button class="btn-ghost btn-sm" id="set-sync-btn" onclick="doSync()" style="display:none">立即同步</button>
+            <button class="btn-ghost btn-sm" id="set-logout-btn" onclick="doLogout()" style="display:none">登出</button>
+          </div>
+          <hr class="sep">
+          <div style="font-size:12px;color:var(--text4);line-height:1.7">
+            班級清單與分組從 Venus OS（作業 App）自動同步。<br>
+            獎卡資料存在此 App 獨立空間，不影響作業 App。
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="card-title">👥 學生名單
-      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="showAddStu()">＋ 新增</button>
-    </div>
-    <div id="stu-list-area"></div>
-  </div>
+  </div><!-- /scroll-area -->
 
-  <div class="card">
-    <div class="card-title">📚 科目清單
-      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="showAddSubj()">＋ 新增</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" id="subj-list-area"></div>
-  </div>
+  <!-- TAB BAR -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" id="tbtn-overview" onclick="goTab('overview',this)">
+      <span class="icon">🏠</span><span>總覽</span>
+    </button>
+    <button class="tab-btn" id="tbtn-score" onclick="goTab('score',this)">
+      <span class="icon">📊</span><span>成績</span>
+    </button>
+    <button class="tab-btn" id="tbtn-redeem" onclick="goTab('redeem',this)">
+      <span class="icon">🎴</span><span>兌換</span>
+    </button>
+    <button class="tab-btn" id="tbtn-give" onclick="goTab('give',this)">
+      <span class="icon">⚡</span><span>給卡</span>
+    </button>
+    <button class="tab-btn" id="tbtn-more" onclick="goTab('more',this)">
+      <span class="icon">☰</span><span>更多</span>
+    </button>
+  </nav>
 
-  <div class="card">
-    <div class="card-title">☁️ 雲端同步（Firebase）</div>
-    <div id="sync-status-area" style="font-size:13px;color:var(--text3);margin-bottom:12px">未登入</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-blue" id="set-login-btn" onclick="doLogin()">Google 登入</button>
-      <button class="btn-ghost btn-sm" id="set-sync-btn" onclick="doSync()" style="display:none">立即同步</button>
-      <button class="btn-ghost btn-sm" id="set-logout-btn" onclick="doLogout()" style="display:none">登出</button>
-    </div>
-  </div>
+</div><!-- /app -->
 
-  <div class="card">
-    <div class="card-title">📤 資料匯出</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-ghost btn-sm" onclick="exportCSV()">📊 匯出成績 CSV</button>
-      <button class="btn-ghost btn-sm" onclick="exportLogCSV()">📝 匯出紀錄 CSV</button>
-    </div>
-  </div>
-</div>
 
-<!-- Modal: 全班同分 -->
-<div class="modal-bg" id="fill-modal">
-  <div class="modal">
-    <h3>全班填同一分數</h3>
-    <div class="form-group" style="margin-bottom:14px">
-      <label>分數（0–100）</label>
-      <input type="number" id="fill-val" min="0" max="100" placeholder="輸入分數">
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn-ghost btn-sm" onclick="document.getElementById('fill-modal').classList.remove('show')">取消</button>
-      <button class="btn-blue" onclick="applyFill()">套用到全班</button>
-    </div>
-  </div>
-</div>
 
-<!-- Modal: 折線圖 -->
+<!-- MODAL: student detail / chart -->
 <div class="modal-bg" id="chart-modal">
-  <div class="modal" style="max-width:580px">
-    <h3 id="chart-title">成績趨勢</h3>
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 id="chart-title" style="margin:0">成績趨勢</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('chart-modal')">✕</button>
+    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
-    <canvas id="chart-canvas" width="540" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
-    <div style="text-align:right;margin-top:10px">
-      <button class="btn-ghost btn-sm" onclick="document.getElementById('chart-modal').classList.remove('show')">關閉</button>
-    </div>
+    <canvas id="chart-canvas" width="500" height="200" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
   </div>
 </div>
 
-<!-- Modal: 新增學生 -->
-<div class="modal-bg" id="add-stu-modal">
-  <div class="modal">
-    <h3>新增學生</h3>
-    <div class="form-row" style="margin-bottom:14px">
-      <div class="form-group" style="max-width:100px">
-        <label>座號</label>
-        <input type="number" id="new-stu-no" min="1" max="99">
-      </div>
-      <div class="form-group">
-        <label>姓名</label>
-        <input type="text" id="new-stu-name">
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn-ghost btn-sm" onclick="document.getElementById('add-stu-modal').classList.remove('show')">取消</button>
-      <button class="btn-blue" onclick="addStudent()">新增</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: 新增科目 -->
-<div class="modal-bg" id="add-subj-modal">
-  <div class="modal">
-    <h3>新增科目</h3>
-    <div class="form-group" style="margin-bottom:14px">
-      <label>科目名稱</label>
-      <input type="text" id="new-subj-name" placeholder="例：英聽">
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn-ghost btn-sm" onclick="document.getElementById('add-subj-modal').classList.remove('show')">取消</button>
-      <button class="btn-blue" onclick="addSubject()">新增</button>
-    </div>
-  </div>
-</div>
-
+<!-- TOAST -->
 <div id="toast"></div>
 
+<!-- SheetJS for Excel reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -492,7 +621,7 @@ tr:hover td{background:var(--blue-light);}
 
 <script>
 // ══════════════════════════════════════════
-// Firebase 設定（請填入你的 Firebase 專案資訊）
+// Firebase 設定
 // ══════════════════════════════════════════
 const FB_CONFIG = {
   apiKey: "AIzaSyCL_LgO6rV-zJVpGUSXiwBm77NgfqnpAis",
@@ -503,1009 +632,1059 @@ const FB_CONFIG = {
   appId: "1:995092431920:web:b61866ac39a73ecea799f5"
 };
 
-// ══ IndexedDB ══
-const IDB_NAME = 'venus-card';
-const IDB_VER = 1;
-const IDB_STORE = 'kv';
-let _idb = null;
-
-function openIDB() {
-  if (_idb) return Promise.resolve(_idb);
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(IDB_NAME, IDB_VER);
-    r.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
-    r.onsuccess = e => { _idb = e.target.result; res(_idb); };
-    r.onerror = () => rej(r.error);
+// ══ IDB ══
+const IDB_NAME='vc-card';const IDB_VER=1;const IDB_ST='kv';
+let _idb=null;
+function openIDB(){
+  if(_idb)return Promise.resolve(_idb);
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(IDB_NAME,IDB_VER);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_ST);
+    r.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    r.onerror=()=>rej(r.error);
   });
 }
-async function idbGet(key) {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).get(key);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
-    });
-  } catch { return undefined; }
+async function idbGet(k){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readonly');const req=tx.objectStore(IDB_ST).get(k);req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}catch{return undefined;}
 }
-async function idbSet(key, val) {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).put(val, key);
-      tx.oncomplete = () => res(true);
-      tx.onerror = () => rej(tx.error);
-    });
-  } catch { return false; }
-}
-async function idbKeys() {
-  try {
-    const db = await openIDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).getAllKeys();
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
-    });
-  } catch { return []; }
+async function idbSet(k,v){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readwrite');tx.objectStore(IDB_ST).put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}catch{return false;}
 }
 
-// ══ localStorage wrapper（Safari 私密瀏覽保護）══
-function safeGet(key) {
-  try { return localStorage.getItem(key); } catch { return null; }
+// ══ localStorage wrapper ══
+const _sl={
+  get:k=>{try{return localStorage.getItem(k);}catch{return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}},
+};
+function safeGet(k){return _sl.get(k);}
+function safeSet(k,v){_sl.set(k,v);}
+
+// ══ Combined store ══
+async function storeGet(k){
+  let v=await idbGet(k);
+  if(v!==undefined&&v!==null)return v;
+  const lv=safeGet('vc2:'+k);
+  return lv?JSON.parse(lv):null;
 }
-function safeSet(key, val) {
-  try { localStorage.setItem(key, val); } catch {}
+async function storeSet(k,v){
+  await idbSet(k,v);
+  try{safeSet('vc2:'+k,JSON.stringify(v));}catch{}
 }
 
-// ══ 複合存取：IDB 優先，localStorage 備援 ══
-async function storeGet(key) {
-  let v = await idbGet(key);
-  if (v !== undefined && v !== null) return v;
-  const lv = safeGet('vc5:' + key);
-  return lv ? JSON.parse(lv) : null;
-}
-async function storeSet(key, val) {
-  await idbSet(key, val);
-  try { safeSet('vc5:' + key, JSON.stringify(val)); } catch {}
-}
+// ══ Firebase ══
+let _auth=null,_db=null,_fbReady=false;
+let firebaseUidRef={current:null};
 
-// ══ Firebase 初始化 ══
-let _fb = null, _auth = null, _db = null;
-let firebaseUidRef = { current: null };
-let _fbReady = false;
-
-function initFirebase() {
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    _fb = firebase.app();
-    _auth = firebase.auth();
-    _db = firebase.firestore();
-    _auth.onAuthStateChanged(user => {
-      firebaseUidRef.current = user ? user.uid : null;
+function initFirebase(){
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    _auth=firebase.auth();
+    _db=firebase.firestore();
+    _auth.onAuthStateChanged(user=>{
+      firebaseUidRef.current=user?user.uid:null;
       updateLoginUI(user);
-      if (user) scheduleSync();
+      if(user)loadFromFirestore();
     });
-    _fbReady = true;
-  } catch (e) {
-    console.warn('Firebase init failed:', e);
-  }
+    _fbReady=true;
+  }catch(e){console.warn('FB init fail',e);}
 }
 
-function updateLoginUI(user) {
-  const loginBtn = document.getElementById('login-btn');
-  const setLoginBtn = document.getElementById('set-login-btn');
-  const setSyncBtn = document.getElementById('set-sync-btn');
-  const setLogoutBtn = document.getElementById('set-logout-btn');
-  const syncArea = document.getElementById('sync-status-area');
-  if (user) {
-    loginBtn.textContent = user.displayName ? user.displayName.slice(0, 4) : '已登入';
-    if (setLoginBtn) setLoginBtn.style.display = 'none';
-    if (setSyncBtn) setSyncBtn.style.display = '';
-    if (setLogoutBtn) setLogoutBtn.style.display = '';
-    if (syncArea) syncArea.textContent = '\u5df2\u767b\u5165\uff1a' + (user.email || '');
+function updateLoginUI(user){
+  const lb=document.getElementById('login-btn');
+  const slb=document.getElementById('set-login-btn');
+  const ssb=document.getElementById('set-sync-btn');
+  const sob=document.getElementById('set-logout-btn');
+  const ss=document.getElementById('sync-status');
+  if(user){
+    lb.textContent=user.displayName?user.displayName.slice(0,4):'已登入';
+    if(slb)slb.style.display='none';
+    if(ssb)ssb.style.display='';
+    if(sob)sob.style.display='';
+    if(ss)ss.textContent='已登入：'+(user.email||'');
     setSyncDot('ok');
-  } else {
-    loginBtn.textContent = '\u767b\u5165';
-    if (setLoginBtn) setLoginBtn.style.display = '';
-    if (setSyncBtn) setSyncBtn.style.display = 'none';
-    if (setLogoutBtn) setLogoutBtn.style.display = 'none';
-    if (syncArea) syncArea.textContent = '\u672a\u767b\u5165';
-    setSyncDot('offline');
+  }else{
+    lb.textContent='登入';
+    if(slb)slb.style.display='';
+    if(ssb)ssb.style.display='none';
+    if(sob)sob.style.display='none';
+    if(ss)ss.textContent='未登入';
+    setSyncDot('off');
   }
 }
 
-async function doLogin() {
-  if (!_fbReady) { toast('\u8acb\u5148\u8a2d\u5b9a Firebase'); return; }
-  try {
-    await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  } catch (e) {
-    toast('\u767b\u5165\u5931\u6557\uff1a' + e.message);
+async function doLogin(){
+  if(!_fbReady){toast('請先設定 Firebase');return;}
+  try{await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}
+  catch(e){toast('登入失敗：'+e.message);}
+}
+async function doLogout(){if(_auth)await _auth.signOut();toast('已登出');}
+
+// ══ App State ══
+// classes/groups 從 Venus OS Firestore 讀取（只讀）
+let _classes=[];      // [{id,year,school,className,createdAt}]
+let _groups=[];       // [{id,label,members,leader,secretary}]
+let _curClassId='';   // 目前選取的班級 id
+// 以下資料是此 App 自己的，用 vc:{classId}:key 存
+let _nos=[];          // 存在的座號 [1,2,3,5,...]
+let _scores={};       // {subjLabel:[{label,date,nos:{1:85,2:90,...}}]}
+let _logs=[];         // [{id,t,no,k,v,c,note}]
+let _fixed={cadre:{},toilet:[]};
+let _settings={threshold:300};
+let _skipMap={};
+let _xlsxData=null;   // 暫存解析中的 xlsx
+let _dirty=false;
+let _saveTimer=null;
+let _syncTimer=null;
+
+function curPfx(){return _curClassId?'vc:'+_curClassId+':':'';}
+
+function sched(){
+  _dirty=true;
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(persistLocal,800);
+}
+
+async function persistLocal(){
+  if(!_dirty||!_curClassId)return;
+  const pfx=curPfx();
+  const yr=new Date().getFullYear();
+  await storeSet(pfx+'scores:'+yr,_scores);
+  await storeSet(pfx+'logs:'+yr,_logs);
+  await storeSet(pfx+'fixed',_fixed);
+  await storeSet(pfx+'settings',_settings);
+  await storeSet(pfx+'nos',_nos);
+  _dirty=false;
+}
+
+async function loadClass(classId){
+  if(!classId)return;
+  _curClassId=classId;
+  const pfx='vc:'+classId+':';
+  const yr=new Date().getFullYear();
+  try{
+    const[sc,lg,fx,st,ns]=await Promise.all([
+      storeGet(pfx+'scores:'+yr),
+      storeGet(pfx+'logs:'+yr),
+      storeGet(pfx+'fixed'),
+      storeGet(pfx+'settings'),
+      storeGet(pfx+'nos'),
+    ]);
+    _scores=sc||{};
+    _logs=lg||[];
+    _fixed=fx||{cadre:{},toilet:[]};
+    if(Array.isArray(_fixed.cadre)){const o={};_fixed.cadre.forEach(n=>o[n]=1);_fixed.cadre=o;}
+    if(!Array.isArray(_fixed.toilet))_fixed.toilet=[];
+    _settings={...{threshold:300},...(st||{})};
+    _nos=ns||[];
+    safeSet('vc2:lastClass',classId);
+  }catch(e){
+    _scores={};_logs=[];_fixed={cadre:{},toilet:[]};_settings={threshold:300};_nos=[];
   }
+  renderAll();
 }
 
-async function doLogout() {
-  if (!_auth) return;
-  await _auth.signOut();
-  toast('\u5df2\u767b\u51fa');
+// ══ 從 Firestore 讀取 Venus OS 的班級/分組（只讀）══
+async function loadFromFirestore(){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db)return;
+  setSyncDot('ing');
+  try{
+    const doc=await _db.collection('users').doc(uid).get();
+    if(doc.exists){
+      const d=doc.data();
+      // 讀 Venus OS 的 settings:main
+      const settingsKey='settings:main';
+      const rawSettings=d[settingsKey];
+      if(rawSettings){
+        const parsed=typeof rawSettings==='string'?JSON.parse(rawSettings):rawSettings;
+        if(parsed.classes&&Array.isArray(parsed.classes)){
+          _classes=parsed.classes;
+          renderClassDD();
+        }
+        // 分組資料跟著當前班級
+        if(parsed.groups&&Array.isArray(parsed.groups)){
+          _groups=parsed.groups;
+        }
+      }
+      // 也嘗試讀各班的分組
+      if(_curClassId){
+        const grpRaw=d['groups:'+_curClassId];
+        if(grpRaw){
+          try{_groups=JSON.parse(grpRaw);}catch{}
+        }
+      }
+      // 讀此 App 自己的資料
+      if(_curClassId){
+        const yr=new Date().getFullYear();
+        const pfx='vc:'+_curClassId+':';
+        if(d[pfx+'scores:'+yr])try{_scores=JSON.parse(d[pfx+'scores:'+yr]);}catch{}
+        if(d[pfx+'logs:'+yr])try{_logs=JSON.parse(d[pfx+'logs:'+yr]);}catch{}
+        if(d[pfx+'fixed'])try{_fixed=JSON.parse(d[pfx+'fixed']);}catch{}
+        if(d[pfx+'settings'])try{_settings={...{threshold:300},...JSON.parse(d[pfx+'settings'])};}catch{}
+        if(d[pfx+'nos'])try{_nos=JSON.parse(d[pfx+'nos']);}catch{}
+        await persistLocal();
+        renderAll();
+      }
+    }
+    setSyncDot('ok');
+  }catch(e){setSyncDot('off');console.warn('Firestore read fail',e);}
 }
 
-// ══ 應用程式狀態 ══
-let _students = [];
-let _scores = {};
-let _logs = [];
-let _fixed = { cadre: {}, toilet: [] };
-let _settings = { threshold: 300, className: '', subjects: [] };
-let _skipMap = {};
-let _dirty = false;
-let _saveTimer = null;
-let _syncTimer = null;
+async function doSync(){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db){toast('請先登入');return;}
+  setSyncDot('ing');
+  try{
+    await persistLocal();
+    const yr=new Date().getFullYear();
+    const pfx='vc:'+_curClassId+':';
+    const payload={};
+    payload[pfx+'scores:'+yr]=JSON.stringify(_scores);
+    payload[pfx+'logs:'+yr]=JSON.stringify(_logs);
+    payload[pfx+'fixed']=JSON.stringify(_fixed);
+    payload[pfx+'settings']=JSON.stringify(_settings);
+    payload[pfx+'nos']=JSON.stringify(_nos);
+    payload.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+    await _db.collection('users').doc(uid).set(payload,{merge:true});
+    setSyncDot('ok');
+    toast('\u2601\ufe0f 已同步到雲端');
+  }catch(e){setSyncDot('off');toast('同步失敗：'+e.message);}
+}
 
-// ══ 預設資料 ══
-const DEFAULT_SUBJECTS = ['\u570b\u7fd2','\u807d\u5beb','\u8003\u5377','\u751f\u6e2c','\u4f5c\u6587','\u570b\u8a9e\u6bb5\u8003','\u6578\u7fd2','\u6578\u7d9c','\u6578\u8003','\u6578\u5b78\u6bb5\u8003'];
-const SUBJ_COLORS = {'\u570b\u7fd2':'#2563EB','\u807d\u5beb':'#7C3AED','\u8003\u5377':'#DC2626','\u751f\u6e2c':'#16A34A','\u4f5c\u6587':'#0891B2','\u570b\u8a9e\u6bb5\u8003':'#9333EA','\u6578\u7fd2':'#EA580C','\u6578\u7d9c':'#0D9488','\u6578\u8003':'#DB2777','\u6578\u5b78\u6bb5\u8003':'#65A30D'};
-const DEFAULT_STUDENTS = [
-  {no:1,name:'\u5b78\u751f01'},{no:2,name:'\u5b78\u751f02'},{no:3,name:'\u5b78\u751f03'}
-];
+function scheduleSync(){
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(doSync,3000);
+}
 
 // ══ 點數計算 ══
-function scorePoints(no) {
-  const idx = _students.findIndex(s => s.no === no);
-  if (idx < 0) return 0;
-  let total = 0;
-  for (const subj of Object.keys(_scores)) {
-    for (const entry of _scores[subj] || []) {
-      const v = entry.scores[idx];
-      if (v !== null && v !== undefined && !isNaN(v)) total += v;
+function scorePoints(no){
+  let total=0;
+  for(const subj of Object.keys(_scores)){
+    for(const entry of _scores[subj]||[]){
+      const v=entry.nos&&entry.nos[no];
+      if(v!==null&&v!==undefined&&!isNaN(v))total+=v;
     }
   }
   return total;
 }
-function redeemedPoints(no) {
-  return _logs.filter(l => l.no === no && l.k === '\u5151\u63db').reduce((a, l) => a + (l.v || 0), 0);
+function redeemedPoints(no){
+  return _logs.filter(l=>l.no===no&&l.k==='兌換').reduce((a,l)=>a+(l.v||0),0);
 }
-function noonPoints(no) {
-  return _logs.filter(l => l.no === no && l.k === '\u5348\u4f11').reduce((a, l) => a + (l.v || 0), 0);
+function noonPoints(no){
+  return _logs.filter(l=>l.no===no&&l.k==='午休').reduce((a,l)=>a+(l.v||0),0);
 }
-function remPoints(no) {
-  return scorePoints(no) - redeemedPoints(no) - noonPoints(no);
-}
-function cardCounts(no) {
-  const ls = _logs.filter(l => l.no === no);
-  let cadre = 0, toilet = 0, special = 0, redeemed = 0, adjust = 0;
-  for (const l of ls) {
-    if (l.k === '\u5e79\u90e8') cadre += (l.c || 0);
-    if (l.k === '\u5ec1\u6240') toilet += (l.c || 0);
-    if (l.k === '\u7279\u6b8a') special += (l.c || 0);
-    if (l.k === '\u5151\u63db') redeemed += (l.c || 0);
-    if (l.k === '\u8abf\u6574') adjust += (l.c || 0);
+function remPoints(no){return scorePoints(no)-redeemedPoints(no)-noonPoints(no);}
+function canRedeem(no){const thr=_settings.threshold||300;return Math.floor(remPoints(no)/thr);}
+function cardCounts(no){
+  const ls=_logs.filter(l=>l.no===no);
+  let cadre=0,toilet=0,special=0,redeemed=0,adjust=0;
+  for(const l of ls){
+    if(l.k==='幹部')cadre+=(l.c||0);
+    if(l.k==='廁所')toilet+=(l.c||0);
+    if(l.k==='特殊')special+=(l.c||0);
+    if(l.k==='兌換')redeemed+=(l.c||0);
+    if(l.k==='調整')adjust+=(l.c||0);
   }
-  return { cadre, toilet, special, redeemed, adjust, total: cadre + toilet + special + redeemed + adjust };
-}
-function canRedeem(no) {
-  const thr = _settings.threshold || 300;
-  return Math.floor(remPoints(no) / thr);
+  return{cadre,toilet,special,redeemed,adjust,total:cadre+toilet+special+redeemed+adjust};
 }
 
-// ══ 工具函式 ══
-function nowStr() { return new Date().toLocaleString('zh-TW', { hour12: false }); }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-function toast(m, dur) {
-  const e = document.getElementById('toast');
-  e.textContent = m;
-  e.classList.add('show');
+// ══ Utils ══
+function nowStr(){return new Date().toLocaleString('zh-TW',{hour12:false});}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function toast(m,dur){
+  const e=document.getElementById('toast');
+  e.textContent=m;e.classList.add('show');
   clearTimeout(toast._t);
-  toast._t = setTimeout(() => e.classList.remove('show'), dur || 2500);
+  toast._t=setTimeout(()=>e.classList.remove('show'),dur||2500);
 }
-function setSyncDot(s) {
-  const d = document.getElementById('sync-dot');
-  d.className = 'sync-dot' + (s === 'syncing' ? ' syncing' : s === 'offline' ? ' offline' : '');
-  d.title = s === 'syncing' ? '\u540c\u6b65\u4e2d...' : s === 'offline' ? '\u96e2\u7dda' : '\u96f2\u7aef\u5df2\u540c\u6b65';
+function setSyncDot(s){
+  const d=document.getElementById('sync-dot');
+  d.className='sync-dot'+(s==='ing'?' ing':s==='off'?' off':'');
 }
+function closeModal(id){document.getElementById(id).classList.remove('show');}
 
-// ══ 存取層 ══
-function sched() {
-  _dirty = true;
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(persistLocal, 800);
+// ══ 班級 Dropdown ══
+let _ddOpen=false;
+function toggleClassDD(){
+  const dd=document.getElementById('class-dd');
+  const chip=document.getElementById('class-chip');
+  _ddOpen=!_ddOpen;
+  dd.style.display=_ddOpen?'block':'none';
+  chip.classList.toggle('open',_ddOpen);
+  if(_ddOpen)renderClassDD();
 }
-
-async function persistLocal() {
-  if (!_dirty) return;
-  const year = new Date().getFullYear();
-  await storeSet('scores:' + year, _scores);
-  await storeSet('logs:' + year, _logs);
-  await storeSet('fixed:main', _fixed);
-  await storeSet('settings:main', _settings);
-  await storeSet('students:main', _students);
-  _dirty = false;
-}
-
-async function loadAll() {
-  setSyncDot('syncing');
-  const year = new Date().getFullYear();
-  try {
-    const [sc, lg, fx, st, se] = await Promise.all([
-      storeGet('scores:' + year),
-      storeGet('logs:' + year),
-      storeGet('fixed:main'),
-      storeGet('students:main'),
-      storeGet('settings:main')
-    ]);
-    _scores = sc || {};
-    _logs = lg || [];
-    _fixed = fx || { cadre: {}, toilet: [] };
-    if (Array.isArray(_fixed.cadre)) {
-      const obj = {}; _fixed.cadre.forEach(no => obj[no] = 1); _fixed.cadre = obj;
-    }
-    if (!_fixed.toilet || !Array.isArray(_fixed.toilet)) _fixed.toilet = [];
-    _students = st || DEFAULT_STUDENTS;
-    if (se) {
-      _settings = { ...{ threshold: 300, className: '', subjects: [] }, ...se };
-    }
-    if (!_settings.subjects || !_settings.subjects.length) {
-      _settings.subjects = [...DEFAULT_SUBJECTS];
-    }
-    setSyncDot(firebaseUidRef.current ? 'ok' : 'offline');
-  } catch (e) {
-    console.error(e);
-    _scores = {}; _logs = []; _fixed = { cadre: {}, toilet: [] };
-    _students = DEFAULT_STUDENTS;
-    _settings = { threshold: 300, className: '', subjects: [...DEFAULT_SUBJECTS] };
-    setSyncDot('offline');
+document.addEventListener('click',e=>{
+  if(!document.getElementById('class-switcher').contains(e.target)){
+    document.getElementById('class-dd').style.display='none';
+    document.getElementById('class-chip').classList.remove('open');
+    _ddOpen=false;
   }
-}
+});
 
-// ══ Firestore 同步 ══
-function scheduleSync() {
-  clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(doSync, 2000);
-}
-
-async function doSync() {
-  const uid = firebaseUidRef.current;
-  if (!uid || !_db) return;
-  setSyncDot('syncing');
-  const year = new Date().getFullYear();
-  try {
-    await persistLocal();
-    const ref = _db.collection('users').doc(uid);
-    await ref.set({
-      ['scores_' + year]: JSON.stringify(_scores),
-      ['logs_' + year]: JSON.stringify(_logs),
-      fixed: JSON.stringify(_fixed),
-      settings: JSON.stringify(_settings),
-      students: JSON.stringify(_students),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    setSyncDot('ok');
-    toast('\u2601\ufe0f \u5df2\u540c\u6b65\u5230\u96f2\u7aef');
-  } catch (e) {
-    setSyncDot('offline');
-    toast('\u540c\u6b65\u5931\u6557\uff1a' + e.message);
+function renderClassDD(){
+  const dd=document.getElementById('class-dd');
+  if(!_classes.length){
+    dd.innerHTML='<div class="cd-hdr">CLASSES</div><div style="padding:12px 14px;font-size:12px;color:var(--text4)">請先登入並在 Venus OS 新增班級</div>';
+    return;
   }
+  dd.innerHTML='<div class="cd-hdr">CLASSES</div>'+
+    _classes.map(cls=>`
+    <div class="cd-item${cls.id===_curClassId?' active':''}" onclick="switchClass('${cls.id}')">
+      <div>
+        <div class="cd-name">${cls.className||cls.id}</div>
+        <div class="cd-sub">${cls.year||''} ${cls.school||''}</div>
+      </div>
+      ${cls.id===_curClassId?'<span class="cd-badge">✓ 使用中</span>':''}
+    </div>`).join('');
 }
 
-async function syncFromFirestore() {
-  const uid = firebaseUidRef.current;
-  if (!uid || !_db) return;
-  const year = new Date().getFullYear();
-  try {
-    const doc = await _db.collection('users').doc(uid).get();
-    if (!doc.exists) return;
-    const d = doc.data();
-    if (d['scores_' + year]) _scores = JSON.parse(d['scores_' + year]);
-    if (d['logs_' + year]) _logs = JSON.parse(d['logs_' + year]);
-    if (d.fixed) _fixed = JSON.parse(d.fixed);
-    if (d.settings) _settings = { ...{ threshold: 300, className: '', subjects: [] }, ...JSON.parse(d.settings) };
-    if (d.students) _students = JSON.parse(d.students);
-    await persistLocal();
-    renderAll();
-    toast('\u2601\ufe0f \u5df2\u5f9e\u96f2\u7aef\u8f09\u5165');
-  } catch (e) {
-    toast('\u8f09\u5165\u5931\u6557\uff1a' + e.message);
+function switchClass(id){
+  _ddOpen=false;
+  document.getElementById('class-dd').style.display='none';
+  document.getElementById('class-chip').classList.remove('open');
+  const cls=_classes.find(c=>c.id===id);
+  if(cls){
+    document.getElementById('chip-text').textContent=(cls.className||id);
+    // 讀該班分組
+    try{
+      const grpRaw=safeGet('hw5ren:groups:'+id);
+      if(grpRaw)_groups=JSON.parse(grpRaw);
+    }catch{}
   }
+  loadClass(id);
 }
 
-// ══ 分頁切換 ══
-function goTab(id, btn) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
-  if (btn) btn.classList.add('active');
-  const fn = {
-    overview: renderOverview,
-    score: () => { renderSubjSelect(); renderScoreLog(); },
-    redeem: renderRedeem,
-    give: () => { renderNoPicker(); fillStuSelect('give-stu'); renderGiveDetail(); },
-    noon: () => { fillStuSelect('noon-stu'); renderNoonList(); updateNoonLabel(); },
-    table: renderScoreTable,
-    log: renderLog,
-    settings: renderSettings
+// ══ Tab 切換 ══
+const TAB_IDS=['overview','score','redeem','give','more','noon','table','log','settings'];
+const MAIN_TABS=['overview','score','redeem','give','more'];
+
+function goTab(id,btn){
+  TAB_IDS.forEach(t=>{
+    const p=document.getElementById('tab-'+t);
+    if(p)p.classList.toggle('active',t===id);
+  });
+  // 主 Tab 按鈕
+  MAIN_TABS.forEach(t=>{
+    const b=document.getElementById('tbtn-'+t);
+    if(b)b.classList.toggle('active',t===id);
+  });
+  document.getElementById('scroll-area').scrollTop=0;
+  const fn={
+    overview:renderOverview,
+    score:()=>renderScoreLog(),
+    redeem:renderRedeem,
+    give:()=>{renderNoPicker();fillNoSelect('give-no');renderGiveDetail();},
+    noon:()=>{fillNoSelect('noon-no');renderNoonList();updateNoonLabel();},
+    table:renderScoreTable,
+    log:renderLog,
+    settings:renderSettings,
   };
   fn[id]?.();
 }
 
+function goMore(id){goTab(id);}
+
 // ══ 總覽 ══
-function renderOverview() {
-  const thr = _settings.threshold || 300;
-  let totalCards = 0, totalPts = 0, canCnt = 0;
-  const grid = document.getElementById('stu-grid');
-  grid.innerHTML = '';
-  _students.forEach(s => {
-    const rem = remPoints(s.no);
-    const can = canRedeem(s.no);
-    const cc = cardCounts(s.no);
-    const np = noonPoints(s.no);
-    totalCards += cc.total; totalPts += rem; if (can > 0) canCnt++;
-    const cell = document.createElement('div');
-    cell.className = 'stu-cell' + (can > 0 ? ' ready' : np > 0 ? ' warn' : '');
-    const pct = Math.min(100, ((rem % thr) / thr * 100)).toFixed(0);
-    cell.innerHTML = `<div style="display:flex;justify-content:space-between">
-      <div><div class="stu-no">${s.no}\u865f</div><div class="stu-name">${s.name}</div></div>
-      ${cc.total > 0 ? `<div style="font-size:11px;color:var(--green);font-weight:600">\u3003\u00d7${cc.total}</div>` : ''}
-    </div>
-    <div class="stu-pts">${rem}<span style="font-size:11px;font-weight:400;color:var(--text3)">pt</span></div>
-    <div class="progress"><div class="progress-bar${rem >= thr ? ' full' : ''}" style="width:${pct}%"></div></div>
-    <div class="stu-sub">${can > 0 ? `<span style="color:var(--orange);font-weight:600">\u25b6 \u53ef\u63db ${can} \u5f35</span>` :
-      np > 0 ? `<span style="color:var(--red)">\u5348\u4f11 -${np}pt</span>` :
-      `\u518d ${thr - (((rem % thr) + thr) % thr)} pt \u53ef\u63db`}</div>`;
-    cell.onclick = () => showChart(s.no);
+function renderOverview(){
+  const thr=_settings.threshold||300;
+  if(!_nos.length){
+    document.getElementById('stat-row').innerHTML='';
+    document.getElementById('stu-grid').innerHTML='<div class="empty">請先在「設定 → 座號管理」設定座號</div>';
+    return;
+  }
+  let totalCards=0,totalPts=0,canCnt=0;
+  const grid=document.getElementById('stu-grid');
+  grid.innerHTML='';
+  _nos.forEach(no=>{
+    const rem=remPoints(no);
+    const can=canRedeem(no);
+    const cc=cardCounts(no);
+    const np=noonPoints(no);
+    totalCards+=cc.total;totalPts+=rem;if(can>0)canCnt++;
+    const pct=Math.min(100,((rem%thr)/thr*100)).toFixed(0);
+    const cell=document.createElement('div');
+    cell.className='stu-cell'+(can>0?' ready':'');
+    if(cc.total>0)cell.innerHTML+=`<span class="stu-badge">\u3003\u00d7${cc.total}</span>`;
+    cell.innerHTML+=`<div class="stu-no">${no}\u865f</div>
+    <div class="stu-pts">${rem}<span style="font-size:10px;font-weight:400;color:var(--text4)">pt</span></div>
+    <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div class="stu-info">${can>0?`<span style="color:var(--orange);font-weight:700">\u25b6\u53ef\u63db${can}\u5f35</span>`:rem>=thr*0.8?`\u518d${thr-((rem%thr+thr)%thr)}pt`:''}</div>`;
+    cell.onclick=()=>showChart(no);
     grid.appendChild(cell);
   });
-  const avg = _students.length ? Math.round(totalPts / _students.length) : 0;
-  document.getElementById('stat-row').innerHTML = `
-    <div class="stat"><div class="num">${_students.length}</div><div class="lbl">\u5168\u73ed\u4eba\u6578</div></div>
-    <div class="stat orange"><div class="num">${totalCards}</div><div class="lbl">\u5168\u73ed\u6301\u6709\u5361</div></div>
-    <div class="stat green"><div class="num">${avg}</div><div class="lbl">\u5e73\u5747\u5269\u9918\u9ede</div></div>
-    <div class="stat red"><div class="num">${canCnt}</div><div class="lbl">\u53ef\u5151\u63db\u4eba\u6578</div></div>
-    <div class="stat"><div class="num">${_logs.length}</div><div class="lbl">\u7e3d\u7d00\u9304\u7b46\u6578</div></div>`;
-  const titleEl = document.getElementById('app-title');
-  if (_settings.className) {
-    titleEl.innerHTML = _settings.className.replace(/(.+)/, '<span>$1</span>');
-  }
+  const avg=_nos.length?Math.round(totalPts/_nos.length):0;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat"><div class="sn">${_nos.length}</div><div class="sl">全班人數</div></div>
+    <div class="stat ora"><div class="sn">${totalCards}</div><div class="sl">全班持有卡</div></div>
+    <div class="stat grn"><div class="sn">${avg}</div><div class="sl">平均剩餘點</div></div>
+    <div class="stat red"><div class="sn">${canCnt}</div><div class="sl">可換卡人數</div></div>`;
 }
 
-// ══ 科目選單 ══
-function renderSubjSelect() {
-  const el = document.getElementById('sc-subj');
-  const cur = el.value;
-  el.innerHTML = (_settings.subjects || DEFAULT_SUBJECTS).map(s => `<option value="${s}">${s}</option>`).join('');
-  if (cur) el.value = cur;
+// ══ Excel 匯入 ══
+let _xlsxSheets={};  // {sheetName: [{座號,科目,次數,分數}]}
+let _xlsxSelSheets=[];
+
+// ── Excel 匯入（專門讀「獎卡兌換」工作表）──
+// 格式：Row0=科目大類，Row1=次數標籤，Row2起=座號+分數
+// 遇到「總分」欄後停止；跳過公式欄、空欄、None欄
+const TARGET_SHEET_KEYWORDS = ['\u734e\u5361\u5151\u63db', '\u734e\u5361\u5151\u63db2'];
+
+function handleXlsx(input){
+  const file=input.files[0];
+  if(!file)return;
+  const prev=document.getElementById('xlsx-preview');
+  prev.innerHTML='<div style="color:var(--text4);font-size:12px">讀取中...</div>';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellFormula:false,cellHTML:false});
+      // 找「獎卡兌換」工作表（支援多個關鍵字）
+      let targetSheet=null,targetName='';
+      for(const name of wb.SheetNames){
+        if(TARGET_SHEET_KEYWORDS.some(kw=>name.includes(kw))){
+          targetSheet=wb.Sheets[name];targetName=name;break;
+        }
+      }
+      // 如果找不到，列出所有工作表讓用戶選
+      if(!targetSheet){
+        prev.innerHTML=`<div class="tip orange">找不到「獎卡兌換」工作表。<br>此 Excel 包含：${wb.SheetNames.join('、')}</div>`;
+        return;
+      }
+      parseAndImport(targetSheet,targetName);
+    }catch(err){
+      prev.innerHTML='';
+      toast('讀取失敗：'+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-// ══ 貼成績 ══
-function pasteScore() {
-  const subj = document.getElementById('sc-subj').value;
-  const raw = document.getElementById('sc-paste').value;
-  if (!raw.trim()) { toast('\u8acb\u5148\u8cbc\u4e0a\u6578\u5b57'); return; }
-  const rows = raw.split(/[\n\r]+/);
-  let s = 0, e = rows.length - 1;
-  while (s <= e && rows[s].trim() === '') s++;
-  while (e >= s && rows[e].trim() === '') e--;
-  const trimmed = rows.slice(s, e + 1);
-  if (trimmed.length !== _students.length) {
-    setMsg('sc-msg', `\u26a0 \u9700\u8981 ${_students.length} \u884c\uff08\u7f3a\u5e2d\u7559\u7a7a\u884c\uff09\uff0c\u76ee\u524d ${trimmed.length} \u884c`, 'red');
+function parseAndImport(ws,sheetName){
+  if(!_nos.length){
+    toast('請先設定座號（設定 → 座號管理）');
+    document.getElementById('xlsx-preview').innerHTML='';
     return;
   }
-  const scores = trimmed.map(r => { const v = parseFloat(r.trim()); return isNaN(v) ? null : v; });
-  const filled = scores.filter(v => v !== null).length;
-  if (!_scores[subj]) _scores[subj] = [];
-  const n = _scores[subj].length + 1;
-  const label = subj + n;
-  _scores[subj] = [..._scores[subj], { label, scores }];
-  sched();
-  document.getElementById('sc-paste').value = '';
-  setMsg('sc-msg', `\u2705 \u5df2\u5132\u5b58\u300c${label}\u300d${filled} \u4eba\u6709\u5206\u6578${_students.length - filled > 0 ? `\uff0c${_students.length - filled} \u4eba\u7a7a\u767d` : ''}`, 'green');
-  renderScoreLog();
-  toast(`\u2705 ${label} \u5132\u5b58\u5b8c\u6210`);
-}
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  if(rows.length<3){toast('工作表資料不足');return;}
 
-function setMsg(id, m, color) {
-  const e = document.getElementById(id);
-  e.textContent = m;
-  e.style.color = color === 'red' ? 'var(--red)' : 'var(--green)';
-}
+  const subjRow=rows[0]||[];
+  const labelRow=rows[1]||[];
+  const dataRows=rows.slice(2);
 
-function renderScoreLog() {
-  const area = document.getElementById('score-log-area');
-  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
-  const allEntries = [];
-  subjs.forEach(subj => { (_scores[subj] || []).forEach((e, i) => allEntries.push({ subj, i, e })); });
-  if (!allEntries.length) {
-    area.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">\u5c1a\u672a\u8cbc\u5165\u4efb\u4f55\u6210\u7e3e</div>';
-    return;
+  // 建立欄位對應，遇到「總分」停止
+  const colMap={};
+  let curSubj='';
+  let stop=false;
+  for(let c=2;c<Math.max(subjRow.length,labelRow.length);c++){
+    if(stop)break;
+    const s=subjRow[c];
+    if(s&&String(s).trim()){
+      const sStr=String(s).trim();
+      if(sStr==='\u7e3d\u5206'){stop=true;break;}  // 總分
+      curSubj=sStr;
+    }
+    const l=labelRow[c];
+    if(!l||!curSubj)continue;
+    let lbl='';
+    // 日期格式轉換
+    if(l instanceof Date||typeof l==='number'&&l>40000){
+      // XLSX 日期序號
+      try{
+        const d=XLSX.SSF.parse_date_code(l);
+        lbl=`${d.m}/${d.d}`;
+      }catch{lbl=String(l);}
+    }else{
+      lbl=String(l).trim();
+    }
+    if(!lbl||lbl==='null'||lbl==='None')continue;
+    // 跳過：平均、段考以外含「段」「考」「平均」的純統計欄
+    // 保留：CH系列、44-45、甲、乙、日期格式、段考
+    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`};
   }
-  allEntries.reverse();
-  area.innerHTML = `<table><thead><tr><th>\u6a19\u7c64</th><th>\u79d1\u76ee</th><th>\u6709\u5206\u6578\u4eba\u6578</th><th>\u73ed\u5e73\u5747</th><th>\u64cd\u4f5c</th></tr></thead><tbody>${
-    allEntries.map(({ subj, i, e }) => {
-      const vals = e.scores.filter(v => v !== null && !isNaN(v));
-      const avg = vals.length ? +(vals.reduce((a, b) => a + b) / vals.length).toFixed(1) : '-';
-      return `<tr><td style="font-weight:600">${e.label}</td><td><span class="badge badge-blue">${subj}</span></td>
-      <td>${vals.length}/${_students.length}</td><td style="font-weight:600">${avg}</td>
-      <td><button class="btn-red btn-sm" onclick="delEntry('${subj}',${i})">\u522a\u9664</button></td></tr>`;
-    }).join('')
-  }</tbody></table>`;
+
+  // 解析資料行
+  let imported=0,noMatch=0;
+  const newScores={};  // 全部重建，這次上傳全覆蓋
+  dataRows.forEach(row=>{
+    if(!row)return;
+    const noRaw=row[0];
+    if(noRaw===null||noRaw===undefined)return;
+    const no=parseInt(noRaw);
+    if(isNaN(no)||!_nos.includes(no)){noMatch++;return;}
+    Object.entries(colMap).forEach(([c,{subj,label}])=>{
+      const v=row[parseInt(c)];
+      // 跳過 null、字串公式、字串
+      if(v===null||v===undefined)return;
+      if(typeof v==='string')return;  // 公式結果 XLSX 不計算，直接是字串
+      const num=parseFloat(v);
+      if(isNaN(num))return;
+      if(!newScores[subj])newScores[subj]=[];
+      let entry=newScores[subj].find(e=>e.label===label);
+      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[subj].push(entry);}
+      entry.nos[no]=num;
+      imported++;
+    });
+  });
+
+  _scores=newScores;
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+
+  const subjCount=Object.keys(newScores).length;
+  const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
+  const prev=document.getElementById('xlsx-preview');
+  prev.innerHTML=`<div class="tip green">✅ 匯入完成！共 ${subjCount} 科、${examCount} 次考試、${imported} 筆分數</div>`;
+  document.getElementById('xlsx-input').value='';
+  toast(`✅ 已從「${sheetName}」匯入 ${imported} 筆分數`);
 }
 
-function delEntry(subj, idx) {
-  if (!confirm(`\u78ba\u5b9a\u522a\u9664\u300c${_scores[subj][idx].label}\u300d\uff1f`)) return;
-  _scores[subj].splice(idx, 1);
-  _scores[subj].forEach((e, i) => e.label = subj + (i + 1));
-  sched(); renderScoreLog(); renderOverview(); toast('\u5df2\u522a\u9664');
+function renderScoreLog(){
+  const area=document.getElementById('score-log-area');
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){area.innerHTML='<div class="empty">尚未匯入任何成績</div>';return;}
+  const rows=[];
+  allSubjs.forEach(subj=>{
+    (_scores[subj]||[]).forEach((e,i)=>{
+      const cnt=Object.keys(e.nos||{}).length;
+      const vals=Object.values(e.nos||{}).filter(v=>!isNaN(v));
+      const avg=vals.length?+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1):'-';
+      rows.push(`<tr>
+        <td style="font-weight:600;text-align:left">${e.label}</td>
+        <td><span class="badge badge-blue">${subj}</span></td>
+        <td>${cnt}人</td>
+        <td style="font-weight:600">${avg}</td>
+        <td><button class="btn-red btn-xs" onclick="delEntry('${subj}',${i})">刪</button></td>
+      </tr>`);
+    });
+  });
+  area.innerHTML=`<div class="sx"><table><thead><tr><th>標籤</th><th>科目</th><th>人數</th><th>平均</th><th>操作</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 }
 
-function clearScores() {
-  _scores = {}; sched(); renderScoreLog(); renderOverview(); toast('\u5df2\u6e05\u9664\u5168\u90e8\u6210\u7e3e');
+function delEntry(subj,idx){
+  if(!confirm(`確定刪除「${_scores[subj][idx].label}」？`))return;
+  _scores[subj].splice(idx,1);
+  sched();renderScoreLog();renderOverview();toast('已刪除');
 }
 
-function applyFill() {
-  const v = parseFloat(document.getElementById('fill-val').value);
-  if (isNaN(v)) return;
-  document.getElementById('fill-modal').classList.remove('show');
-  const subj = document.getElementById('sc-subj').value;
-  if (!_scores[subj]) _scores[subj] = [];
-  const n = _scores[subj].length + 1;
-  const label = subj + n;
-  _scores[subj].push({ label, scores: _students.map(() => v) });
-  sched(); renderScoreLog(); renderOverview();
-  toast(`\u2705 \u5df2\u5957\u7528 ${v} \u5206\u7d66\u5168\u73ed\uff0c\u6a19\u7c64 ${label}`);
-}
+function clearScores(){_scores={};sched();renderScoreLog();renderOverview();toast('已清除');}
 
 // ══ 兌換獎卡 ══
-function renderRedeem() {
-  _skipMap = {};
-  const thr = _settings.threshold || 300;
-  const area = document.getElementById('redeem-area');
-  const el = _students.filter(s => canRedeem(s.no) > 0);
-  if (!el.length) {
-    area.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:16px;text-align:center">\u76ee\u524d\u6c92\u6709\u5b78\u751f\u7d2f\u7a4d\u9054 ${thr} \u9ede</div>`;
-    document.getElementById('redeem-summary').style.display = 'none';
-    document.getElementById('btn-redeem').style.display = 'none';
-    renderRedeemLog(); return;
+function renderRedeem(){
+  _skipMap={};
+  const thr=_settings.threshold||300;
+  const area=document.getElementById('redeem-area');
+  const eligible=_nos.filter(no=>canRedeem(no)>0);
+  if(!eligible.length){
+    area.innerHTML=`<div class="empty">目前沒有學生累積達 ${thr} 點</div>`;
+    document.getElementById('redeem-summary').style.display='none';
+    document.getElementById('btn-redeem').style.display='none';
+    renderRedeemLog();return;
   }
-  const grid = document.createElement('div');
-  grid.className = 'redeem-grid';
-  el.forEach(s => {
-    const rem = remPoints(s.no); const can = canRedeem(s.no);
-    const item = document.createElement('div');
-    item.className = 'redeem-card'; item.id = 'rc_' + s.no;
-    item.innerHTML = `<button class="skip-btn" onclick="toggleSkip(${s.no})" title="\u6a19\u8a18\u4e0d\u5151\u63db">\u2715</button>
-    <div style="font-size:11px;color:var(--text3)">${s.no}\u865f</div>
-    <div style="font-weight:700;font-size:15px">${s.name}</div>
-    <div style="font-size:20px;font-weight:700;color:var(--orange)">${rem}pt</div>
-    <div style="font-size:12px;color:var(--green);font-weight:600">\u53ef\u5151\u63db ${can} \u5f35</div>
-    <textarea id="skip-note-${s.no}" style="display:none;width:100%;margin-top:6px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:4px;resize:none" placeholder="\u4e0d\u5151\u63db\u539f\u56e0\uff08\u9078\u586b\uff09" rows="2"></textarea>`;
-    grid.appendChild(item);
+  const grid=document.createElement('div');grid.className='rdm-grid';
+  eligible.forEach(no=>{
+    const rem=remPoints(no);const can=canRedeem(no);
+    const d=document.createElement('div');
+    d.className='rdm-card';d.id='rc_'+no;
+    d.innerHTML=`<button class="rdm-skip-btn" onclick="toggleSkip(${no})">✕</button>
+    <div style="font-size:11px;color:var(--text4)">${no}號</div>
+    <div style="font-size:20px;font-weight:800;color:var(--orange)">${rem}pt</div>
+    <div style="font-size:12px;color:var(--green);font-weight:600">可換 ${can} 張</div>
+    <textarea id="skip-note-${no}" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:4px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text);resize:none" rows="2" placeholder="不換原因（選填）"></textarea>`;
+    grid.appendChild(d);
   });
-  area.innerHTML = ''; area.appendChild(grid);
-  updRedeemSummary(el);
-  document.getElementById('btn-redeem').style.display = '';
+  area.innerHTML='';area.appendChild(grid);
+  updRedeemSummary(eligible);
+  document.getElementById('btn-redeem').style.display='';
   renderRedeemLog();
 }
 
-function toggleSkip(no) {
-  const card = document.getElementById('rc_' + no);
-  const note = document.getElementById('skip-note-' + no);
-  if (_skipMap[no] !== undefined) {
-    delete _skipMap[no]; card.classList.remove('skipped');
-    card.querySelector('.skip-btn').textContent = '\u2715'; note.style.display = 'none';
-  } else {
-    _skipMap[no] = true; card.classList.add('skipped');
-    card.querySelector('.skip-btn').textContent = '\u21a9'; note.style.display = '';
+function toggleSkip(no){
+  const card=document.getElementById('rc_'+no);
+  const nt=document.getElementById('skip-note-'+no);
+  if(_skipMap[no]!==undefined){
+    delete _skipMap[no];card.classList.remove('skip');
+    card.querySelector('.rdm-skip-btn').textContent='✕';
+    if(nt)nt.style.display='none';
+  }else{
+    _skipMap[no]=true;card.classList.add('skip');
+    card.querySelector('.rdm-skip-btn').textContent='↩';
+    if(nt)nt.style.display='';
   }
-  updRedeemSummary(_students.filter(s => canRedeem(s.no) > 0));
+  updRedeemSummary(_nos.filter(n=>canRedeem(n)>0));
 }
 
-function updRedeemSummary(el) {
-  const wr = el.filter(s => !_skipMap[s.no]);
-  const ws = el.filter(s => _skipMap[s.no]);
-  const sum = document.getElementById('redeem-summary');
-  sum.style.display = '';
-  sum.innerHTML = `<b>\u672c\u6b21\u5151\u63db\uff1a</b>${wr.length} \u4eba\uff08${wr.map(s => `<b>${s.name}</b>`).join('\u3001') || '\u7121'}\uff09${ws.length ? `<br><span style="color:var(--red)"><b>\u672c\u6b21\u4e0d\u63db\uff1a</b>${ws.map(s => `<b>${s.name}</b>`).join('\u3001')}</span>` : ''}`;
+function updRedeemSummary(el){
+  const wr=el.filter(n=>!_skipMap[n]);
+  const ws=el.filter(n=>_skipMap[n]);
+  const sum=document.getElementById('redeem-summary');
+  sum.style.display='';
+  sum.innerHTML=`<b>本次兌換：</b>${wr.length} 人（${wr.map(n=>`<b>${n}號</b>`).join('、')||'無'}）`+
+    (ws.length?`<br><span style="color:var(--red)"><b>本次不換：</b>${ws.map(n=>`<b>${n}號</b>`).join('、')}</span>`:'');
 }
 
-function doRedeem() {
-  const thr = _settings.threshold || 300;
-  const el = _students.filter(s => canRedeem(s.no) > 0);
-  const wr = el.filter(s => !_skipMap[s.no]);
-  const ws = el.filter(s => _skipMap[s.no]);
-  if (!wr.length) { toast('\u6c92\u6709\u4eba\u8981\u5151\u63db'); return; }
-  if (!confirm(`\u78ba\u5b9a\u70ba ${wr.length} \u4f4d\u5b78\u751f\u5151\u63db\uff1f\n${wr.map(s => s.name).join('\u3001')}`)) return;
-  const bid = 'b' + Date.now();
-  wr.forEach(s => {
-    const c = canRedeem(s.no); const p = c * thr;
-    _logs.push({ id: genId(), t: nowStr(), w: `${thr}\u9ede\u5151\u63db`, no: s.no, name: s.name, k: '\u5151\u63db', v: p, c, note: `\u5151\u63db${c}\u5f35\u629c${p}\u9ede`, bid });
+function doRedeem(){
+  const thr=_settings.threshold||300;
+  const el=_nos.filter(n=>canRedeem(n)>0);
+  const wr=el.filter(n=>!_skipMap[n]);
+  const ws=el.filter(n=>_skipMap[n]);
+  if(!wr.length){toast('沒有人要兌換');return;}
+  if(!confirm(`確定為 ${wr.length} 位學生兌換？\n${wr.map(n=>n+'號').join('、')}`))return;
+  wr.forEach(no=>{
+    const c=canRedeem(no);const p=c*thr;
+    _logs.push({id:genId(),t:nowStr(),no,k:'兌換',v:p,c,note:`兌換${c}張扣${p}點`});
   });
-  ws.forEach(s => {
-    const nr = document.getElementById('skip-note-' + s.no);
-    const r = (nr && nr.value.trim()) || '\u672c\u6b21\u4e0d\u5151\u63db';
-    _logs.push({ id: genId(), t: nowStr(), w: '\u4e0d\u5151\u63db', no: s.no, name: s.name, k: '\u4e0d\u5151\u63db', v: 0, c: 0, note: r });
+  ws.forEach(no=>{
+    const nt=document.getElementById('skip-note-'+no);
+    const r=(nt&&nt.value.trim())||'本次不換';
+    _logs.push({id:genId(),t:nowStr(),no,k:'不兌換',v:0,c:0,note:r});
   });
-  sched(); scheduleSync();
-  renderRedeem(); renderOverview();
-  toast(`\u2705 \u5151\u63db\u5b8c\u6210\uff0c${wr.length} \u4eba\u5404\u78ba\u8a8d`);
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ 兌換完成，${wr.length} 人確認`);
 }
 
-function renderRedeemLog() {
-  const logs = [..._logs].filter(l => l.k === '\u5151\u63db').reverse();
-  document.getElementById('redeem-log').innerHTML = !logs.length ?
-    '<tr><td colspan="4" style="color:var(--text3);padding:14px">\u5c1a\u7121\u5151\u63db\u7d00\u9304</td></tr>' :
-    logs.map(l => `<tr>
+function renderRedeemLog(){
+  const logs=[..._logs].filter(l=>l.k==='兌換').reverse();
+  document.getElementById('redeem-log').innerHTML=!logs.length?
+    '<tr><td colspan="4" style="color:var(--text4);padding:14px">尚無兌換紀錄</td></tr>':
+    logs.map(l=>`<tr>
     <td style="font-size:11px;white-space:nowrap">${l.t}</td>
-    <td style="font-weight:600">${l.name}</td>
+    <td>${l.no}號</td>
     <td style="color:var(--red)">-${l.v}pt</td>
-    <td style="color:var(--green);font-weight:600">+${l.c}\u5f35</td></tr>`).join('');
+    <td style="color:var(--green);font-weight:600">+${l.c}張</td></tr>`).join('');
 }
 
-// ══ 手動給卡 ══
-function ensureFixed() {
-  if (!_fixed.cadre || Array.isArray(_fixed.cadre)) _fixed.cadre = {};
-  if (!_fixed.toilet || !Array.isArray(_fixed.toilet)) _fixed.toilet = [];
+// ══ 給卡 ══
+function ensureFixed(){
+  if(!_fixed.cadre||Array.isArray(_fixed.cadre))_fixed.cadre={};
+  if(!Array.isArray(_fixed.toilet))_fixed.toilet=[];
 }
 
-function renderNoPicker() {
+function renderNoPicker(){
   ensureFixed();
-  const cadreEl = document.getElementById('cadre-picker');
-  cadreEl.innerHTML = _students.map(s => {
-    const cnt = _fixed.cadre[s.no] || 0;
-    const cls = cnt === 1 ? 'cadre1' : cnt === 2 ? 'cadre2' : '';
-    const lbl = cnt === 0 ? s.no : `${s.no}<br><span style='font-size:9px'>\u00d7${cnt}</span>`;
-    return `<button class="no-btn ${cls}" onclick="toggleCadre(${s.no},this)" title="${s.no}\u865f ${s.name}">${lbl}</button>`;
+  // 優先從 Venus OS groups 讀 leader/secretary
+  const leaderNos=new Set(_groups.map(g=>g.leader).filter(Boolean));
+  const secNos=new Set(_groups.map(g=>g.secretary).filter(Boolean));
+  const cadreEl=document.getElementById('cadre-picker');
+  cadreEl.innerHTML=_nos.map(no=>{
+    const cnt=_fixed.cadre[no]||0;
+    const isL=leaderNos.has(no);const isS=secNos.has(no);
+    const baseCls=cnt===1?'cadre1':cnt===2?'cadre2':'';
+    const hint=isL?'<br><span style="font-size:8px">組長</span>':isS?'<br><span style="font-size:8px">副</span>':'';
+    return `<button class="no-btn${baseCls?' '+baseCls:''}" onclick="toggleCadre(${no},this)" title="${no}號">${no}${hint}</button>`;
   }).join('');
-  const toiletEl = document.getElementById('toilet-picker');
-  toiletEl.innerHTML = _students.map(s => {
-    const sel = _fixed.toilet.includes(s.no);
-    return `<button class="no-btn${sel ? ' sel' : ''}" onclick="toggleToilet(${s.no},this)" title="${s.no}\u865f ${s.name}">${s.no}</button>`;
+  const toiletEl=document.getElementById('toilet-picker');
+  toiletEl.innerHTML=_nos.map(no=>{
+    const sel=_fixed.toilet.includes(no);
+    return `<button class="no-btn${sel?' sel':''}" onclick="toggleToilet(${no},this)">${no}</button>`;
   }).join('');
-  updToiletCount(); updCadreHint();
+  updToiletCount();updCadreHint();
 }
 
-function toggleCadre(no, btn) {
+function toggleCadre(no,btn){
   ensureFixed();
-  const cur = _fixed.cadre[no] || 0;
-  const next = (cur + 1) % 3;
-  if (next === 0) delete _fixed.cadre[no]; else _fixed.cadre[no] = next;
+  const cur=_fixed.cadre[no]||0;
+  const next=(cur+1)%3;
+  if(next===0)delete _fixed.cadre[no];else _fixed.cadre[no]=next;
   sched();
-  btn.className = 'no-btn' + (next === 1 ? ' cadre1' : next === 2 ? ' cadre2' : '');
-  btn.innerHTML = next === 0 ? no : `${no}<br><span style='font-size:9px'>\u00d7${next}</span>`;
+  btn.className='no-btn'+(next===1?' cadre1':next===2?' cadre2':'');
+  const isL=_groups.some(g=>g.leader===no);const isS=_groups.some(g=>g.secretary===no);
+  const hint=isL?'<br><span style="font-size:8px">組長</span>':isS?'<br><span style="font-size:8px">副</span>':'';
+  btn.innerHTML=no+(next>0?`<br><span style="font-size:9px">×${next}</span>`:'')+hint;
   updCadreHint();
 }
 
-function toggleToilet(no, btn) {
+function toggleToilet(no,btn){
   ensureFixed();
-  if (_fixed.toilet.includes(no)) {
-    _fixed.toilet = _fixed.toilet.filter(n => n !== no);
-    btn.className = 'no-btn'; btn.style.cssText = '';
-  } else {
-    if (_fixed.toilet.length >= 6) { toast('\u5ec1\u6240\u540d\u55ae\u6700\u591a6\u4eba'); return; }
-    _fixed.toilet.push(no); btn.className = 'no-btn sel';
+  if(_fixed.toilet.includes(no)){
+    _fixed.toilet=_fixed.toilet.filter(n=>n!==no);btn.className='no-btn';
+  }else{
+    if(_fixed.toilet.length>=6){toast('廁所名單最多6人');return;}
+    _fixed.toilet.push(no);btn.className='no-btn sel';
   }
-  sched(); updToiletCount();
+  sched();updToiletCount();
 }
 
-function updToiletCount() {
-  const el = document.getElementById('toilet-count');
-  if (el) el.textContent = `\u5df2\u9078 ${(_fixed.toilet || []).length}/6 \u4eba`;
+function updToiletCount(){
+  const el=document.getElementById('toilet-count');
+  if(el)el.textContent=`已選 ${(_fixed.toilet||[]).length}/6`;
+}
+function updCadreHint(){
+  const entries=Object.entries(_fixed.cadre||{});
+  const el=document.getElementById('cadre-hint');
+  if(!el)return;
+  if(!entries.length){el.textContent='尚未設定幹部名單';return;}
+  const total=entries.reduce((a,[,v])=>a+v,0);
+  el.textContent=`${entries.length} 人，本週共給 ${total} 張`;
 }
 
-function updCadreHint() {
-  const entries = Object.entries(_fixed.cadre || {});
-  const el = document.getElementById('cadre-hint');
-  if (!el) return;
-  if (!entries.length) { el.textContent = '\u5c1a\u672a\u8a2d\u5b9a\u5e79\u90e8\u540d\u55ae'; return; }
-  const total = entries.reduce((a, [, v]) => a + v, 0);
-  el.textContent = `${entries.length} \u4eba\uff0c\u672c\u9031\u5171\u7d66 ${total} \u5f35`;
-}
-
-function giveWeekly(type) {
+function giveWeekly(type){
   ensureFixed();
-  const d = new Date(); const wk = `${d.getMonth() + 1}/${d.getDate()}`;
-  if (type === 'cadre') {
-    const entries = Object.entries(_fixed.cadre || {});
-    if (!entries.length) { toast('\u26a0 \u5e79\u90e8\u540d\u55ae\u662f\u7a7a\u7684'); return; }
-    const total = entries.reduce((a, [, v]) => a + v, 0);
-    if (!confirm(`\u78ba\u5b9a\u7d66\u5e79\u90e8\u9031\u7d66\uff1f\u5171 ${entries.length} \u4eba\uff0c\u767c\u51fa ${total} \u5f35`)) return;
-    entries.forEach(([no, cnt]) => {
-      const s = _students.find(x => x.no === parseInt(no));
-      if (!s) return;
-      _logs.push({ id: genId(), t: nowStr(), w: wk, no: parseInt(no), name: s.name, k: '\u5e79\u90e8', v: 0, c: cnt, note: `\u5e79\u90e8\u9031\u7d66\u00d7${cnt}` });
+  const d=new Date();const wk=`${d.getMonth()+1}/${d.getDate()}`;
+  if(type==='cadre'){
+    const entries=Object.entries(_fixed.cadre||{});
+    if(!entries.length){toast('幹部名單是空的');return;}
+    const total=entries.reduce((a,[,v])=>a+v,0);
+    if(!confirm(`確定給幹部週給？共 ${entries.length} 人，發出 ${total} 張`))return;
+    entries.forEach(([no,cnt])=>{
+      _logs.push({id:genId(),t:nowStr(),w:wk,no:parseInt(no),k:'幹部',v:0,c:cnt,note:`幹部週給×${cnt}`});
     });
-    sched(); scheduleSync(); toast(`\u2705 \u5e79\u90e8\u9031\u7d66\u5b8c\u6210\uff0c\u5171\u767c ${total} \u5f35`);
-  } else {
-    const nos = _fixed.toilet || [];
-    if (!nos.length) { toast('\u26a0 \u5ec1\u6240\u540d\u55ae\u662f\u7a7a\u7684'); return; }
-    if (!confirm(`\u78ba\u5b9a\u7d66 ${nos.length} \u4f4d\u5ec1\u6240\u5b78\u751f\u5404 1 \u5f35\uff1f`)) return;
-    nos.forEach(no => {
-      const s = _students.find(x => x.no === no);
-      if (!s) return;
-      _logs.push({ id: genId(), t: nowStr(), w: wk, no, name: s.name, k: '\u5ec1\u6240', v: 0, c: 1, note: '\u5ec1\u6240\u9031\u7d66' });
+    toast(`✅ 幹部週給完成，共 ${total} 張`);
+  }else{
+    const nos=_fixed.toilet||[];
+    if(!nos.length){toast('廁所名單是空的');return;}
+    if(!confirm(`確定給 ${nos.length} 位廁所學生各 1 張？`))return;
+    nos.forEach(no=>{
+      _logs.push({id:genId(),t:nowStr(),w:wk,no,k:'廁所',v:0,c:1,note:'廁所週給'});
     });
-    sched(); scheduleSync(); toast(`\u2705 ${nos.length} \u4f4d\u5ec1\u6240\u5b78\u751f\u5404\u7372 1 \u5f35`);
+    toast(`✅ ${nos.length} 位廁所學生各獲 1 張`);
   }
-  renderGiveDetail(); renderOverview();
+  sched();scheduleSync();renderGiveDetail();renderOverview();
 }
 
-function fillStuSelect(id) {
-  const el = document.getElementById(id);
-  el.innerHTML = _students.map(s => `<option value="${s.no}">${s.no}\u865f\u3000${s.name}</option>`).join('');
+function fillNoSelect(id){
+  const el=document.getElementById(id);
+  el.innerHTML=_nos.map(n=>`<option value="${n}">${n}號</option>`).join('');
 }
 
-function giveManual() {
-  const no = parseInt(document.getElementById('give-stu').value);
-  const s = _students.find(x => x.no === no);
-  if (!s) return;
-  const type = document.getElementById('give-type').value;
-  const c = parseInt(document.getElementById('give-cards').value) || 0;
-  const note = document.getElementById('give-note').value.trim();
-  _logs.push({ id: genId(), t: nowStr(), w: type, no, name: s.name, k: type, v: 0, c, note: note || type });
-  sched(); scheduleSync();
-  document.getElementById('give-note').value = '';
-  toast(`\u2705 ${s.name} ${c > 0 ? '\u7372\u5f97' : '\u6263\u9664'} ${Math.abs(c)} \u5f35`);
-  renderGiveDetail(); renderOverview();
+function giveManual(){
+  const no=parseInt(document.getElementById('give-no').value);
+  const type=document.getElementById('give-type').value;
+  const c=parseInt(document.getElementById('give-cards').value)||0;
+  const note=document.getElementById('give-note').value.trim();
+  if(!_nos.includes(no)){toast('無效座號');return;}
+  _logs.push({id:genId(),t:nowStr(),no,k:type,v:0,c,note:note||type});
+  sched();scheduleSync();
+  document.getElementById('give-note').value='';
+  toast(`✅ ${no}號 ${c>0?'獲得':'扣除'} ${Math.abs(c)} 張`);
+  renderGiveDetail();renderOverview();
 }
 
-function renderGiveDetail() {
-  document.getElementById('give-detail').innerHTML = _students.map(s => {
-    const rem = remPoints(s.no); const cc = cardCounts(s.no);
-    const np = noonPoints(s.no); const can = canRedeem(s.no);
-    return `<tr><td>${s.no}</td><td style="font-weight:600">${s.name}</td>
-    <td>${scorePoints(s.no)}</td><td>${redeemedPoints(s.no)}</td>
-    <td style="color:var(--red)">${np ? '-' + np : '0'}</td>
-    <td style="${can > 0 ? 'color:var(--orange);font-weight:600' : ''}">${rem}${can > 0 ? ` <span style="font-size:10px">\u53ef\u63db${can}\u5f35</span>` : ''}</td>
+function renderGiveDetail(){
+  document.getElementById('give-detail').innerHTML=_nos.map(no=>{
+    const rem=remPoints(no);const cc=cardCounts(no);const np=noonPoints(no);const can=canRedeem(no);
+    return `<tr>
+    <td>${no}</td>
+    <td>${scorePoints(no)}</td>
+    <td>${redeemedPoints(no)}</td>
+    <td style="color:var(--red)">${np?'-'+np:'0'}</td>
+    <td style="${can>0?'color:var(--orange);font-weight:700':''}">${rem}${can>0?` (可換${can}張)`:''}</td>
     <td>${cc.cadre}</td><td>${cc.toilet}</td><td>${cc.special}</td><td>${cc.redeemed}</td>
-    <td style="font-size:15px;font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
+    <td style="font-size:15px;font-weight:800;color:var(--green)">${cc.total}</td></tr>`;
   }).join('');
 }
 
 // ══ 午休 ══
-function updateNoonLabel() {
-  const el = document.getElementById('noon-deduct-label');
-  if (el) el.textContent = `\u6bcf\u7b46\u6263 ${_settings.threshold || 300} \u9ede`;
+function updateNoonLabel(){
+  const el=document.getElementById('noon-thr-label');
+  if(el)el.textContent=_settings.threshold||300;
 }
-
-function addNoon() {
-  const no = parseInt(document.getElementById('noon-stu').value);
-  const s = _students.find(x => x.no === no);
-  if (!s) return;
-  const nt = document.getElementById('noon-time').value.trim() || nowStr();
-  const nn = document.getElementById('noon-note').value.trim();
-  const thr = _settings.threshold || 300;
-  _logs.push({ id: genId(), t: nowStr(), w: '\u5348\u4f11', no, name: s.name, k: '\u5348\u4f11', v: thr, c: 0, note: `${nt}${nn ? ' \u2014 ' + nn : ''}`, noonTime: nt });
-  sched(); scheduleSync();
-  document.getElementById('noon-time').value = '';
-  document.getElementById('noon-note').value = '';
-  toast(`\u5df2\u8a18\u9304 ${s.name} \u5348\u4f11\u4e0d\u4e56\uff0c\u629c ${thr} \u9ede`);
-  renderNoonList(); renderOverview();
+function addNoon(){
+  const no=parseInt(document.getElementById('noon-no').value);
+  if(!_nos.includes(no)){toast('無效座號');return;}
+  const nt=document.getElementById('noon-time').value.trim()||nowStr();
+  const nn=document.getElementById('noon-note').value.trim();
+  const thr=_settings.threshold||300;
+  _logs.push({id:genId(),t:nowStr(),no,k:'午休',v:thr,c:0,note:`${nt}${nn?' — '+nn:''}`,noonTime:nt});
+  sched();scheduleSync();
+  document.getElementById('noon-time').value='';
+  document.getElementById('noon-note').value='';
+  toast(`已記錄 ${no}號 午休，扣 ${thr} 點`);
+  renderNoonList();renderOverview();
 }
-
-function renderNoonList() {
-  const logs = [..._logs].filter(l => l.k === '\u5348\u4f11').reverse();
-  document.getElementById('noon-list').innerHTML = !logs.length ?
-    '<tr><td colspan="6" style="color:var(--text3);padding:14px">\u5c1a\u7121\u8a18\u9304</td></tr>' :
-    logs.map(l => `<tr>
+function renderNoonList(){
+  const logs=[..._logs].filter(l=>l.k==='午休').reverse();
+  document.getElementById('noon-list').innerHTML=!logs.length?
+    '<tr><td colspan="6" style="color:var(--text4);padding:14px">尚無記錄</td></tr>':
+    logs.map(l=>`<tr>
     <td style="font-size:11px;white-space:nowrap">${l.t}</td>
-    <td style="font-weight:600">${l.noonTime || '\u2014'}</td>
-    <td style="font-weight:600">${l.name}</td>
-    <td style="font-size:11px;text-align:left">${l.note || ''}</td>
-    <td style="color:var(--red);font-weight:600">-${l.v}pt</td>
-    <td><button class="btn-red btn-sm" onclick="delLog('${l.id}')">\u522a</button></td></tr>`).join('');
+    <td>${l.noonTime||'—'}</td><td>${l.no}號</td>
+    <td style="text-align:left;font-size:11px">${l.note||''}</td>
+    <td style="color:var(--red)">-${l.v}pt</td>
+    <td><button class="btn-red btn-xs" onclick="delLog('${l.id}')">刪</button></td></tr>`).join('');
 }
 
 // ══ 成績總表 ══
-function renderScoreTable() {
-  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
-  const allSubjs = subjs.filter(s => (_scores[s] || []).length > 0);
-  const thead = document.getElementById('score-thead');
-  const tbody = document.getElementById('score-tbody');
-  if (!allSubjs.length) {
-    thead.innerHTML = ''; tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3);padding:16px">\u5c1a\u672a\u8cbc\u5165\u6210\u7e3e</td></tr>'; return;
+function renderScoreTable(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  const thead=document.getElementById('table-thead');
+  const tbody=document.getElementById('table-tbody');
+  if(!allSubjs.length){
+    thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text4);padding:16px">尚未匯入成績</td></tr>';return;
   }
-  const allE = allSubjs.flatMap(s => (_scores[s] || []).map(e => ({ subj: s, e })));
-  thead.innerHTML = `<tr><th>\u5ea7\u865f</th><th>\u59d3\u540d</th>${allE.map(({ e }) => `<th style="min-width:54px">${e.label}</th>`).join('')}<th style="background:var(--gold-light);color:var(--gold)">\u6210\u7e3e\u9ede</th><th>\u6301\u6709\u5361</th></tr>`;
-  tbody.innerHTML = _students.map(s => {
-    const idx = _students.findIndex(x => x.no === s.no);
-    const cells = allE.map(({ e }) => {
-      const v = e.scores[idx];
-      return `<td style="${v === null || v === undefined ? 'color:var(--text3)' : v >= 90 ? 'color:var(--green);font-weight:600' : v < 60 ? 'color:var(--red)' : ''}">${v !== null && v !== undefined ? v : '\u2014'}</td>`;
+  const allE=allSubjs.flatMap(s=>(_scores[s]||[]).map(e=>({subj:s,e})));
+  thead.innerHTML=`<tr><th>座號</th>${allE.map(({e})=>`<th>${e.label}</th>`).join('')}<th style="color:var(--gold)">成績點</th><th>持有卡</th></tr>`;
+  tbody.innerHTML=_nos.map(no=>{
+    const cells=allE.map(({e})=>{
+      const v=e.nos&&e.nos[no];
+      const style=v===null||v===undefined?'color:var(--text4)':v>=90?'color:var(--green);font-weight:700':v<60?'color:var(--red)':'';
+      return `<td style="${style}">${v!==null&&v!==undefined?v:'—'}</td>`;
     }).join('');
-    const cc = cardCounts(s.no);
-    return `<tr><td>${s.no}</td>
-    <td style="font-weight:600;cursor:pointer;color:var(--blue)" onclick="showChart(${s.no})">${s.name}</td>
+    const cc=cardCounts(no);
+    return `<tr><td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="showChart(${no})">${no}</td>
     ${cells}
-    <td style="font-weight:700;color:var(--orange)">${scorePoints(s.no)}</td>
+    <td style="font-weight:700;color:var(--orange)">${scorePoints(no)}</td>
     <td style="font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
   }).join('');
 }
 
 // ══ 折線圖 ══
-let _chartStu = null, _chartSubj = null;
-
-function showChart(no) {
-  _chartStu = no;
-  const s = _students.find(x => x.no === no);
-  if (!s) return;
-  document.getElementById('chart-title').textContent = `${s.name} \u7684\u6210\u7e3e\u8da8\u52e2`;
-  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
-  const avail = subjs.filter(subj => (_scores[subj] || []).length > 0);
-  document.getElementById('chart-subj-btns').innerHTML = avail.map(subj =>
-    `<button class="btn-ghost btn-sm" onclick="drawChart(${no},'${subj}')" style="border-color:${SUBJ_COLORS[subj]||'#2563EB'};color:${SUBJ_COLORS[subj]||'#2563EB'}">${subj}</button>`
+function showChart(no){
+  const subjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  document.getElementById('chart-title').textContent=`${no}號 成績趨勢`;
+  document.getElementById('chart-subj-btns').innerHTML=subjs.map(s=>
+    `<button class="btn-ghost btn-sm" onclick="drawChart(${no},'${s}')" style="font-size:11px">${s}</button>`
   ).join('');
-  _chartSubj = avail[0] || null;
-  if (_chartSubj) drawChart(no, _chartSubj);
+  if(subjs[0])drawChart(no,subjs[0]);
   document.getElementById('chart-modal').classList.add('show');
 }
 
-function drawChart(no, subj) {
-  _chartSubj = subj;
-  const idx = _students.findIndex(s => s.no === no);
-  const entries = _scores[subj] || [];
-  const data = entries.map(e => ({ label: e.label, val: e.scores[idx] }));
-  const canvas = document.getElementById('chart-canvas');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const pad = { l: 44, r: 16, t: 24, b: 36 };
-  ctx.clearRect(0, 0, W, H);
-  const bg = getComputedStyle(document.body).getPropertyValue('--bg2') || '#fff';
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-  if (!data.length) { ctx.fillStyle = '#999'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('\u5c1a\u7121\u8cc7\u6599', W / 2, H / 2); return; }
-  const vals = data.map(d => d.val).filter(v => v !== null && !isNaN(v));
-  if (!vals.length) { ctx.fillStyle = '#999'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('\u5c1a\u7121\u8cc7\u6599', W / 2, H / 2); return; }
-  const mn = Math.max(0, Math.min(...vals) - 10), mx = Math.min(100, Math.max(...vals) + 10);
-  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
-  const toX = i => pad.l + (i / (data.length - 1 || 1)) * cW;
-  const toY = v => pad.t + cH - (((v - mn) / (mx - mn || 1)) * cH);
-  ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 1;
-  for (let y = Math.ceil(mn / 10) * 10; y <= mx; y += 10) {
-    const yy = toY(y); ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
-    ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(y, pad.l - 4, yy + 3);
+const CHART_COLORS={'國習':'#2563EB','聽寫':'#7C3AED','考卷':'#DC2626','生測':'#16A34A','作文':'#0891B2','數習':'#EA580C','數綜':'#0D9488','數考':'#DB2777','段考':'#9333EA'};
+
+function drawChart(no,subj){
+  const entries=_scores[subj]||[];
+  const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
+  const canvas=document.getElementById('chart-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const pad={l:40,r:16,t:20,b:32};
+  ctx.clearRect(0,0,W,H);
+  const bg=getComputedStyle(document.body).getPropertyValue('--bg2')||'#fff';
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const vals=data.map(d=>d.val).filter(v=>v!==null&&!isNaN(v));
+  if(!vals.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('無資料',W/2,H/2);return;}
+  const mn=Math.max(0,Math.min(...vals)-10),mx=Math.min(100,Math.max(...vals)+10);
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const toX=i=>pad.l+(i/(data.length-1||1))*cW;
+  const toY=v=>pad.t+cH-((v-mn)/(mx-mn||1))*cH;
+  // grid
+  ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=1;
+  for(let y=Math.ceil(mn/10)*10;y<=mx;y+=10){
+    const yy=toY(y);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
+    ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(y,pad.l-3,yy+3);
   }
-  ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-  data.forEach((d, i) => ctx.fillText(d.label, toX(i), H - pad.b + 14));
-  const avg = +(vals.reduce((a, b) => a + b) / vals.length).toFixed(1);
-  const ay = toY(avg);
-  ctx.strokeStyle = 'rgba(234,88,12,.3)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pad.l, ay); ctx.lineTo(W - pad.r, ay); ctx.stroke();
-  ctx.setLineDash([]); ctx.fillStyle = 'var(--orange)'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('\u5e73\u5747' + avg, pad.l + 4, ay - 3);
-  const color = SUBJ_COLORS[subj] || '#2563EB';
-  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
-  ctx.beginPath(); let first = true;
-  data.forEach((d, i) => {
-    if (d.val === null || isNaN(d.val)) return;
-    if (first) { ctx.moveTo(toX(i), toY(d.val)); first = false; } else ctx.lineTo(toX(i), toY(d.val));
+  ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
+  data.forEach((d,i)=>{const short=d.label.replace(/^[^-]+-/,'');ctx.fillText(short,toX(i),H-pad.b+12);});
+  // avg line
+  const avg=+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1);
+  const ay=toY(avg);
+  ctx.strokeStyle='rgba(234,88,12,.35)';ctx.setLineDash([4,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,ay);ctx.lineTo(W-pad.r,ay);ctx.stroke();
+  ctx.setLineDash([]);
+  // line
+  const color=CHART_COLORS[subj]||'#2563EB';
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
+  ctx.beginPath();let first=true;
+  data.forEach((d,i)=>{
+    if(d.val===null||isNaN(d.val))return;
+    if(first){ctx.moveTo(toX(i),toY(d.val));first=false;}else ctx.lineTo(toX(i),toY(d.val));
   });
   ctx.stroke();
-  data.forEach((d, i) => {
-    if (d.val === null || isNaN(d.val)) return;
-    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(toX(i), toY(d.val), 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(toX(i), toY(d.val), 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = color; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(d.val, toX(i), toY(d.val) - 9);
+  data.forEach((d,i)=>{
+    if(d.val===null||isNaN(d.val))return;
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(toX(i),toY(d.val),5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(toX(i),toY(d.val),2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=color;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(d.val,toX(i),toY(d.val)-8);
   });
 }
 
 // ══ 紀錄查詢 ══
-function renderLog() {
-  const stuSel = document.getElementById('log-stu');
-  if (stuSel.options.length === 1) {
-    _students.forEach(s => stuSel.add(new Option(`${s.no}\u865f ${s.name}`, s.no)));
+function renderLog(){
+  const noSel=document.getElementById('log-no');
+  if(noSel.options.length<=1){
+    _nos.forEach(n=>noSel.add(new Option(n+'號',n)));
   }
-  let logs = [..._logs];
-  const ft = document.getElementById('log-type').value;
-  const fs = document.getElementById('log-stu').value;
-  if (ft) logs = logs.filter(l => l.k === ft);
-  if (fs) logs = logs.filter(l => l.no === parseInt(fs));
+  let logs=[..._logs];
+  const ft=document.getElementById('log-type').value;
+  const fn=document.getElementById('log-no').value;
+  if(ft)logs=logs.filter(l=>l.k===ft);
+  if(fn)logs=logs.filter(l=>l.no===parseInt(fn));
   logs.reverse();
-  const bclass = { '\u6210\u7e3e': 'badge-blue', '\u5e79\u90e8': 'badge-green', '\u5ec1\u6240': 'badge-green', '\u7279\u6b8a': 'badge-orange', '\u5151\u63db': 'badge-red', '\u4e0d\u5151\u63db': 'badge-red', '\u5348\u4f11': 'badge-red', '\u8abf\u6574': 'badge-orange' };
-  document.getElementById('log-tbody').innerHTML = !logs.length ?
-    '<tr><td colspan="7" style="color:var(--text3);padding:16px">\u5c1a\u7121\u7d00\u9304</td></tr>' :
-    logs.map(l => {
-      const vc = l.k === '\u5151\u63db' ? `<span style="color:var(--red)">-${l.v}pt / +${l.c}\u5f35</span>` :
-        l.k === '\u5348\u4f11' ? `<span style="color:var(--red)">-${l.v}pt</span>` :
-          l.c ? `${l.c > 0 ? '+' : ''}${l.c}\u5f35` : '\u2014';
+  const bmap={'成績':'badge-blue','幹部':'badge-green','廁所':'badge-green','特殊':'badge-orange','兌換':'badge-red','不兌換':'badge-red','午休':'badge-red','調整':'badge-orange'};
+  document.getElementById('log-tbody').innerHTML=!logs.length?
+    '<tr><td colspan="6" style="color:var(--text4);padding:16px">尚無紀錄</td></tr>':
+    logs.map(l=>{
+      const vc=l.k==='兌換'?`<span style="color:var(--red)">-${l.v}pt/+${l.c}張</span>`:l.k==='午休'?`<span style="color:var(--red)">-${l.v}pt</span>`:l.c?`${l.c>0?'+':''}${l.c}張`:'—';
       return `<tr>
       <td style="font-size:11px;white-space:nowrap">${l.t}</td>
-      <td style="font-size:11px">${l.w || ''}</td>
-      <td style="font-weight:600">${l.name}</td>
-      <td><span class="badge ${bclass[l.k] || 'badge-blue'}">${l.k}</span></td>
-      <td style="font-size:11px;text-align:left">${l.note || ''}</td>
+      <td>${l.no}號</td>
+      <td><span class="badge ${bmap[l.k]||'badge-blue'}">${l.k}</span></td>
+      <td style="font-size:11px;text-align:left">${l.note||''}</td>
       <td style="font-weight:600">${vc}</td>
-      <td><button class="btn-red btn-sm" onclick="delLog('${l.id}')">\u522a</button></td></tr>`;
+      <td><button class="btn-red btn-xs" onclick="delLog('${l.id}')">刪</button></td></tr>`;
     }).join('');
 }
 
-function delLog(id) {
-  if (!confirm('\u78ba\u5b9a\u522a\u9664\u9019\u7b46\u7d00\u9304\uff1f')) return;
-  _logs = _logs.filter(l => String(l.id) !== String(id));
-  sched(); renderLog(); toast('\u5df2\u522a\u9664');
+function delLog(id){
+  if(!confirm('確定刪除這筆紀錄？'))return;
+  _logs=_logs.filter(l=>String(l.id)!==String(id));
+  sched();renderLog();renderNoonList();toast('已刪除');
+}
+function clearLogs(){_logs=[];sched();renderLog();renderOverview();toast('已清除');}
+
+// ══ 設定 ══
+function renderSettings(){
+  document.getElementById('set-thr').value=_settings.threshold||300;
+  renderNosPicker();
 }
 
-function clearAll() {
-  _logs = []; _scores = {}; sched(); renderLog(); renderOverview(); toast('\u5df2\u6e05\u9664\u5168\u90e8');
+function saveBasic(){
+  const thr=parseInt(document.getElementById('set-thr').value)||300;
+  _settings.threshold=thr;
+  sched();scheduleSync();
+  toast('✅ 設定已儲存');
+  updateNoonLabel();
 }
 
-// ══ 設定頁 ══
-function renderSettings() {
-  document.getElementById('set-classname').value = _settings.className || '';
-  document.getElementById('set-threshold').value = _settings.threshold || 300;
-  renderStuList();
-  renderSubjList();
+function switchStab(id){
+  ['basic','nos','sync'].forEach(t=>{
+    document.getElementById('stab-'+t).classList.toggle('active',t===id);
+    document.getElementById('stab-panel-'+t).style.display=t===id?'':'none';
+  });
+  if(id==='nos')renderNosPicker();
 }
 
-function saveSettings() {
-  const cn = document.getElementById('set-classname').value.trim();
-  const thr = parseInt(document.getElementById('set-threshold').value) || 300;
-  _settings.className = cn;
-  _settings.threshold = thr;
-  sched(); scheduleSync();
+// ── 座號管理 ──
+let _draftNos=[..._nos];
+
+function renderNosPicker(){
+  _draftNos=[..._nos];
+  const total=_draftNos.length?Math.max(..._draftNos):0;
+  document.getElementById('set-total').value=total||'';
+  drawNosPicker();
+}
+
+function genNos(){
+  const total=parseInt(document.getElementById('set-total').value)||0;
+  if(!total||total<1){toast('請填入有效人數');return;}
+  // 產生 1~total 全部，再把現有不存在的移除
+  _draftNos=Array.from({length:total},(_,i)=>i+1);
+  drawNosPicker();
+}
+
+function drawNosPicker(){
+  const total=_draftNos.length?Math.max(..._draftNos,_draftNos.length):35;
+  const maxNo=Math.max(total,..._draftNos);
+  const picker=document.getElementById('nos-picker');
+  picker.innerHTML=Array.from({length:maxNo},(_,i)=>{
+    const no=i+1;
+    const exists=_draftNos.includes(no);
+    return `<button class="no-btn${exists?'':' absent'}" onclick="toggleNo(${no},this)">${no}</button>`;
+  }).join('');
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
+}
+
+function toggleNo(no,btn){
+  const idx=_draftNos.indexOf(no);
+  if(idx>=0){_draftNos.splice(idx,1);btn.className='no-btn absent';}
+  else{_draftNos.push(no);_draftNos.sort((a,b)=>a-b);btn.className='no-btn';}
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
+}
+
+function saveNos(){
+  _nos=[..._draftNos].sort((a,b)=>a-b);
+  sched();scheduleSync();
+  toast(`✅ 已儲存 ${_nos.length} 個座號`);
   renderOverview();
-  toast('\u2705 \u8a2d\u5b9a\u5df2\u5132\u5b58');
-}
-
-function renderStuList() {
-  const area = document.getElementById('stu-list-area');
-  area.innerHTML = _students.map(s => `
-    <div class="stu-list-item">
-      <div style="width:36px;font-size:13px;font-weight:600;color:var(--text3)">${s.no}</div>
-      <div style="flex:1;font-weight:600">${s.name}</div>
-      <button class="btn-ghost btn-sm" onclick="editStu(${s.no})">\u7de8\u8f2f</button>
-      <button class="btn-red btn-sm" onclick="delStu(${s.no})">\u522a\u9664</button>
-    </div>`).join('');
-}
-
-function showAddStu() {
-  document.getElementById('new-stu-no').value = '';
-  document.getElementById('new-stu-name').value = '';
-  document.getElementById('add-stu-modal').classList.add('show');
-}
-
-function addStudent() {
-  const no = parseInt(document.getElementById('new-stu-no').value);
-  const name = document.getElementById('new-stu-name').value.trim();
-  if (!no || !name) { toast('\u8acb\u586b\u5beb\u5ea7\u865f\u548c\u59d3\u540d'); return; }
-  if (_students.find(s => s.no === no)) { toast('\u8a72\u5ea7\u865f\u5df2\u5b58\u5728'); return; }
-  _students.push({ no, name });
-  _students.sort((a, b) => a.no - b.no);
-  sched(); scheduleSync();
-  document.getElementById('add-stu-modal').classList.remove('show');
-  renderStuList(); renderOverview();
-  toast(`\u2705 \u5df2\u65b0\u589e ${no}\u865f ${name}`);
-}
-
-function editStu(no) {
-  const s = _students.find(x => x.no === no);
-  if (!s) return;
-  const newName = prompt(`\u7de8\u8f2f ${no}\u865f\u5b78\u751f\u59d3\u540d\uff1a`, s.name);
-  if (newName === null) return;
-  if (!newName.trim()) { toast('\u59d3\u540d\u4e0d\u80fd\u70ba\u7a7a'); return; }
-  s.name = newName.trim();
-  sched(); scheduleSync(); renderStuList(); renderOverview(); toast('\u5df2\u66f4\u65b0');
-}
-
-function delStu(no) {
-  const s = _students.find(x => x.no === no);
-  if (!s) return;
-  if (!confirm(`\u78ba\u5b9a\u522a\u9664 ${s.no}\u865f ${s.name}\uff1f\u8a72\u5b78\u751f\u7684\u6240\u6709\u7d00\u9304\u4e0d\u6703\u88ab\u522a\u9664\u3002`)) return;
-  _students = _students.filter(x => x.no !== no);
-  sched(); scheduleSync(); renderStuList(); renderOverview(); toast('\u5df2\u522a\u9664');
-}
-
-function renderSubjList() {
-  const area = document.getElementById('subj-list-area');
-  area.innerHTML = (_settings.subjects || DEFAULT_SUBJECTS).map(s =>
-    `<span class="subj-tag">${s} <span class="del" onclick="delSubject('${s}')" style="margin-left:4px;font-size:13px">\u00d7</span></span>`
-  ).join('');
-}
-
-function showAddSubj() {
-  document.getElementById('new-subj-name').value = '';
-  document.getElementById('add-subj-modal').classList.add('show');
-}
-
-function addSubject() {
-  const name = document.getElementById('new-subj-name').value.trim();
-  if (!name) { toast('\u8acb\u8f38\u5165\u79d1\u76ee\u540d\u7a31'); return; }
-  if (!_settings.subjects) _settings.subjects = [];
-  if (_settings.subjects.includes(name)) { toast('\u79d1\u76ee\u5df2\u5b58\u5728'); return; }
-  _settings.subjects.push(name);
-  sched(); scheduleSync();
-  document.getElementById('add-subj-modal').classList.remove('show');
-  renderSubjList(); renderSubjSelect(); toast('\u5df2\u65b0\u589e\u79d1\u76ee');
-}
-
-function delSubject(name) {
-  if (!confirm(`\u78ba\u5b9a\u522a\u9664\u79d1\u76ee\u300c${name}\u300d\uff1f\uff08\u8a72\u79d1\u76ee\u7684\u6210\u7e3e\u8cc7\u6599\u4e0d\u6703\u522a\u9664\uff09`)) return;
-  _settings.subjects = _settings.subjects.filter(s => s !== name);
-  sched(); scheduleSync(); renderSubjList(); renderSubjSelect(); toast('\u5df2\u522a\u9664');
 }
 
 // ══ CSV 匯出 ══
-function exportCSV() {
-  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
-  const allSubjs = subjs.filter(s => (_scores[s] || []).length > 0);
-  const allE = allSubjs.flatMap(s => (_scores[s] || []).map(e => ({ subj: s, e })));
-  const hdr = ['\u5ea7\u865f', '\u59d3\u540d', ...allE.map(({ e }) => e.label), '\u6210\u7e3e\u9ede', '\u5151\u63db\u9ede', '\u5348\u4f11\u629c\u9ede', '\u5269\u9918\u9ede', '\u6301\u6709\u5361'];
-  const rows = _students.map(s => {
-    const idx = _students.findIndex(x => x.no === s.no);
-    const cc = cardCounts(s.no);
-    return [s.no, s.name, ...allE.map(({ e }) => e.scores[idx] !== null && e.scores[idx] !== undefined ? e.scores[idx] : ''), scorePoints(s.no), redeemedPoints(s.no), noonPoints(s.no), remPoints(s.no), cc.total];
+function exportCSV(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  const allE=allSubjs.flatMap(s=>(_scores[s]||[]).map(e=>({subj:s,e})));
+  const hdr=['座號',...allE.map(({e})=>e.label),'成績點','兌換點','午休扣','剩餘點','持有卡'];
+  const rows=_nos.map(no=>{
+    const cc=cardCounts(no);
+    return [no,...allE.map(({e})=>{const v=e.nos&&e.nos[no];return v!==undefined&&v!==null?v:'';}),scorePoints(no),redeemedPoints(no),noonPoints(no),remPoints(no),cc.total];
   });
-  const csv = '\uFEFF' + [hdr, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-  downloadText(csv, `\u734e\u5361\u7cfb\u7d71_\u6210\u7e3e_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`, 'text/csv;charset=utf-8');
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlText(csv,`獎卡成績_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`,'text/csv;charset=utf-8');
 }
 
-function exportLogCSV() {
-  const hdr = ['\u6642\u9593', '\u4e8b\u7531', '\u5b78\u751f', '\u985e\u578b', '\u8aac\u660e', '\u9ede\u6578', '\u5f35\u6578'];
-  const rows = [..._logs].reverse().map(l => [l.t, l.w || '', l.name, l.k, l.note || '', l.v || 0, l.c || 0]);
-  const csv = '\uFEFF' + [hdr, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-  downloadText(csv, `\u734e\u5361\u7cfb\u7d71_\u7d00\u9304_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`, 'text/csv;charset=utf-8');
+function exportLogCSV(){
+  const hdr=['時間','座號','類型','說明','點數','張數'];
+  const rows=[..._logs].reverse().map(l=>[l.t,l.no+'號',l.k,l.note||'',l.v||0,l.c||0]);
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlText(csv,`獎卡紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`,'text/csv;charset=utf-8');
 }
 
-function downloadText(text, filename, type) {
-  const blob = new Blob([text], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
+function dlText(text,filename,type){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();
   URL.revokeObjectURL(url);
 }
 
 // ══ 主題切換 ══
-function toggleMode() {
-  const b = document.body;
-  if (b.classList.contains('nerv')) {
-    b.classList.remove('nerv'); b.classList.toggle('dark');
-    document.getElementById('mode-btn').textContent = b.classList.contains('dark') ? '\u2600\ufe0f \u6df1\u8272' : '\ud83c\udf1f \u6a21\u5f0f';
-  } else if (b.classList.contains('dark')) {
-    b.classList.remove('dark');
-    document.getElementById('mode-btn').textContent = '\ud83c\udf8c EVA';
-  } else {
-    b.classList.add('nerv');
-    document.getElementById('mode-btn').textContent = '\ud83c\udf1f \u4e00\u822c';
-  }
-  safeSet('vc5:theme', b.className);
+const THEMES=['default','nerv','nebula'];
+const THEME_LABELS={default:'☀️ 日間',nerv:'🔴 NERV',nebula:'🌌 星雲'};
+let _theme=safeGet('vc2:theme')||'default';
+
+function applyTheme(t){
+  _theme=t;
+  document.getElementById('app').setAttribute('data-theme',t==='default'?'':t);
+  document.getElementById('theme-btn').textContent=THEME_LABELS[t];
+  safeSet('vc2:theme',t);
+}
+
+function cycleTheme(){
+  const idx=THEMES.indexOf(_theme);
+  applyTheme(THEMES[(idx+1)%THEMES.length]);
 }
 
 // ══ 離線偵測 ══
-function updateOfflineBanner() {
-  const banner = document.getElementById('offline-banner');
-  if (!navigator.onLine) {
-    banner.classList.add('show');
-    setSyncDot('offline');
-  } else {
-    banner.classList.remove('show');
-    if (firebaseUidRef.current) { setSyncDot('ok'); scheduleSync(); }
-  }
+function updOffline(){
+  const banner=document.getElementById('offline-banner');
+  if(!navigator.onLine){banner.classList.add('show');setSyncDot('off');}
+  else{banner.classList.remove('show');if(firebaseUidRef.current){setSyncDot('ok');scheduleSync();}}
 }
-window.addEventListener('online', () => { updateOfflineBanner(); toast('\ud83d\udce1 \u5df2\u6062\u5fa9\u7db2\u8def\uff0c\u6b63\u5728\u540c\u6b65...'); });
-window.addEventListener('offline', updateOfflineBanner);
+window.addEventListener('online',()=>{updOffline();toast('📡 網路已恢復，同步中...');});
+window.addEventListener('offline',updOffline);
+
+// ══ renderAll ══
+function renderAll(){
+  renderOverview();
+  renderScoreLog();
+}
 
 // ══ 初始化 ══
-function renderAll() {
-  renderOverview();
-  renderSubjSelect();
-}
-
-(async () => {
-  // 恢復主題
-  const savedTheme = safeGet('vc5:theme');
-  if (savedTheme) document.body.className = savedTheme;
-
+(async()=>{
+  // 主題
+  applyTheme(_theme);
   // Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
-
-  // 載入資料
-  await loadAll();
-  renderAll();
-
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  // 嘗試讀上次班級
+  const lastClass=safeGet('vc2:lastClass');
+  // 嘗試從 localStorage 讀 Venus OS 的 classes
+  try{
+    const raw=safeGet('hw5ren:classes');
+    if(raw){
+      _classes=JSON.parse(raw);
+      renderClassDD();
+    }
+  }catch{}
+  // 嘗試讀 Venus OS 當前班級
+  try{
+    const activeId=safeGet('hw5ren:activeClass');
+    if(activeId){
+      const cls=_classes.find(c=>c.id===activeId);
+      if(cls){
+        document.getElementById('chip-text').textContent=cls.className||activeId;
+        const grpRaw=safeGet('hw5ren:groups:'+activeId);
+        if(grpRaw)_groups=JSON.parse(grpRaw);
+      }
+      await loadClass(activeId);
+    }else if(lastClass){
+      await loadClass(lastClass);
+    }else{
+      renderAll();
+    }
+  }catch{renderAll();}
   // Firebase
   initFirebase();
-
-  // 離線狀態
-  updateOfflineBanner();
+  // 離線
+  updOffline();
 })();
 </script>
 </body>
