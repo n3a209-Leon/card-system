@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2563EB">
+<title>獎卡系統</title>
+<style>
+:root{
+  --bg:#F7F8FA;--bg2:#FFFFFF;--bg3:#EEF1F5;
+  --blue:#2563EB;--blue-light:#EFF6FF;--blue-dark:#1D4ED8;
+  --green:#16A34A;--green-light:#F0FDF4;
+  --orange:#EA580C;--orange-light:#FFF7ED;
+  --red:#DC2626;--red-light:#FEF2F2;
+  --gold:#D97706;--gold-light:#FFFBEB;
+  --gray:#6B7280;--border:#E5E7EB;
+  --text:#111827;--text2:#374151;--text3:#9CA3AF;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.05);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+.dark{
+  --bg:#0F172A;--bg2:#1E293B;--bg3:#0F172A;
+  --blue:#3B82F6;--blue-light:#1E3A5F;--blue-dark:#2563EB;
+  --green:#22C55E;--green-light:#052E16;
+  --orange:#F97316;--orange-light:#431407;
+  --red:#F87171;--red-light:#450A0A;
+  --gold:#FCD34D;--gold-light:#451A03;
+  --gray:#9CA3AF;--border:#334155;
+  --text:#F1F5F9;--text2:#CBD5E1;--text3:#64748B;
+}
+body.nerv{
+  --bg:#040404;--bg2:#0a0a0a;--bg3:#111;
+  --blue:#3399FF;--blue-light:rgba(0,102,255,.12);--blue-dark:#2563EB;
+  --green:#00FF41;--green-light:rgba(0,255,65,.08);
+  --orange:#FF9900;--orange-light:rgba(255,153,0,.1);
+  --red:#FF3600;--red-light:rgba(255,54,0,.1);
+  --gold:#FF9900;--gold-light:rgba(255,153,0,.1);
+  --gray:#666;--border:#1A1A1A;
+  --text:#E8E8E8;--text2:#AAAAAA;--text3:#555;
+  font-family:'Share Tech Mono',monospace;
+}
+body.nerv .topbar{border-bottom-color:#FF3600;box-shadow:0 0 20px rgba(255,54,0,.2);}
+body.nerv .card{border-top:2px solid #FF3600;}
+body.nerv .tab.active{background:rgba(255,54,0,.15);color:#FF9900;}
+body.nerv th{background:rgba(255,54,0,.1);color:#FF9900;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-tap-highlight-color:transparent;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;height:52px;position:sticky;top:0;z-index:100;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.topbar::-webkit-scrollbar{display:none;}
+.topbar-title{font-weight:700;font-size:15px;color:var(--text);white-space:nowrap;margin-right:6px;flex-shrink:0;}
+.topbar-title span{color:var(--blue);}
+.tab{background:transparent;border:none;color:var(--text3);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;min-height:44px;display:flex;align-items:center;}
+.tab.active{background:var(--blue-light);color:var(--blue);font-weight:600;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);}
+.sync-dot.syncing{background:var(--gold);animation:pulse 1s infinite;}
+.sync-dot.offline{background:var(--gray);}
+.icon-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;min-height:36px;white-space:nowrap;}
+.panel{display:none;padding:12px;max-width:1100px;margin:0 auto;padding-bottom:calc(16px + var(--safe-bottom));}
+.panel.active{display:block;}
+.card{background:var(--bg2);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
+.card-title{font-weight:700;font-size:14px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);}
+.stat .num{font-size:24px;font-weight:700;color:var(--blue);}
+.stat .lbl{font-size:11px;color:var(--text3);margin-top:2px;}
+.stat.orange .num{color:var(--orange);}
+.stat.green .num{color:var(--green);}
+.stat.red .num{color:var(--red);}
+.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+.stu-cell{background:var(--bg3);border-radius:8px;padding:10px;border:2px solid transparent;transition:all .15s;}
+.stu-cell.ready{border-color:var(--orange);background:var(--orange-light);}
+.stu-cell.warn{border-color:var(--red);background:var(--red-light);}
+.stu-no{font-size:10px;color:var(--text3);}
+.stu-name{font-weight:600;font-size:13px;}
+.stu-pts{font-size:18px;font-weight:700;color:var(--blue);margin-top:2px;}
+.stu-cell.ready .stu-pts{color:var(--orange);}
+.stu-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;}
+.form-group{display:flex;flex-direction:column;flex:1;min-width:100px;}
+.form-group label{font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
+input,select,textarea{background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:9px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none;width:100%;transition:border .15s;-webkit-appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+.dark input,.dark select,.dark textarea{background:var(--bg3);}
+button{border:none;border-radius:7px;padding:10px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s;min-height:44px;}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{background:var(--blue-dark);}
+.btn-blue:active{opacity:.85;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:active{opacity:.85;}
+.btn-orange{background:var(--orange);color:#fff;}
+.btn-orange:active{opacity:.85;}
+.btn-red{background:var(--red);color:#fff;}
+.btn-red:active{opacity:.85;}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2);}
+.btn-ghost:active{background:var(--bg3);}
+.btn-sm{padding:6px 12px;font-size:12px;min-height:36px;}
+table{width:100%;border-collapse:collapse;}
+th{background:var(--bg3);color:var(--text2);padding:8px 10px;font-size:11px;text-align:center;font-weight:600;border-bottom:2px solid var(--border);position:sticky;top:52px;z-index:5;}
+td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;}
+tr:hover td{background:var(--blue-light);}
+.sx{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-blue{background:var(--blue-light);color:var(--blue);}
+.badge-green{background:var(--green-light);color:var(--green);}
+.badge-orange{background:var(--orange-light);color:var(--orange);}
+.badge-red{background:var(--red-light);color:var(--red);}
+.no-picker{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.no-btn{width:40px;height:40px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1.1;transition:all .15s;}
+.no-btn.cadre1{background:var(--green);border-color:var(--green);color:#fff;}
+.no-btn.cadre2{background:var(--orange);border-color:var(--orange);color:#fff;}
+.no-btn.sel{background:var(--green);border-color:var(--green);color:#fff;}
+.progress{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px;}
+.progress-bar{height:100%;background:var(--blue);border-radius:3px;transition:width .4s;}
+.score-input-area{border:2px dashed var(--border);border-radius:var(--radius);padding:12px;transition:border .15s;}
+.score-input-area:focus-within{border-color:var(--blue);background:var(--blue-light);}
+.paste-ta{font-size:13px;resize:none;height:80px;border:none;background:transparent;padding:0;}
+.paste-ta:focus{box-shadow:none;}
+.redeem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;}
+.redeem-card{border:1.5px solid var(--orange);border-radius:var(--radius);padding:12px;background:var(--orange-light);position:relative;}
+.redeem-card.skipped{border-color:var(--border);background:var(--bg3);opacity:.5;}
+.skip-btn{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:var(--border);border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;min-height:unset;padding:0;}
+.redeem-card.skipped .skip-btn{background:var(--orange);color:#fff;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:12px;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--bg2);border-radius:14px;padding:20px;width:100%;max-width:440px;box-shadow:0 20px 40px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:14px;}
+#offline-banner{display:none;background:var(--gold);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:6px 12px;position:sticky;top:52px;z-index:99;}
+#offline-banner.show{display:block;}
+#toast{position:fixed;bottom:calc(20px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg2);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;font-weight:500;white-space:nowrap;}
+#toast.show{opacity:1;}
+.login-card{text-align:center;padding:32px 20px;}
+.login-card h2{font-size:20px;font-weight:700;margin-bottom:8px;}
+.login-card p{color:var(--text3);font-size:13px;margin-bottom:20px;}
+.stu-list-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
+.stu-list-item:last-child{border-bottom:none;}
+.subj-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--blue-light);color:var(--blue);cursor:pointer;border:1.5px solid transparent;}
+.subj-tag.del{background:var(--red-light);color:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+@media(max-width:600px){
+  .panel{padding:10px;}
+  .stu-grid{grid-template-columns:repeat(3,1fr);}
+  .stat-row{grid-template-columns:repeat(3,1fr);}
+  .form-row{flex-direction:column;}
+  .form-group{min-width:unset;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title" id="app-title">獎卡<span>系統</span></div>
+  <button class="tab active" onclick="goTab('overview',this)">總覽</button>
+  <button class="tab" onclick="goTab('score',this)">貼成績</button>
+  <button class="tab" onclick="goTab('redeem',this)">兌換獎卡</button>
+  <button class="tab" onclick="goTab('give',this)">手動給卡</button>
+  <button class="tab" onclick="goTab('noon',this)">午休記錄</button>
+  <button class="tab" onclick="goTab('table',this)">成績總表</button>
+  <button class="tab" onclick="goTab('log',this)">紀錄查詢</button>
+  <button class="tab" onclick="goTab('settings',this)">⚙️設定</button>
+  <div class="topbar-right">
+    <span class="sync-dot offline" id="sync-dot" title="同步狀態"></span>
+    <button class="icon-btn" id="login-btn" onclick="doLogin()">登入</button>
+    <button class="icon-btn" id="mode-btn" onclick="toggleMode()">🎌 EVA</button>
+  </div>
+</div>
+
+<div id="offline-banner">✈️ 離線模式 — 資料已儲存在本機，上線後自動同步</div>
+
+<!-- 總覽 -->
+<div id="tab-overview" class="panel active">
+  <div class="stat-row" id="stat-row"></div>
+  <div class="card">
+    <div class="card-title">👥 全班點數一覽
+      <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">橘色＝可換卡</span>
+    </div>
+    <div class="stu-grid" id="stu-grid"></div>
+  </div>
+</div>
+
+<!-- 貼成績 -->
+<div id="tab-score" class="panel">
+  <div class="card">
+    <div class="card-title">📋 貼上成績</div>
+    <div style="background:var(--blue-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--blue);margin-bottom:12px;line-height:1.7">
+      Excel 選取全班分數直欄（座號由小到大，缺席留空行）→ Ctrl+C → 貼到下方 → 送出
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="max-width:180px">
+        <label>科目</label>
+        <select id="sc-subj"></select>
+      </div>
+      <div class="form-group">
+        <label>貼上全班分數（缺席留空行）</label>
+        <div class="score-input-area">
+          <textarea class="paste-ta" id="sc-paste" placeholder="Ctrl+V 貼入，每行一個數字"></textarea>
+        </div>
+      </div>
+      <div style="align-self:flex-end;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="document.getElementById('fill-modal').classList.add('show')">全班同分</button>
+        <button class="btn-green" onclick="pasteScore()">✅ 貼入儲存</button>
+      </div>
+    </div>
+    <div id="sc-msg" style="font-size:12px;min-height:18px;margin-top:4px"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📚 已貼入紀錄
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="if(confirm('確定清除全部成績？'))clearScores()">清除全部成績</button>
+    </div>
+    <div id="score-log-area"></div>
+  </div>
+</div>
+
+<!-- 兌換獎卡 -->
+<div id="tab-redeem" class="panel">
+  <div class="card">
+    <div class="card-title">🎴 點數兌換獎卡</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">點擊「✕」標記本次不兌換，其餘達標學生按「一鍵兌換」。</p>
+    <div id="redeem-area"></div>
+    <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px;background:var(--blue-light);border-radius:8px;font-size:12px;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-orange" id="btn-redeem" onclick="doRedeem()" style="display:none;font-size:14px;padding:10px 24px">🎴 一鍵兌換</button>
+      <button class="btn-ghost btn-sm" onclick="renderRedeem()">重新整理</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 兌換紀錄</div>
+    <div class="sx"><table><thead><tr><th>時間</th><th>學生</th><th>扣點</th><th>獲卡</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 手動給卡 -->
+<div id="tab-give" class="panel">
+  <div class="card">
+    <div class="card-title">⚡ 每週一鍵給卡</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">整學期設定一次名單，每週按一個按鈕即可。</p>
+    <div style="margin-bottom:16px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--blue)">🏅 幹部名單</div>
+      <div class="no-picker" id="cadre-picker"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+        <span id="cadre-hint" style="font-size:11px;color:var(--text3);flex:1">點一下×1（綠）、再點×2（橘）、第三下移除</span>
+        <button class="btn-blue" onclick="giveWeekly('cadre')">🏅 幹部週給</button>
+      </div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <div>
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--green)">🚽 廁所名單（最多6人）</div>
+      <div class="no-picker" id="toilet-picker"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+        <span id="toilet-count" style="font-size:11px;color:var(--text3);flex:1">已選 0/6 人</span>
+        <button class="btn-green" onclick="giveWeekly('toilet')">🚽 廁所週給</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">✏️ 單人手動給卡</div>
+    <div class="form-row">
+      <div class="form-group" style="max-width:170px">
+        <label>學生</label>
+        <select id="give-stu"></select>
+      </div>
+      <div class="form-group" style="max-width:140px">
+        <label>類型</label>
+        <select id="give-type">
+          <option value="\u5e79\u90e8">🏅 幹部</option>
+          <option value="\u5ec1\u6240">🚽 廁所</option>
+          <option value="\u7279\u6b8a">⭐ 特殊事蹟</option>
+          <option value="\u8abf\u6574">🔧 人工調整</option>
+        </select>
+      </div>
+      <div class="form-group" style="max-width:90px">
+        <label>張數（正/負）</label>
+        <input type="number" id="give-cards" value="1" min="-99" max="99">
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <input type="text" id="give-note" placeholder="選填">
+      </div>
+      <div style="align-self:flex-end">
+        <button class="btn-orange" onclick="giveManual()">送出</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 全班獎卡明細</div>
+    <div class="sx"><table><thead><tr>
+      <th>座號</th><th>姓名</th><th>成績點</th><th>已兌換點</th><th>午休扣點</th><th>剩餘點</th>
+      <th>幹部</th><th>廁所</th><th>特殊</th><th>兌換</th>
+      <th style="background:var(--gold-light);color:var(--gold)">總持有</th>
+    </tr></thead><tbody id="give-detail"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 午休記錄 -->
+<div id="tab-noon" class="panel">
+  <div class="card">
+    <div class="card-title">😴 午休不乖記錄
+      <span id="noon-deduct-label" style="font-size:11px;font-weight:400;color:var(--text3)">每筆扣 300 點</span>
+    </div>
+    <div style="background:var(--red-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--red);margin-bottom:12px">
+      可事後補記，時間自行填寫。每筆記錄自動扣點。
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>學生</label>
+        <select id="noon-stu"></select>
+      </div>
+      <div class="form-group" style="max-width:180px">
+        <label>事發時間（手動填）</label>
+        <input type="text" id="noon-time" placeholder="例：5/28 午休">
+      </div>
+      <div class="form-group">
+        <label>事由（選填）</label>
+        <input type="text" id="noon-note" placeholder="例：說話、玩鬧">
+      </div>
+      <div style="align-self:flex-end">
+        <button class="btn-red" onclick="addNoon()">記錄並扣點</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 午休記錄列表</div>
+    <div class="sx"><table><thead><tr><th>登記時間</th><th>事發時間</th><th>學生</th><th>事由</th><th>扣點</th><th>刪</th></tr></thead><tbody id="noon-list"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 成績總表 -->
+<div id="tab-table" class="panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">📊 成績總表</div>
+      <button class="btn-orange btn-sm" onclick="exportCSV()">📤 匯出 CSV</button>
+    </div>
+    <div class="sx"><table><thead id="score-thead"></thead><tbody id="score-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 紀錄查詢 -->
+<div id="tab-log" class="panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">📝 所有紀錄</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="log-type" onchange="renderLog()" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-height:36px">
+          <option value="">全部類型</option>
+          <option value="\u6210\u7e3e">成績貼入</option>
+          <option value="\u5e79\u90e8">幹部給卡</option>
+          <option value="\u5ec1\u6240">廁所給卡</option>
+          <option value="\u7279\u6b8a">特殊事蹟</option>
+          <option value="\u5151\u63db">300點兌換</option>
+          <option value="\u4e0d\u5151\u63db">本次不兌換</option>
+          <option value="\u5348\u4f11">午休扣點</option>
+          <option value="\u8abf\u6574">人工調整</option>
+        </select>
+        <select id="log-stu" onchange="renderLog()" style="font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-height:36px">
+          <option value="">全部學生</option>
+        </select>
+        <button class="btn-red btn-sm" onclick="if(confirm('\u78ba\u5b9a\u6e05\u9664\u5168\u90e8\u7d00\u9304\uff1f'))clearAll()">清除全部</button>
+      </div>
+    </div>
+    <div class="sx"><table><thead><tr><th>時間</th><th>事由</th><th>學生</th><th>類型</th><th>說明</th><th>點/張</th><th>刪</th></tr></thead><tbody id="log-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="tab-settings" class="panel">
+  <div class="card">
+    <div class="card-title">📋 基本設定</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>班級名稱（顯示在標題）</label>
+        <input type="text" id="set-classname" placeholder="例：五年壬班">
+      </div>
+      <div class="form-group" style="max-width:140px">
+        <label>換卡閾值（點數）</label>
+        <input type="number" id="set-threshold" value="300" min="1">
+      </div>
+      <div style="align-self:flex-end">
+        <button class="btn-blue" onclick="saveSettings()">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👥 學生名單
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="showAddStu()">＋ 新增</button>
+    </div>
+    <div id="stu-list-area"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📚 科目清單
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="showAddSubj()">＋ 新增</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" id="subj-list-area"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">☁️ 雲端同步（Firebase）</div>
+    <div id="sync-status-area" style="font-size:13px;color:var(--text3);margin-bottom:12px">未登入</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-blue" id="set-login-btn" onclick="doLogin()">Google 登入</button>
+      <button class="btn-ghost btn-sm" id="set-sync-btn" onclick="doSync()" style="display:none">立即同步</button>
+      <button class="btn-ghost btn-sm" id="set-logout-btn" onclick="doLogout()" style="display:none">登出</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📤 資料匯出</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-ghost btn-sm" onclick="exportCSV()">📊 匯出成績 CSV</button>
+      <button class="btn-ghost btn-sm" onclick="exportLogCSV()">📝 匯出紀錄 CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 全班同分 -->
+<div class="modal-bg" id="fill-modal">
+  <div class="modal">
+    <h3>全班填同一分數</h3>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>分數（0–100）</label>
+      <input type="number" id="fill-val" min="0" max="100" placeholder="輸入分數">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('fill-modal').classList.remove('show')">取消</button>
+      <button class="btn-blue" onclick="applyFill()">套用到全班</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 折線圖 -->
+<div class="modal-bg" id="chart-modal">
+  <div class="modal" style="max-width:580px">
+    <h3 id="chart-title">成績趨勢</h3>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
+    <canvas id="chart-canvas" width="540" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
+    <div style="text-align:right;margin-top:10px">
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('chart-modal').classList.remove('show')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 新增學生 -->
+<div class="modal-bg" id="add-stu-modal">
+  <div class="modal">
+    <h3>新增學生</h3>
+    <div class="form-row" style="margin-bottom:14px">
+      <div class="form-group" style="max-width:100px">
+        <label>座號</label>
+        <input type="number" id="new-stu-no" min="1" max="99">
+      </div>
+      <div class="form-group">
+        <label>姓名</label>
+        <input type="text" id="new-stu-name">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('add-stu-modal').classList.remove('show')">取消</button>
+      <button class="btn-blue" onclick="addStudent()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 新增科目 -->
+<div class="modal-bg" id="add-subj-modal">
+  <div class="modal">
+    <h3>新增科目</h3>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>科目名稱</label>
+      <input type="text" id="new-subj-name" placeholder="例：英聽">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="document.getElementById('add-subj-modal').classList.remove('show')">取消</button>
+      <button class="btn-blue" onclick="addSubject()">新增</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+// Firebase 設定（請填入你的 Firebase 專案資訊）
+// ══════════════════════════════════════════
+const FB_CONFIG = {
+  apiKey: "AIzaSyCL_LgO6rV-zJVpGUSXiwBm77NgfqnpAis",
+  authDomain: "venus-card-2025.firebaseapp.com",
+  projectId: "venus-card-2025",
+  storageBucket: "venus-card-2025.firebasestorage.app",
+  messagingSenderId: "995092431920",
+  appId: "1:995092431920:web:b61866ac39a73ecea799f5"
+};
+
+// ══ IndexedDB ══
+const IDB_NAME = 'venus-card';
+const IDB_VER = 1;
+const IDB_STORE = 'kv';
+let _idb = null;
+
+function openIDB() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, IDB_VER);
+    r.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    r.onsuccess = e => { _idb = e.target.result; res(_idb); };
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(key) {
+  try {
+    const db = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  } catch { return undefined; }
+}
+async function idbSet(key, val) {
+  try {
+    const db = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(val, key);
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error);
+    });
+  } catch { return false; }
+}
+async function idbKeys() {
+  try {
+    const db = await openIDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).getAllKeys();
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  } catch { return []; }
+}
+
+// ══ localStorage wrapper（Safari 私密瀏覽保護）══
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key, val) {
+  try { localStorage.setItem(key, val); } catch {}
+}
+
+// ══ 複合存取：IDB 優先，localStorage 備援 ══
+async function storeGet(key) {
+  let v = await idbGet(key);
+  if (v !== undefined && v !== null) return v;
+  const lv = safeGet('vc5:' + key);
+  return lv ? JSON.parse(lv) : null;
+}
+async function storeSet(key, val) {
+  await idbSet(key, val);
+  try { safeSet('vc5:' + key, JSON.stringify(val)); } catch {}
+}
+
+// ══ Firebase 初始化 ══
+let _fb = null, _auth = null, _db = null;
+let firebaseUidRef = { current: null };
+let _fbReady = false;
+
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    _fb = firebase.app();
+    _auth = firebase.auth();
+    _db = firebase.firestore();
+    _auth.onAuthStateChanged(user => {
+      firebaseUidRef.current = user ? user.uid : null;
+      updateLoginUI(user);
+      if (user) scheduleSync();
+    });
+    _fbReady = true;
+  } catch (e) {
+    console.warn('Firebase init failed:', e);
+  }
+}
+
+function updateLoginUI(user) {
+  const loginBtn = document.getElementById('login-btn');
+  const setLoginBtn = document.getElementById('set-login-btn');
+  const setSyncBtn = document.getElementById('set-sync-btn');
+  const setLogoutBtn = document.getElementById('set-logout-btn');
+  const syncArea = document.getElementById('sync-status-area');
+  if (user) {
+    loginBtn.textContent = user.displayName ? user.displayName.slice(0, 4) : '已登入';
+    if (setLoginBtn) setLoginBtn.style.display = 'none';
+    if (setSyncBtn) setSyncBtn.style.display = '';
+    if (setLogoutBtn) setLogoutBtn.style.display = '';
+    if (syncArea) syncArea.textContent = '\u5df2\u767b\u5165\uff1a' + (user.email || '');
+    setSyncDot('ok');
+  } else {
+    loginBtn.textContent = '\u767b\u5165';
+    if (setLoginBtn) setLoginBtn.style.display = '';
+    if (setSyncBtn) setSyncBtn.style.display = 'none';
+    if (setLogoutBtn) setLogoutBtn.style.display = 'none';
+    if (syncArea) syncArea.textContent = '\u672a\u767b\u5165';
+    setSyncDot('offline');
+  }
+}
+
+async function doLogin() {
+  if (!_fbReady) { toast('\u8acb\u5148\u8a2d\u5b9a Firebase'); return; }
+  try {
+    await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch (e) {
+    toast('\u767b\u5165\u5931\u6557\uff1a' + e.message);
+  }
+}
+
+async function doLogout() {
+  if (!_auth) return;
+  await _auth.signOut();
+  toast('\u5df2\u767b\u51fa');
+}
+
+// ══ 應用程式狀態 ══
+let _students = [];
+let _scores = {};
+let _logs = [];
+let _fixed = { cadre: {}, toilet: [] };
+let _settings = { threshold: 300, className: '', subjects: [] };
+let _skipMap = {};
+let _dirty = false;
+let _saveTimer = null;
+let _syncTimer = null;
+
+// ══ 預設資料 ══
+const DEFAULT_SUBJECTS = ['\u570b\u7fd2','\u807d\u5beb','\u8003\u5377','\u751f\u6e2c','\u4f5c\u6587','\u570b\u8a9e\u6bb5\u8003','\u6578\u7fd2','\u6578\u7d9c','\u6578\u8003','\u6578\u5b78\u6bb5\u8003'];
+const SUBJ_COLORS = {'\u570b\u7fd2':'#2563EB','\u807d\u5beb':'#7C3AED','\u8003\u5377':'#DC2626','\u751f\u6e2c':'#16A34A','\u4f5c\u6587':'#0891B2','\u570b\u8a9e\u6bb5\u8003':'#9333EA','\u6578\u7fd2':'#EA580C','\u6578\u7d9c':'#0D9488','\u6578\u8003':'#DB2777','\u6578\u5b78\u6bb5\u8003':'#65A30D'};
+const DEFAULT_STUDENTS = [
+  {no:1,name:'\u5b78\u751f01'},{no:2,name:'\u5b78\u751f02'},{no:3,name:'\u5b78\u751f03'}
+];
+
+// ══ 點數計算 ══
+function scorePoints(no) {
+  const idx = _students.findIndex(s => s.no === no);
+  if (idx < 0) return 0;
+  let total = 0;
+  for (const subj of Object.keys(_scores)) {
+    for (const entry of _scores[subj] || []) {
+      const v = entry.scores[idx];
+      if (v !== null && v !== undefined && !isNaN(v)) total += v;
+    }
+  }
+  return total;
+}
+function redeemedPoints(no) {
+  return _logs.filter(l => l.no === no && l.k === '\u5151\u63db').reduce((a, l) => a + (l.v || 0), 0);
+}
+function noonPoints(no) {
+  return _logs.filter(l => l.no === no && l.k === '\u5348\u4f11').reduce((a, l) => a + (l.v || 0), 0);
+}
+function remPoints(no) {
+  return scorePoints(no) - redeemedPoints(no) - noonPoints(no);
+}
+function cardCounts(no) {
+  const ls = _logs.filter(l => l.no === no);
+  let cadre = 0, toilet = 0, special = 0, redeemed = 0, adjust = 0;
+  for (const l of ls) {
+    if (l.k === '\u5e79\u90e8') cadre += (l.c || 0);
+    if (l.k === '\u5ec1\u6240') toilet += (l.c || 0);
+    if (l.k === '\u7279\u6b8a') special += (l.c || 0);
+    if (l.k === '\u5151\u63db') redeemed += (l.c || 0);
+    if (l.k === '\u8abf\u6574') adjust += (l.c || 0);
+  }
+  return { cadre, toilet, special, redeemed, adjust, total: cadre + toilet + special + redeemed + adjust };
+}
+function canRedeem(no) {
+  const thr = _settings.threshold || 300;
+  return Math.floor(remPoints(no) / thr);
+}
+
+// ══ 工具函式 ══
+function nowStr() { return new Date().toLocaleString('zh-TW', { hour12: false }); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function toast(m, dur) {
+  const e = document.getElementById('toast');
+  e.textContent = m;
+  e.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => e.classList.remove('show'), dur || 2500);
+}
+function setSyncDot(s) {
+  const d = document.getElementById('sync-dot');
+  d.className = 'sync-dot' + (s === 'syncing' ? ' syncing' : s === 'offline' ? ' offline' : '');
+  d.title = s === 'syncing' ? '\u540c\u6b65\u4e2d...' : s === 'offline' ? '\u96e2\u7dda' : '\u96f2\u7aef\u5df2\u540c\u6b65';
+}
+
+// ══ 存取層 ══
+function sched() {
+  _dirty = true;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(persistLocal, 800);
+}
+
+async function persistLocal() {
+  if (!_dirty) return;
+  const year = new Date().getFullYear();
+  await storeSet('scores:' + year, _scores);
+  await storeSet('logs:' + year, _logs);
+  await storeSet('fixed:main', _fixed);
+  await storeSet('settings:main', _settings);
+  await storeSet('students:main', _students);
+  _dirty = false;
+}
+
+async function loadAll() {
+  setSyncDot('syncing');
+  const year = new Date().getFullYear();
+  try {
+    const [sc, lg, fx, st, se] = await Promise.all([
+      storeGet('scores:' + year),
+      storeGet('logs:' + year),
+      storeGet('fixed:main'),
+      storeGet('students:main'),
+      storeGet('settings:main')
+    ]);
+    _scores = sc || {};
+    _logs = lg || [];
+    _fixed = fx || { cadre: {}, toilet: [] };
+    if (Array.isArray(_fixed.cadre)) {
+      const obj = {}; _fixed.cadre.forEach(no => obj[no] = 1); _fixed.cadre = obj;
+    }
+    if (!_fixed.toilet || !Array.isArray(_fixed.toilet)) _fixed.toilet = [];
+    _students = st || DEFAULT_STUDENTS;
+    if (se) {
+      _settings = { ...{ threshold: 300, className: '', subjects: [] }, ...se };
+    }
+    if (!_settings.subjects || !_settings.subjects.length) {
+      _settings.subjects = [...DEFAULT_SUBJECTS];
+    }
+    setSyncDot(firebaseUidRef.current ? 'ok' : 'offline');
+  } catch (e) {
+    console.error(e);
+    _scores = {}; _logs = []; _fixed = { cadre: {}, toilet: [] };
+    _students = DEFAULT_STUDENTS;
+    _settings = { threshold: 300, className: '', subjects: [...DEFAULT_SUBJECTS] };
+    setSyncDot('offline');
+  }
+}
+
+// ══ Firestore 同步 ══
+function scheduleSync() {
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(doSync, 2000);
+}
+
+async function doSync() {
+  const uid = firebaseUidRef.current;
+  if (!uid || !_db) return;
+  setSyncDot('syncing');
+  const year = new Date().getFullYear();
+  try {
+    await persistLocal();
+    const ref = _db.collection('users').doc(uid);
+    await ref.set({
+      ['scores_' + year]: JSON.stringify(_scores),
+      ['logs_' + year]: JSON.stringify(_logs),
+      fixed: JSON.stringify(_fixed),
+      settings: JSON.stringify(_settings),
+      students: JSON.stringify(_students),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    setSyncDot('ok');
+    toast('\u2601\ufe0f \u5df2\u540c\u6b65\u5230\u96f2\u7aef');
+  } catch (e) {
+    setSyncDot('offline');
+    toast('\u540c\u6b65\u5931\u6557\uff1a' + e.message);
+  }
+}
+
+async function syncFromFirestore() {
+  const uid = firebaseUidRef.current;
+  if (!uid || !_db) return;
+  const year = new Date().getFullYear();
+  try {
+    const doc = await _db.collection('users').doc(uid).get();
+    if (!doc.exists) return;
+    const d = doc.data();
+    if (d['scores_' + year]) _scores = JSON.parse(d['scores_' + year]);
+    if (d['logs_' + year]) _logs = JSON.parse(d['logs_' + year]);
+    if (d.fixed) _fixed = JSON.parse(d.fixed);
+    if (d.settings) _settings = { ...{ threshold: 300, className: '', subjects: [] }, ...JSON.parse(d.settings) };
+    if (d.students) _students = JSON.parse(d.students);
+    await persistLocal();
+    renderAll();
+    toast('\u2601\ufe0f \u5df2\u5f9e\u96f2\u7aef\u8f09\u5165');
+  } catch (e) {
+    toast('\u8f09\u5165\u5931\u6557\uff1a' + e.message);
+  }
+}
+
+// ══ 分頁切換 ══
+function goTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const fn = {
+    overview: renderOverview,
+    score: () => { renderSubjSelect(); renderScoreLog(); },
+    redeem: renderRedeem,
+    give: () => { renderNoPicker(); fillStuSelect('give-stu'); renderGiveDetail(); },
+    noon: () => { fillStuSelect('noon-stu'); renderNoonList(); updateNoonLabel(); },
+    table: renderScoreTable,
+    log: renderLog,
+    settings: renderSettings
+  };
+  fn[id]?.();
+}
+
+// ══ 總覽 ══
+function renderOverview() {
+  const thr = _settings.threshold || 300;
+  let totalCards = 0, totalPts = 0, canCnt = 0;
+  const grid = document.getElementById('stu-grid');
+  grid.innerHTML = '';
+  _students.forEach(s => {
+    const rem = remPoints(s.no);
+    const can = canRedeem(s.no);
+    const cc = cardCounts(s.no);
+    const np = noonPoints(s.no);
+    totalCards += cc.total; totalPts += rem; if (can > 0) canCnt++;
+    const cell = document.createElement('div');
+    cell.className = 'stu-cell' + (can > 0 ? ' ready' : np > 0 ? ' warn' : '');
+    const pct = Math.min(100, ((rem % thr) / thr * 100)).toFixed(0);
+    cell.innerHTML = `<div style="display:flex;justify-content:space-between">
+      <div><div class="stu-no">${s.no}\u865f</div><div class="stu-name">${s.name}</div></div>
+      ${cc.total > 0 ? `<div style="font-size:11px;color:var(--green);font-weight:600">\u3003\u00d7${cc.total}</div>` : ''}
+    </div>
+    <div class="stu-pts">${rem}<span style="font-size:11px;font-weight:400;color:var(--text3)">pt</span></div>
+    <div class="progress"><div class="progress-bar${rem >= thr ? ' full' : ''}" style="width:${pct}%"></div></div>
+    <div class="stu-sub">${can > 0 ? `<span style="color:var(--orange);font-weight:600">\u25b6 \u53ef\u63db ${can} \u5f35</span>` :
+      np > 0 ? `<span style="color:var(--red)">\u5348\u4f11 -${np}pt</span>` :
+      `\u518d ${thr - (((rem % thr) + thr) % thr)} pt \u53ef\u63db`}</div>`;
+    cell.onclick = () => showChart(s.no);
+    grid.appendChild(cell);
+  });
+  const avg = _students.length ? Math.round(totalPts / _students.length) : 0;
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="num">${_students.length}</div><div class="lbl">\u5168\u73ed\u4eba\u6578</div></div>
+    <div class="stat orange"><div class="num">${totalCards}</div><div class="lbl">\u5168\u73ed\u6301\u6709\u5361</div></div>
+    <div class="stat green"><div class="num">${avg}</div><div class="lbl">\u5e73\u5747\u5269\u9918\u9ede</div></div>
+    <div class="stat red"><div class="num">${canCnt}</div><div class="lbl">\u53ef\u5151\u63db\u4eba\u6578</div></div>
+    <div class="stat"><div class="num">${_logs.length}</div><div class="lbl">\u7e3d\u7d00\u9304\u7b46\u6578</div></div>`;
+  const titleEl = document.getElementById('app-title');
+  if (_settings.className) {
+    titleEl.innerHTML = _settings.className.replace(/(.+)/, '<span>$1</span>');
+  }
+}
+
+// ══ 科目選單 ══
+function renderSubjSelect() {
+  const el = document.getElementById('sc-subj');
+  const cur = el.value;
+  el.innerHTML = (_settings.subjects || DEFAULT_SUBJECTS).map(s => `<option value="${s}">${s}</option>`).join('');
+  if (cur) el.value = cur;
+}
+
+// ══ 貼成績 ══
+function pasteScore() {
+  const subj = document.getElementById('sc-subj').value;
+  const raw = document.getElementById('sc-paste').value;
+  if (!raw.trim()) { toast('\u8acb\u5148\u8cbc\u4e0a\u6578\u5b57'); return; }
+  const rows = raw.split(/[\n\r]+/);
+  let s = 0, e = rows.length - 1;
+  while (s <= e && rows[s].trim() === '') s++;
+  while (e >= s && rows[e].trim() === '') e--;
+  const trimmed = rows.slice(s, e + 1);
+  if (trimmed.length !== _students.length) {
+    setMsg('sc-msg', `\u26a0 \u9700\u8981 ${_students.length} \u884c\uff08\u7f3a\u5e2d\u7559\u7a7a\u884c\uff09\uff0c\u76ee\u524d ${trimmed.length} \u884c`, 'red');
+    return;
+  }
+  const scores = trimmed.map(r => { const v = parseFloat(r.trim()); return isNaN(v) ? null : v; });
+  const filled = scores.filter(v => v !== null).length;
+  if (!_scores[subj]) _scores[subj] = [];
+  const n = _scores[subj].length + 1;
+  const label = subj + n;
+  _scores[subj] = [..._scores[subj], { label, scores }];
+  sched();
+  document.getElementById('sc-paste').value = '';
+  setMsg('sc-msg', `\u2705 \u5df2\u5132\u5b58\u300c${label}\u300d${filled} \u4eba\u6709\u5206\u6578${_students.length - filled > 0 ? `\uff0c${_students.length - filled} \u4eba\u7a7a\u767d` : ''}`, 'green');
+  renderScoreLog();
+  toast(`\u2705 ${label} \u5132\u5b58\u5b8c\u6210`);
+}
+
+function setMsg(id, m, color) {
+  const e = document.getElementById(id);
+  e.textContent = m;
+  e.style.color = color === 'red' ? 'var(--red)' : 'var(--green)';
+}
+
+function renderScoreLog() {
+  const area = document.getElementById('score-log-area');
+  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
+  const allEntries = [];
+  subjs.forEach(subj => { (_scores[subj] || []).forEach((e, i) => allEntries.push({ subj, i, e })); });
+  if (!allEntries.length) {
+    area.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">\u5c1a\u672a\u8cbc\u5165\u4efb\u4f55\u6210\u7e3e</div>';
+    return;
+  }
+  allEntries.reverse();
+  area.innerHTML = `<table><thead><tr><th>\u6a19\u7c64</th><th>\u79d1\u76ee</th><th>\u6709\u5206\u6578\u4eba\u6578</th><th>\u73ed\u5e73\u5747</th><th>\u64cd\u4f5c</th></tr></thead><tbody>${
+    allEntries.map(({ subj, i, e }) => {
+      const vals = e.scores.filter(v => v !== null && !isNaN(v));
+      const avg = vals.length ? +(vals.reduce((a, b) => a + b) / vals.length).toFixed(1) : '-';
+      return `<tr><td style="font-weight:600">${e.label}</td><td><span class="badge badge-blue">${subj}</span></td>
+      <td>${vals.length}/${_students.length}</td><td style="font-weight:600">${avg}</td>
+      <td><button class="btn-red btn-sm" onclick="delEntry('${subj}',${i})">\u522a\u9664</button></td></tr>`;
+    }).join('')
+  }</tbody></table>`;
+}
+
+function delEntry(subj, idx) {
+  if (!confirm(`\u78ba\u5b9a\u522a\u9664\u300c${_scores[subj][idx].label}\u300d\uff1f`)) return;
+  _scores[subj].splice(idx, 1);
+  _scores[subj].forEach((e, i) => e.label = subj + (i + 1));
+  sched(); renderScoreLog(); renderOverview(); toast('\u5df2\u522a\u9664');
+}
+
+function clearScores() {
+  _scores = {}; sched(); renderScoreLog(); renderOverview(); toast('\u5df2\u6e05\u9664\u5168\u90e8\u6210\u7e3e');
+}
+
+function applyFill() {
+  const v = parseFloat(document.getElementById('fill-val').value);
+  if (isNaN(v)) return;
+  document.getElementById('fill-modal').classList.remove('show');
+  const subj = document.getElementById('sc-subj').value;
+  if (!_scores[subj]) _scores[subj] = [];
+  const n = _scores[subj].length + 1;
+  const label = subj + n;
+  _scores[subj].push({ label, scores: _students.map(() => v) });
+  sched(); renderScoreLog(); renderOverview();
+  toast(`\u2705 \u5df2\u5957\u7528 ${v} \u5206\u7d66\u5168\u73ed\uff0c\u6a19\u7c64 ${label}`);
+}
+
+// ══ 兌換獎卡 ══
+function renderRedeem() {
+  _skipMap = {};
+  const thr = _settings.threshold || 300;
+  const area = document.getElementById('redeem-area');
+  const el = _students.filter(s => canRedeem(s.no) > 0);
+  if (!el.length) {
+    area.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:16px;text-align:center">\u76ee\u524d\u6c92\u6709\u5b78\u751f\u7d2f\u7a4d\u9054 ${thr} \u9ede</div>`;
+    document.getElementById('redeem-summary').style.display = 'none';
+    document.getElementById('btn-redeem').style.display = 'none';
+    renderRedeemLog(); return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'redeem-grid';
+  el.forEach(s => {
+    const rem = remPoints(s.no); const can = canRedeem(s.no);
+    const item = document.createElement('div');
+    item.className = 'redeem-card'; item.id = 'rc_' + s.no;
+    item.innerHTML = `<button class="skip-btn" onclick="toggleSkip(${s.no})" title="\u6a19\u8a18\u4e0d\u5151\u63db">\u2715</button>
+    <div style="font-size:11px;color:var(--text3)">${s.no}\u865f</div>
+    <div style="font-weight:700;font-size:15px">${s.name}</div>
+    <div style="font-size:20px;font-weight:700;color:var(--orange)">${rem}pt</div>
+    <div style="font-size:12px;color:var(--green);font-weight:600">\u53ef\u5151\u63db ${can} \u5f35</div>
+    <textarea id="skip-note-${s.no}" style="display:none;width:100%;margin-top:6px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:4px;resize:none" placeholder="\u4e0d\u5151\u63db\u539f\u56e0\uff08\u9078\u586b\uff09" rows="2"></textarea>`;
+    grid.appendChild(item);
+  });
+  area.innerHTML = ''; area.appendChild(grid);
+  updRedeemSummary(el);
+  document.getElementById('btn-redeem').style.display = '';
+  renderRedeemLog();
+}
+
+function toggleSkip(no) {
+  const card = document.getElementById('rc_' + no);
+  const note = document.getElementById('skip-note-' + no);
+  if (_skipMap[no] !== undefined) {
+    delete _skipMap[no]; card.classList.remove('skipped');
+    card.querySelector('.skip-btn').textContent = '\u2715'; note.style.display = 'none';
+  } else {
+    _skipMap[no] = true; card.classList.add('skipped');
+    card.querySelector('.skip-btn').textContent = '\u21a9'; note.style.display = '';
+  }
+  updRedeemSummary(_students.filter(s => canRedeem(s.no) > 0));
+}
+
+function updRedeemSummary(el) {
+  const wr = el.filter(s => !_skipMap[s.no]);
+  const ws = el.filter(s => _skipMap[s.no]);
+  const sum = document.getElementById('redeem-summary');
+  sum.style.display = '';
+  sum.innerHTML = `<b>\u672c\u6b21\u5151\u63db\uff1a</b>${wr.length} \u4eba\uff08${wr.map(s => `<b>${s.name}</b>`).join('\u3001') || '\u7121'}\uff09${ws.length ? `<br><span style="color:var(--red)"><b>\u672c\u6b21\u4e0d\u63db\uff1a</b>${ws.map(s => `<b>${s.name}</b>`).join('\u3001')}</span>` : ''}`;
+}
+
+function doRedeem() {
+  const thr = _settings.threshold || 300;
+  const el = _students.filter(s => canRedeem(s.no) > 0);
+  const wr = el.filter(s => !_skipMap[s.no]);
+  const ws = el.filter(s => _skipMap[s.no]);
+  if (!wr.length) { toast('\u6c92\u6709\u4eba\u8981\u5151\u63db'); return; }
+  if (!confirm(`\u78ba\u5b9a\u70ba ${wr.length} \u4f4d\u5b78\u751f\u5151\u63db\uff1f\n${wr.map(s => s.name).join('\u3001')}`)) return;
+  const bid = 'b' + Date.now();
+  wr.forEach(s => {
+    const c = canRedeem(s.no); const p = c * thr;
+    _logs.push({ id: genId(), t: nowStr(), w: `${thr}\u9ede\u5151\u63db`, no: s.no, name: s.name, k: '\u5151\u63db', v: p, c, note: `\u5151\u63db${c}\u5f35\u629c${p}\u9ede`, bid });
+  });
+  ws.forEach(s => {
+    const nr = document.getElementById('skip-note-' + s.no);
+    const r = (nr && nr.value.trim()) || '\u672c\u6b21\u4e0d\u5151\u63db';
+    _logs.push({ id: genId(), t: nowStr(), w: '\u4e0d\u5151\u63db', no: s.no, name: s.name, k: '\u4e0d\u5151\u63db', v: 0, c: 0, note: r });
+  });
+  sched(); scheduleSync();
+  renderRedeem(); renderOverview();
+  toast(`\u2705 \u5151\u63db\u5b8c\u6210\uff0c${wr.length} \u4eba\u5404\u78ba\u8a8d`);
+}
+
+function renderRedeemLog() {
+  const logs = [..._logs].filter(l => l.k === '\u5151\u63db').reverse();
+  document.getElementById('redeem-log').innerHTML = !logs.length ?
+    '<tr><td colspan="4" style="color:var(--text3);padding:14px">\u5c1a\u7121\u5151\u63db\u7d00\u9304</td></tr>' :
+    logs.map(l => `<tr>
+    <td style="font-size:11px;white-space:nowrap">${l.t}</td>
+    <td style="font-weight:600">${l.name}</td>
+    <td style="color:var(--red)">-${l.v}pt</td>
+    <td style="color:var(--green);font-weight:600">+${l.c}\u5f35</td></tr>`).join('');
+}
+
+// ══ 手動給卡 ══
+function ensureFixed() {
+  if (!_fixed.cadre || Array.isArray(_fixed.cadre)) _fixed.cadre = {};
+  if (!_fixed.toilet || !Array.isArray(_fixed.toilet)) _fixed.toilet = [];
+}
+
+function renderNoPicker() {
+  ensureFixed();
+  const cadreEl = document.getElementById('cadre-picker');
+  cadreEl.innerHTML = _students.map(s => {
+    const cnt = _fixed.cadre[s.no] || 0;
+    const cls = cnt === 1 ? 'cadre1' : cnt === 2 ? 'cadre2' : '';
+    const lbl = cnt === 0 ? s.no : `${s.no}<br><span style='font-size:9px'>\u00d7${cnt}</span>`;
+    return `<button class="no-btn ${cls}" onclick="toggleCadre(${s.no},this)" title="${s.no}\u865f ${s.name}">${lbl}</button>`;
+  }).join('');
+  const toiletEl = document.getElementById('toilet-picker');
+  toiletEl.innerHTML = _students.map(s => {
+    const sel = _fixed.toilet.includes(s.no);
+    return `<button class="no-btn${sel ? ' sel' : ''}" onclick="toggleToilet(${s.no},this)" title="${s.no}\u865f ${s.name}">${s.no}</button>`;
+  }).join('');
+  updToiletCount(); updCadreHint();
+}
+
+function toggleCadre(no, btn) {
+  ensureFixed();
+  const cur = _fixed.cadre[no] || 0;
+  const next = (cur + 1) % 3;
+  if (next === 0) delete _fixed.cadre[no]; else _fixed.cadre[no] = next;
+  sched();
+  btn.className = 'no-btn' + (next === 1 ? ' cadre1' : next === 2 ? ' cadre2' : '');
+  btn.innerHTML = next === 0 ? no : `${no}<br><span style='font-size:9px'>\u00d7${next}</span>`;
+  updCadreHint();
+}
+
+function toggleToilet(no, btn) {
+  ensureFixed();
+  if (_fixed.toilet.includes(no)) {
+    _fixed.toilet = _fixed.toilet.filter(n => n !== no);
+    btn.className = 'no-btn'; btn.style.cssText = '';
+  } else {
+    if (_fixed.toilet.length >= 6) { toast('\u5ec1\u6240\u540d\u55ae\u6700\u591a6\u4eba'); return; }
+    _fixed.toilet.push(no); btn.className = 'no-btn sel';
+  }
+  sched(); updToiletCount();
+}
+
+function updToiletCount() {
+  const el = document.getElementById('toilet-count');
+  if (el) el.textContent = `\u5df2\u9078 ${(_fixed.toilet || []).length}/6 \u4eba`;
+}
+
+function updCadreHint() {
+  const entries = Object.entries(_fixed.cadre || {});
+  const el = document.getElementById('cadre-hint');
+  if (!el) return;
+  if (!entries.length) { el.textContent = '\u5c1a\u672a\u8a2d\u5b9a\u5e79\u90e8\u540d\u55ae'; return; }
+  const total = entries.reduce((a, [, v]) => a + v, 0);
+  el.textContent = `${entries.length} \u4eba\uff0c\u672c\u9031\u5171\u7d66 ${total} \u5f35`;
+}
+
+function giveWeekly(type) {
+  ensureFixed();
+  const d = new Date(); const wk = `${d.getMonth() + 1}/${d.getDate()}`;
+  if (type === 'cadre') {
+    const entries = Object.entries(_fixed.cadre || {});
+    if (!entries.length) { toast('\u26a0 \u5e79\u90e8\u540d\u55ae\u662f\u7a7a\u7684'); return; }
+    const total = entries.reduce((a, [, v]) => a + v, 0);
+    if (!confirm(`\u78ba\u5b9a\u7d66\u5e79\u90e8\u9031\u7d66\uff1f\u5171 ${entries.length} \u4eba\uff0c\u767c\u51fa ${total} \u5f35`)) return;
+    entries.forEach(([no, cnt]) => {
+      const s = _students.find(x => x.no === parseInt(no));
+      if (!s) return;
+      _logs.push({ id: genId(), t: nowStr(), w: wk, no: parseInt(no), name: s.name, k: '\u5e79\u90e8', v: 0, c: cnt, note: `\u5e79\u90e8\u9031\u7d66\u00d7${cnt}` });
+    });
+    sched(); scheduleSync(); toast(`\u2705 \u5e79\u90e8\u9031\u7d66\u5b8c\u6210\uff0c\u5171\u767c ${total} \u5f35`);
+  } else {
+    const nos = _fixed.toilet || [];
+    if (!nos.length) { toast('\u26a0 \u5ec1\u6240\u540d\u55ae\u662f\u7a7a\u7684'); return; }
+    if (!confirm(`\u78ba\u5b9a\u7d66 ${nos.length} \u4f4d\u5ec1\u6240\u5b78\u751f\u5404 1 \u5f35\uff1f`)) return;
+    nos.forEach(no => {
+      const s = _students.find(x => x.no === no);
+      if (!s) return;
+      _logs.push({ id: genId(), t: nowStr(), w: wk, no, name: s.name, k: '\u5ec1\u6240', v: 0, c: 1, note: '\u5ec1\u6240\u9031\u7d66' });
+    });
+    sched(); scheduleSync(); toast(`\u2705 ${nos.length} \u4f4d\u5ec1\u6240\u5b78\u751f\u5404\u7372 1 \u5f35`);
+  }
+  renderGiveDetail(); renderOverview();
+}
+
+function fillStuSelect(id) {
+  const el = document.getElementById(id);
+  el.innerHTML = _students.map(s => `<option value="${s.no}">${s.no}\u865f\u3000${s.name}</option>`).join('');
+}
+
+function giveManual() {
+  const no = parseInt(document.getElementById('give-stu').value);
+  const s = _students.find(x => x.no === no);
+  if (!s) return;
+  const type = document.getElementById('give-type').value;
+  const c = parseInt(document.getElementById('give-cards').value) || 0;
+  const note = document.getElementById('give-note').value.trim();
+  _logs.push({ id: genId(), t: nowStr(), w: type, no, name: s.name, k: type, v: 0, c, note: note || type });
+  sched(); scheduleSync();
+  document.getElementById('give-note').value = '';
+  toast(`\u2705 ${s.name} ${c > 0 ? '\u7372\u5f97' : '\u6263\u9664'} ${Math.abs(c)} \u5f35`);
+  renderGiveDetail(); renderOverview();
+}
+
+function renderGiveDetail() {
+  document.getElementById('give-detail').innerHTML = _students.map(s => {
+    const rem = remPoints(s.no); const cc = cardCounts(s.no);
+    const np = noonPoints(s.no); const can = canRedeem(s.no);
+    return `<tr><td>${s.no}</td><td style="font-weight:600">${s.name}</td>
+    <td>${scorePoints(s.no)}</td><td>${redeemedPoints(s.no)}</td>
+    <td style="color:var(--red)">${np ? '-' + np : '0'}</td>
+    <td style="${can > 0 ? 'color:var(--orange);font-weight:600' : ''}">${rem}${can > 0 ? ` <span style="font-size:10px">\u53ef\u63db${can}\u5f35</span>` : ''}</td>
+    <td>${cc.cadre}</td><td>${cc.toilet}</td><td>${cc.special}</td><td>${cc.redeemed}</td>
+    <td style="font-size:15px;font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
+  }).join('');
+}
+
+// ══ 午休 ══
+function updateNoonLabel() {
+  const el = document.getElementById('noon-deduct-label');
+  if (el) el.textContent = `\u6bcf\u7b46\u6263 ${_settings.threshold || 300} \u9ede`;
+}
+
+function addNoon() {
+  const no = parseInt(document.getElementById('noon-stu').value);
+  const s = _students.find(x => x.no === no);
+  if (!s) return;
+  const nt = document.getElementById('noon-time').value.trim() || nowStr();
+  const nn = document.getElementById('noon-note').value.trim();
+  const thr = _settings.threshold || 300;
+  _logs.push({ id: genId(), t: nowStr(), w: '\u5348\u4f11', no, name: s.name, k: '\u5348\u4f11', v: thr, c: 0, note: `${nt}${nn ? ' \u2014 ' + nn : ''}`, noonTime: nt });
+  sched(); scheduleSync();
+  document.getElementById('noon-time').value = '';
+  document.getElementById('noon-note').value = '';
+  toast(`\u5df2\u8a18\u9304 ${s.name} \u5348\u4f11\u4e0d\u4e56\uff0c\u629c ${thr} \u9ede`);
+  renderNoonList(); renderOverview();
+}
+
+function renderNoonList() {
+  const logs = [..._logs].filter(l => l.k === '\u5348\u4f11').reverse();
+  document.getElementById('noon-list').innerHTML = !logs.length ?
+    '<tr><td colspan="6" style="color:var(--text3);padding:14px">\u5c1a\u7121\u8a18\u9304</td></tr>' :
+    logs.map(l => `<tr>
+    <td style="font-size:11px;white-space:nowrap">${l.t}</td>
+    <td style="font-weight:600">${l.noonTime || '\u2014'}</td>
+    <td style="font-weight:600">${l.name}</td>
+    <td style="font-size:11px;text-align:left">${l.note || ''}</td>
+    <td style="color:var(--red);font-weight:600">-${l.v}pt</td>
+    <td><button class="btn-red btn-sm" onclick="delLog('${l.id}')">\u522a</button></td></tr>`).join('');
+}
+
+// ══ 成績總表 ══
+function renderScoreTable() {
+  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
+  const allSubjs = subjs.filter(s => (_scores[s] || []).length > 0);
+  const thead = document.getElementById('score-thead');
+  const tbody = document.getElementById('score-tbody');
+  if (!allSubjs.length) {
+    thead.innerHTML = ''; tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3);padding:16px">\u5c1a\u672a\u8cbc\u5165\u6210\u7e3e</td></tr>'; return;
+  }
+  const allE = allSubjs.flatMap(s => (_scores[s] || []).map(e => ({ subj: s, e })));
+  thead.innerHTML = `<tr><th>\u5ea7\u865f</th><th>\u59d3\u540d</th>${allE.map(({ e }) => `<th style="min-width:54px">${e.label}</th>`).join('')}<th style="background:var(--gold-light);color:var(--gold)">\u6210\u7e3e\u9ede</th><th>\u6301\u6709\u5361</th></tr>`;
+  tbody.innerHTML = _students.map(s => {
+    const idx = _students.findIndex(x => x.no === s.no);
+    const cells = allE.map(({ e }) => {
+      const v = e.scores[idx];
+      return `<td style="${v === null || v === undefined ? 'color:var(--text3)' : v >= 90 ? 'color:var(--green);font-weight:600' : v < 60 ? 'color:var(--red)' : ''}">${v !== null && v !== undefined ? v : '\u2014'}</td>`;
+    }).join('');
+    const cc = cardCounts(s.no);
+    return `<tr><td>${s.no}</td>
+    <td style="font-weight:600;cursor:pointer;color:var(--blue)" onclick="showChart(${s.no})">${s.name}</td>
+    ${cells}
+    <td style="font-weight:700;color:var(--orange)">${scorePoints(s.no)}</td>
+    <td style="font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
+  }).join('');
+}
+
+// ══ 折線圖 ══
+let _chartStu = null, _chartSubj = null;
+
+function showChart(no) {
+  _chartStu = no;
+  const s = _students.find(x => x.no === no);
+  if (!s) return;
+  document.getElementById('chart-title').textContent = `${s.name} \u7684\u6210\u7e3e\u8da8\u52e2`;
+  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
+  const avail = subjs.filter(subj => (_scores[subj] || []).length > 0);
+  document.getElementById('chart-subj-btns').innerHTML = avail.map(subj =>
+    `<button class="btn-ghost btn-sm" onclick="drawChart(${no},'${subj}')" style="border-color:${SUBJ_COLORS[subj]||'#2563EB'};color:${SUBJ_COLORS[subj]||'#2563EB'}">${subj}</button>`
+  ).join('');
+  _chartSubj = avail[0] || null;
+  if (_chartSubj) drawChart(no, _chartSubj);
+  document.getElementById('chart-modal').classList.add('show');
+}
+
+function drawChart(no, subj) {
+  _chartSubj = subj;
+  const idx = _students.findIndex(s => s.no === no);
+  const entries = _scores[subj] || [];
+  const data = entries.map(e => ({ label: e.label, val: e.scores[idx] }));
+  const canvas = document.getElementById('chart-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const pad = { l: 44, r: 16, t: 24, b: 36 };
+  ctx.clearRect(0, 0, W, H);
+  const bg = getComputedStyle(document.body).getPropertyValue('--bg2') || '#fff';
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  if (!data.length) { ctx.fillStyle = '#999'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('\u5c1a\u7121\u8cc7\u6599', W / 2, H / 2); return; }
+  const vals = data.map(d => d.val).filter(v => v !== null && !isNaN(v));
+  if (!vals.length) { ctx.fillStyle = '#999'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('\u5c1a\u7121\u8cc7\u6599', W / 2, H / 2); return; }
+  const mn = Math.max(0, Math.min(...vals) - 10), mx = Math.min(100, Math.max(...vals) + 10);
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const toX = i => pad.l + (i / (data.length - 1 || 1)) * cW;
+  const toY = v => pad.t + cH - (((v - mn) / (mx - mn || 1)) * cH);
+  ctx.strokeStyle = 'rgba(0,0,0,.06)'; ctx.lineWidth = 1;
+  for (let y = Math.ceil(mn / 10) * 10; y <= mx; y += 10) {
+    const yy = toY(y); ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.fillText(y, pad.l - 4, yy + 3);
+  }
+  ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  data.forEach((d, i) => ctx.fillText(d.label, toX(i), H - pad.b + 14));
+  const avg = +(vals.reduce((a, b) => a + b) / vals.length).toFixed(1);
+  const ay = toY(avg);
+  ctx.strokeStyle = 'rgba(234,88,12,.3)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, ay); ctx.lineTo(W - pad.r, ay); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle = 'var(--orange)'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('\u5e73\u5747' + avg, pad.l + 4, ay - 3);
+  const color = SUBJ_COLORS[subj] || '#2563EB';
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  ctx.beginPath(); let first = true;
+  data.forEach((d, i) => {
+    if (d.val === null || isNaN(d.val)) return;
+    if (first) { ctx.moveTo(toX(i), toY(d.val)); first = false; } else ctx.lineTo(toX(i), toY(d.val));
+  });
+  ctx.stroke();
+  data.forEach((d, i) => {
+    if (d.val === null || isNaN(d.val)) return;
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(toX(i), toY(d.val), 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(toX(i), toY(d.val), 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = color; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(d.val, toX(i), toY(d.val) - 9);
+  });
+}
+
+// ══ 紀錄查詢 ══
+function renderLog() {
+  const stuSel = document.getElementById('log-stu');
+  if (stuSel.options.length === 1) {
+    _students.forEach(s => stuSel.add(new Option(`${s.no}\u865f ${s.name}`, s.no)));
+  }
+  let logs = [..._logs];
+  const ft = document.getElementById('log-type').value;
+  const fs = document.getElementById('log-stu').value;
+  if (ft) logs = logs.filter(l => l.k === ft);
+  if (fs) logs = logs.filter(l => l.no === parseInt(fs));
+  logs.reverse();
+  const bclass = { '\u6210\u7e3e': 'badge-blue', '\u5e79\u90e8': 'badge-green', '\u5ec1\u6240': 'badge-green', '\u7279\u6b8a': 'badge-orange', '\u5151\u63db': 'badge-red', '\u4e0d\u5151\u63db': 'badge-red', '\u5348\u4f11': 'badge-red', '\u8abf\u6574': 'badge-orange' };
+  document.getElementById('log-tbody').innerHTML = !logs.length ?
+    '<tr><td colspan="7" style="color:var(--text3);padding:16px">\u5c1a\u7121\u7d00\u9304</td></tr>' :
+    logs.map(l => {
+      const vc = l.k === '\u5151\u63db' ? `<span style="color:var(--red)">-${l.v}pt / +${l.c}\u5f35</span>` :
+        l.k === '\u5348\u4f11' ? `<span style="color:var(--red)">-${l.v}pt</span>` :
+          l.c ? `${l.c > 0 ? '+' : ''}${l.c}\u5f35` : '\u2014';
+      return `<tr>
+      <td style="font-size:11px;white-space:nowrap">${l.t}</td>
+      <td style="font-size:11px">${l.w || ''}</td>
+      <td style="font-weight:600">${l.name}</td>
+      <td><span class="badge ${bclass[l.k] || 'badge-blue'}">${l.k}</span></td>
+      <td style="font-size:11px;text-align:left">${l.note || ''}</td>
+      <td style="font-weight:600">${vc}</td>
+      <td><button class="btn-red btn-sm" onclick="delLog('${l.id}')">\u522a</button></td></tr>`;
+    }).join('');
+}
+
+function delLog(id) {
+  if (!confirm('\u78ba\u5b9a\u522a\u9664\u9019\u7b46\u7d00\u9304\uff1f')) return;
+  _logs = _logs.filter(l => String(l.id) !== String(id));
+  sched(); renderLog(); toast('\u5df2\u522a\u9664');
+}
+
+function clearAll() {
+  _logs = []; _scores = {}; sched(); renderLog(); renderOverview(); toast('\u5df2\u6e05\u9664\u5168\u90e8');
+}
+
+// ══ 設定頁 ══
+function renderSettings() {
+  document.getElementById('set-classname').value = _settings.className || '';
+  document.getElementById('set-threshold').value = _settings.threshold || 300;
+  renderStuList();
+  renderSubjList();
+}
+
+function saveSettings() {
+  const cn = document.getElementById('set-classname').value.trim();
+  const thr = parseInt(document.getElementById('set-threshold').value) || 300;
+  _settings.className = cn;
+  _settings.threshold = thr;
+  sched(); scheduleSync();
+  renderOverview();
+  toast('\u2705 \u8a2d\u5b9a\u5df2\u5132\u5b58');
+}
+
+function renderStuList() {
+  const area = document.getElementById('stu-list-area');
+  area.innerHTML = _students.map(s => `
+    <div class="stu-list-item">
+      <div style="width:36px;font-size:13px;font-weight:600;color:var(--text3)">${s.no}</div>
+      <div style="flex:1;font-weight:600">${s.name}</div>
+      <button class="btn-ghost btn-sm" onclick="editStu(${s.no})">\u7de8\u8f2f</button>
+      <button class="btn-red btn-sm" onclick="delStu(${s.no})">\u522a\u9664</button>
+    </div>`).join('');
+}
+
+function showAddStu() {
+  document.getElementById('new-stu-no').value = '';
+  document.getElementById('new-stu-name').value = '';
+  document.getElementById('add-stu-modal').classList.add('show');
+}
+
+function addStudent() {
+  const no = parseInt(document.getElementById('new-stu-no').value);
+  const name = document.getElementById('new-stu-name').value.trim();
+  if (!no || !name) { toast('\u8acb\u586b\u5beb\u5ea7\u865f\u548c\u59d3\u540d'); return; }
+  if (_students.find(s => s.no === no)) { toast('\u8a72\u5ea7\u865f\u5df2\u5b58\u5728'); return; }
+  _students.push({ no, name });
+  _students.sort((a, b) => a.no - b.no);
+  sched(); scheduleSync();
+  document.getElementById('add-stu-modal').classList.remove('show');
+  renderStuList(); renderOverview();
+  toast(`\u2705 \u5df2\u65b0\u589e ${no}\u865f ${name}`);
+}
+
+function editStu(no) {
+  const s = _students.find(x => x.no === no);
+  if (!s) return;
+  const newName = prompt(`\u7de8\u8f2f ${no}\u865f\u5b78\u751f\u59d3\u540d\uff1a`, s.name);
+  if (newName === null) return;
+  if (!newName.trim()) { toast('\u59d3\u540d\u4e0d\u80fd\u70ba\u7a7a'); return; }
+  s.name = newName.trim();
+  sched(); scheduleSync(); renderStuList(); renderOverview(); toast('\u5df2\u66f4\u65b0');
+}
+
+function delStu(no) {
+  const s = _students.find(x => x.no === no);
+  if (!s) return;
+  if (!confirm(`\u78ba\u5b9a\u522a\u9664 ${s.no}\u865f ${s.name}\uff1f\u8a72\u5b78\u751f\u7684\u6240\u6709\u7d00\u9304\u4e0d\u6703\u88ab\u522a\u9664\u3002`)) return;
+  _students = _students.filter(x => x.no !== no);
+  sched(); scheduleSync(); renderStuList(); renderOverview(); toast('\u5df2\u522a\u9664');
+}
+
+function renderSubjList() {
+  const area = document.getElementById('subj-list-area');
+  area.innerHTML = (_settings.subjects || DEFAULT_SUBJECTS).map(s =>
+    `<span class="subj-tag">${s} <span class="del" onclick="delSubject('${s}')" style="margin-left:4px;font-size:13px">\u00d7</span></span>`
+  ).join('');
+}
+
+function showAddSubj() {
+  document.getElementById('new-subj-name').value = '';
+  document.getElementById('add-subj-modal').classList.add('show');
+}
+
+function addSubject() {
+  const name = document.getElementById('new-subj-name').value.trim();
+  if (!name) { toast('\u8acb\u8f38\u5165\u79d1\u76ee\u540d\u7a31'); return; }
+  if (!_settings.subjects) _settings.subjects = [];
+  if (_settings.subjects.includes(name)) { toast('\u79d1\u76ee\u5df2\u5b58\u5728'); return; }
+  _settings.subjects.push(name);
+  sched(); scheduleSync();
+  document.getElementById('add-subj-modal').classList.remove('show');
+  renderSubjList(); renderSubjSelect(); toast('\u5df2\u65b0\u589e\u79d1\u76ee');
+}
+
+function delSubject(name) {
+  if (!confirm(`\u78ba\u5b9a\u522a\u9664\u79d1\u76ee\u300c${name}\u300d\uff1f\uff08\u8a72\u79d1\u76ee\u7684\u6210\u7e3e\u8cc7\u6599\u4e0d\u6703\u522a\u9664\uff09`)) return;
+  _settings.subjects = _settings.subjects.filter(s => s !== name);
+  sched(); scheduleSync(); renderSubjList(); renderSubjSelect(); toast('\u5df2\u522a\u9664');
+}
+
+// ══ CSV 匯出 ══
+function exportCSV() {
+  const subjs = _settings.subjects || DEFAULT_SUBJECTS;
+  const allSubjs = subjs.filter(s => (_scores[s] || []).length > 0);
+  const allE = allSubjs.flatMap(s => (_scores[s] || []).map(e => ({ subj: s, e })));
+  const hdr = ['\u5ea7\u865f', '\u59d3\u540d', ...allE.map(({ e }) => e.label), '\u6210\u7e3e\u9ede', '\u5151\u63db\u9ede', '\u5348\u4f11\u629c\u9ede', '\u5269\u9918\u9ede', '\u6301\u6709\u5361'];
+  const rows = _students.map(s => {
+    const idx = _students.findIndex(x => x.no === s.no);
+    const cc = cardCounts(s.no);
+    return [s.no, s.name, ...allE.map(({ e }) => e.scores[idx] !== null && e.scores[idx] !== undefined ? e.scores[idx] : ''), scorePoints(s.no), redeemedPoints(s.no), noonPoints(s.no), remPoints(s.no), cc.total];
+  });
+  const csv = '\uFEFF' + [hdr, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  downloadText(csv, `\u734e\u5361\u7cfb\u7d71_\u6210\u7e3e_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`, 'text/csv;charset=utf-8');
+}
+
+function exportLogCSV() {
+  const hdr = ['\u6642\u9593', '\u4e8b\u7531', '\u5b78\u751f', '\u985e\u578b', '\u8aac\u660e', '\u9ede\u6578', '\u5f35\u6578'];
+  const rows = [..._logs].reverse().map(l => [l.t, l.w || '', l.name, l.k, l.note || '', l.v || 0, l.c || 0]);
+  const csv = '\uFEFF' + [hdr, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  downloadText(csv, `\u734e\u5361\u7cfb\u7d71_\u7d00\u9304_${new Date().toLocaleDateString('zh-TW').replace(/\//g, '')}.csv`, 'text/csv;charset=utf-8');
+}
+
+function downloadText(text, filename, type) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══ 主題切換 ══
+function toggleMode() {
+  const b = document.body;
+  if (b.classList.contains('nerv')) {
+    b.classList.remove('nerv'); b.classList.toggle('dark');
+    document.getElementById('mode-btn').textContent = b.classList.contains('dark') ? '\u2600\ufe0f \u6df1\u8272' : '\ud83c\udf1f \u6a21\u5f0f';
+  } else if (b.classList.contains('dark')) {
+    b.classList.remove('dark');
+    document.getElementById('mode-btn').textContent = '\ud83c\udf8c EVA';
+  } else {
+    b.classList.add('nerv');
+    document.getElementById('mode-btn').textContent = '\ud83c\udf1f \u4e00\u822c';
+  }
+  safeSet('vc5:theme', b.className);
+}
+
+// ══ 離線偵測 ══
+function updateOfflineBanner() {
+  const banner = document.getElementById('offline-banner');
+  if (!navigator.onLine) {
+    banner.classList.add('show');
+    setSyncDot('offline');
+  } else {
+    banner.classList.remove('show');
+    if (firebaseUidRef.current) { setSyncDot('ok'); scheduleSync(); }
+  }
+}
+window.addEventListener('online', () => { updateOfflineBanner(); toast('\ud83d\udce1 \u5df2\u6062\u5fa9\u7db2\u8def\uff0c\u6b63\u5728\u540c\u6b65...'); });
+window.addEventListener('offline', updateOfflineBanner);
+
+// ══ 初始化 ══
+function renderAll() {
+  renderOverview();
+  renderSubjSelect();
+}
+
+(async () => {
+  // 恢復主題
+  const savedTheme = safeGet('vc5:theme');
+  if (savedTheme) document.body.className = savedTheme;
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  // 載入資料
+  await loadAll();
+  renderAll();
+
+  // Firebase
+  initFirebase();
+
+  // 離線狀態
+  updateOfflineBanner();
+})();
+</script>
+</body>
+</html>
