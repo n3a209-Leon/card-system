@@ -1073,6 +1073,14 @@ function switchClass(id){
   loadClass(id).then(()=>{
     // 切班後從 Firestore 讀該班分組
     loadGroupsForClass(id);
+    // 強制跳回總覽分頁，確保使用者看到變化
+    goTab('overview');
+    document.getElementById('tbtn-overview').classList.add('active');
+    ['score','redeem','give','more'].forEach(t=>{
+      const b=document.getElementById('tbtn-'+t);
+      if(b)b.classList.remove('active');
+    });
+    toast(`✅ 已切換到「${cls?cls.className||id:id}」`);
   });
 }
 
