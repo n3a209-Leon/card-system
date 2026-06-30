@@ -417,19 +417,18 @@ tr:hover td{background:var(--accent-light)}
   50%{opacity:1}
 }
 .splash-img-wrap{
-  position:relative;z-index:1;
-  width:min(78vw,340px);
-  border-radius:18px;
+  position:absolute;inset:0;z-index:1;
+  border-radius:0;
   overflow:hidden;
-  box-shadow:0 0 60px rgba(140,90,255,.45),0 0 120px rgba(90,60,200,.25);
+  box-shadow:none;
   animation:splash-rise 1.1s cubic-bezier(.16,1,.3,1) both;
 }
 @keyframes splash-rise{
-  from{opacity:0;transform:translateY(28px) scale(.94)}
-  to{opacity:1;transform:translateY(0) scale(1)}
+  from{opacity:0;transform:scale(1.04)}
+  to{opacity:1;transform:scale(1)}
 }
 .splash-img-wrap img{
-  width:100%;display:block;
+  width:100%;height:100%;object-fit:cover;display:block;
   animation:splash-shimmer 3s ease-in-out infinite;
 }
 @keyframes splash-shimmer{
@@ -437,8 +436,8 @@ tr:hover td{background:var(--accent-light)}
   50%{filter:brightness(1.08) saturate(1.15)}
 }
 .splash-title{
-  position:absolute;bottom:14%;left:0;right:0;
-  text-align:center;z-index:2;
+  position:absolute;bottom:18%;left:0;right:0;
+  text-align:center;z-index:3;
   animation:splash-title-in 1.2s ease .4s both;
 }
 @keyframes splash-title-in{
@@ -447,22 +446,23 @@ tr:hover td{background:var(--accent-light)}
 }
 .splash-title h1{
   font-size:22px;font-weight:800;letter-spacing:3px;
-  color:#f0e4ff;
-  text-shadow:0 0 20px rgba(180,130,255,.7),0 2px 8px rgba(0,0,0,.4);
+  color:#fff;
+  text-shadow:0 0 30px rgba(180,130,255,.9),0 2px 12px rgba(0,0,0,.6);
   margin-bottom:4px;
 }
 .splash-title p{
   font-size:11px;letter-spacing:4px;
-  color:rgba(200,170,255,.65);
+  color:rgba(255,240,255,.8);
   font-family:'Share Tech Mono',monospace;
+  text-shadow:0 1px 6px rgba(0,0,0,.5);
 }
 .splash-spinner{
-  position:absolute;bottom:7%;left:0;right:0;
-  display:flex;justify-content:center;gap:6px;z-index:2;
+  position:absolute;bottom:8%;left:0;right:0;
+  display:flex;justify-content:center;gap:6px;z-index:3;
 }
 .splash-spinner span{
   width:6px;height:6px;border-radius:50%;
-  background:#c8a0ff;
+  background:#fff;
   animation:splash-dot 1.2s ease-in-out infinite;
 }
 .splash-spinner span:nth-child(2){animation-delay:.15s}
@@ -500,7 +500,11 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div class="header-right">
       <span class="sync-dot off" id="sync-dot"></span>
-      <button class="theme-btn" id="theme-btn" onclick="cycleTheme()">☀️</button>
+      <select id="theme-select" onchange="applyTheme(this.value)" style="background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);padding:0 8px;border-radius:7px;font-size:12px;height:32px;font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;min-width:72px">
+        <option value="default">☀️ 日間</option>
+        <option value="nerv">🔴 NERV</option>
+        <option value="nebula">🌌 星雲</option>
+      </select>
       <button class="login-btn" id="login-btn" onclick="doLogin()">登入</button>
     </div>
   </header>
@@ -593,7 +597,9 @@ tr:hover td{background:var(--accent-light)}
         <button class="btn-orange btn-block" id="btn-redeem" style="display:none;font-size:14px" onclick="doRedeem()">🎴 全部兌換</button>
       </div>
       <div class="card">
-        <div class="card-title">📋 兌換紀錄</div>
+        <div class="card-title">📋 兌換紀錄
+          <button class="btn-red btn-sm ct-right" onclick="revokeAllRedeem()">↩ 一鍵撤銷全部</button>
+        </div>
         <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>扣點</th><th>獲卡</th><th>操作</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
       </div>
     </div>
@@ -1954,6 +1960,16 @@ function revokeRedeem(logId){
   toast(`✅ 已撤銷 ${log.no}號 的兌換`);
 }
 
+function revokeAllRedeem(){
+  const redeemLogs=_logs.filter(l=>l.k==='兌換');
+  if(!redeemLogs.length){toast('沒有兌換紀錄可撤銷');return;}
+  if(!confirm(`確定撤銷全部 ${redeemLogs.length} 筆兌換紀錄？\n所有學生的點數和持有卡數將恢復。`))return;
+  _logs=_logs.filter(l=>l.k!=='兌換');
+  sched();scheduleSync();
+  renderRedeem();renderOverview();
+  toast(`✅ 已撤銷全部 ${redeemLogs.length} 筆兌換紀錄`);
+}
+
 // ══ 給卡 ══
 function ensureFixed(){
   if(!_fixed.cadre||Array.isArray(_fixed.cadre))_fixed.cadre={};
@@ -2347,7 +2363,8 @@ let _theme=safeGet('vc2:theme')||'default';
 function applyTheme(t){
   _theme=t;
   document.documentElement.setAttribute('data-theme',t==='default'?'':t);
-  document.getElementById('theme-btn').textContent=THEME_LABELS[t];
+  const sel=document.getElementById('theme-select');
+  if(sel)sel.value=t;
   safeSet('vc2:theme',t);
 }
 
