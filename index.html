@@ -590,11 +590,11 @@ tr:hover td{background:var(--accent-light)}
         </div>
         <div id="redeem-area"><div class="empty">載入中...</div></div>
         <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
-        <button class="btn-orange btn-block" id="btn-redeem" style="display:none;font-size:14px" onclick="doRedeem()">🎴 一鍵兌換</button>
+        <button class="btn-orange btn-block" id="btn-redeem" style="display:none;font-size:14px" onclick="doRedeem()">🎴 全部兌換</button>
       </div>
       <div class="card">
         <div class="card-title">📋 兌換紀錄</div>
-        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>扣點</th><th>獲卡</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
+        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>扣點</th><th>獲卡</th><th>操作</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
       </div>
     </div>
 
@@ -1866,6 +1866,7 @@ function renderRedeem(){
     <div style="font-size:11px;color:var(--text4)">${no}號</div>
     <div style="font-size:20px;font-weight:800;color:var(--orange)">${rem}pt</div>
     <div style="font-size:12px;color:var(--green);font-weight:600">可換 ${can} 張</div>
+    <button class="btn-primary btn-xs" style="margin-top:6px;width:100%" onclick="redeemSingle(${no})">只換1張（扣${thr}）</button>
     <textarea id="skip-note-${no}" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:4px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text);resize:none" rows="2" placeholder="不換原因（選填）"></textarea>`;
     grid.appendChild(d);
   });
@@ -1873,6 +1874,17 @@ function renderRedeem(){
   updRedeemSummary(eligible);
   document.getElementById('btn-redeem').style.display='';
   renderRedeemLog();
+}
+
+// 單人只換1張，固定扣 threshold 點數（不論累積多少點都只扣一份）
+function redeemSingle(no){
+  const thr=_settings.threshold||300;
+  const rem=remPoints(no);
+  if(rem<thr){toast(`${no}號 點數不足 ${thr} 點`);return;}
+  if(!confirm(`確定為 ${no}號 兌換 1 張獎卡（扣 ${thr} 點）？`))return;
+  _logs.push({id:genId(),t:nowStr(),no,k:'兌換',v:thr,c:1,note:`單張兌換扣${thr}點`});
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ ${no}號 已兌換 1 張`);
 }
 
 function toggleSkip(no){
@@ -1922,12 +1934,24 @@ function doRedeem(){
 function renderRedeemLog(){
   const logs=[..._logs].filter(l=>l.k==='兌換').reverse();
   document.getElementById('redeem-log').innerHTML=!logs.length?
-    '<tr><td colspan="4" style="color:var(--text4);padding:14px">尚無兌換紀錄</td></tr>':
+    '<tr><td colspan="5" style="color:var(--text4);padding:14px">尚無兌換紀錄</td></tr>':
     logs.map(l=>`<tr>
     <td style="font-size:11px;white-space:nowrap">${l.t}</td>
     <td>${l.no}號</td>
     <td style="color:var(--red)">-${l.v}pt</td>
-    <td style="color:var(--green);font-weight:600">+${l.c}張</td></tr>`).join('');
+    <td style="color:var(--green);font-weight:600">+${l.c}張</td>
+    <td><button class="btn-ghost btn-xs" onclick="revokeRedeem('${l.id}')">↩ 撤銷</button></td></tr>`).join('');
+}
+
+// 撤銷一筆兌換紀錄（刪除該筆 log，點數與卡片自動恢復）
+function revokeRedeem(logId){
+  const log=_logs.find(l=>String(l.id)===String(logId));
+  if(!log){toast('找不到這筆紀錄');return;}
+  if(!confirm(`確定撤銷 ${log.no}號 這筆兌換？\n將恢復 ${log.v}pt，扣回 ${log.c}張`))return;
+  _logs=_logs.filter(l=>String(l.id)!==String(logId));
+  sched();scheduleSync();
+  renderRedeem();renderOverview();
+  toast(`✅ 已撤銷 ${log.no}號 的兌換`);
 }
 
 // ══ 給卡 ══
