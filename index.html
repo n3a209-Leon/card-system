@@ -160,7 +160,7 @@
 [data-theme="nebula"] .stab-row{background:rgba(8,5,24,.5)}
 
 /* ══ BODY ══ */
-html,body{height:100%;overflow:hidden;position:fixed;width:100%;background:var(--bg)}
+html,body{height:100%;overflow:hidden;width:100%;background:var(--bg)}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif;font-size:14px;line-height:1.5}
 .app{display:flex;flex-direction:column;height:100%;height:100dvh;position:relative}
 
@@ -720,12 +720,12 @@ tr:hover td{background:var(--accent-light)}
 // Firebase 設定
 // ══════════════════════════════════════════
 const FB_CONFIG = {
-  apiKey: "AIzaSyCL_LgO6rV-zJVpGUSXiwBm77NgfqnpAis",
-  authDomain: "venus-card-2025.firebaseapp.com",
-  projectId: "venus-card-2025",
-  storageBucket: "venus-card-2025.firebasestorage.app",
-  messagingSenderId: "995092431920",
-  appId: "1:995092431920:web:b61866ac39a73ecea799f5"
+  apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
+  authDomain: "attendance-pwa-9fa73.firebaseapp.com",
+  projectId: "attendance-pwa-9fa73",
+  storageBucket: "attendance-pwa-9fa73.firebasestorage.app",
+  messagingSenderId: "231697999145",
+  appId: "1:231697999145:web:b92cba42082eb9cc574338"
 };
 
 // ══ IDB ══
@@ -1025,13 +1025,21 @@ function toggleClassDD(){
   const dd=document.getElementById('class-dd');
   const chip=document.getElementById('class-chip');
   _ddOpen=!_ddOpen;
-  dd.style.display=_ddOpen?'block':'none';
+  if(_ddOpen){
+    // 移到 body 最外層，避免任何父層 containing block 影響 fixed 定位
+    if(dd.parentElement!==document.body)document.body.appendChild(dd);
+    dd.style.display='block';
+    renderClassDD();
+  }else{
+    dd.style.display='none';
+  }
   chip.classList.toggle('open',_ddOpen);
-  if(_ddOpen)renderClassDD();
 }
 document.addEventListener('click',e=>{
-  if(!document.getElementById('class-switcher').contains(e.target)){
-    document.getElementById('class-dd').style.display='none';
+  const dd=document.getElementById('class-dd');
+  const switcher=document.getElementById('class-switcher');
+  if(!switcher.contains(e.target)&&!dd.contains(e.target)){
+    dd.style.display='none';
     document.getElementById('class-chip').classList.remove('open');
     _ddOpen=false;
   }
