@@ -411,6 +411,13 @@ tr:hover td{background:var(--accent-light)}
     <!-- 成績 -->
     <div class="panel" id="tab-score">
       <div class="card">
+        <div class="card-title">🔗 Google Sheets 同步
+          <button class="btn-ghost btn-sm ct-right" onclick="showAddSheetModal()">＋ 新增連結</button>
+        </div>
+        <div class="tip">直接連到你平常編輯的 Google Sheets，免下載免上傳，一鍵讀取最新「獎卡兌換」分頁資料。</div>
+        <div id="gs-list"><div class="empty">尚未新增任何 Google Sheets 連結</div></div>
+      </div>
+      <div class="card">
         <div class="card-title">✏️ 快速貼上成績</div>
         <div class="tip">從 Excel 複製一整欄分數（不含座號），依目前班級座號順序由小到大對應，缺席留空行。</div>
         <div class="form-row">
@@ -722,7 +729,25 @@ tr:hover td{background:var(--accent-light)}
 
 </div><!-- /app -->
 
-
+<!-- MODAL: 新增 Google Sheets 連結 -->
+<div class="modal-bg" id="add-sheet-modal">
+  <div class="modal">
+    <h3>新增 Google Sheets 連結</h3>
+    <div class="tip">前往 Google Sheets → 右上角「共用」→ 設成「知道連結的人均可查看」→ 複製連結貼到下方。</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>名稱（自己取，方便辨識）</label>
+      <input type="text" id="new-sheet-name" placeholder="例：114下成績與獎卡兌換">
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Google Sheets 連結</label>
+      <input type="text" id="new-sheet-url" placeholder="貼上分享連結網址">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="closeModal('add-sheet-modal')">取消</button>
+      <button class="btn-primary" onclick="addSheetLink()">新增</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL: student detail / chart -->
 <div class="modal-bg" id="chart-modal">
@@ -1162,7 +1187,7 @@ function goTab(id,btn){
   document.getElementById('scroll-area').scrollTop=0;
   const fn={
     overview:renderOverview,
-    score:()=>renderScoreLog(),
+    score:()=>{renderScoreLog();renderGsList();},
     redeem:renderRedeem,
     give:()=>{renderNoPicker();fillNoSelect('give-no');renderGiveDetail();},
     noon:()=>{fillNoSelect('noon-no');renderNoonList();updateNoonLabel();},
@@ -1222,6 +1247,156 @@ function renderOverview(){
 // ══ Excel 匯入 ══
 let _xlsxSheets={};  // {sheetName: [{座號,科目,次數,分數}]}
 let _xlsxSelSheets=[];
+
+// ── Google Sheets 同步（跟著班級走）──
+function extractSheetId(url){
+  // 支援多種網址格式，抓出 /d/{ID}/ 中間那段
+  const m=url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  return m?m[1]:null;
+}
+
+function showAddSheetModal(){
+  document.getElementById('new-sheet-name').value='';
+  document.getElementById('new-sheet-url').value='';
+  document.getElementById('add-sheet-modal').classList.add('show');
+}
+
+function addSheetLink(){
+  const name=document.getElementById('new-sheet-name').value.trim();
+  const url=document.getElementById('new-sheet-url').value.trim();
+  if(!name){toast('請輸入名稱');return;}
+  if(!url){toast('請貼上連結');return;}
+  const sheetId=extractSheetId(url);
+  if(!sheetId){toast('無法解析連結，請確認是 Google Sheets 分享網址');return;}
+  if(!_settings.gsheets)_settings.gsheets=[];
+  _settings.gsheets.push({id:genId(),name,sheetId,addedAt:nowStr()});
+  sched();scheduleSync();
+  closeModal('add-sheet-modal');
+  renderGsList();
+  toast(`✅ 已新增「${name}」`);
+}
+
+function delSheetLink(id){
+  if(!confirm('確定刪除這個連結？'))return;
+  _settings.gsheets=(_settings.gsheets||[]).filter(g=>g.id!==id);
+  sched();scheduleSync();
+  renderGsList();
+  toast('已刪除');
+}
+
+function renderGsList(){
+  const area=document.getElementById('gs-list');
+  const list=_settings.gsheets||[];
+  if(!list.length){
+    area.innerHTML='<div class="empty">尚未新增任何 Google Sheets 連結</div>';
+    return;
+  }
+  area.innerHTML=list.map(g=>`
+    <div class="stu-list-item" style="align-items:center">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📊 ${g.name}</div>
+        <div style="font-size:11px;color:var(--text4)" id="gs-status-${g.id}">尚未同步過</div>
+      </div>
+      <button class="btn-primary btn-sm" onclick="syncFromGSheet('${g.id}')">🔄 同步</button>
+      <button class="btn-red btn-xs" onclick="delSheetLink('${g.id}')">刪</button>
+    </div>`).join('');
+}
+
+async function syncFromGSheet(linkId){
+  const link=(_settings.gsheets||[]).find(g=>g.id===linkId);
+  if(!link){toast('找不到這個連結');return;}
+  if(!_nos.length){toast('請先設定座號（設定→座號管理）');return;}
+  const statusEl=document.getElementById('gs-status-'+linkId);
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--gold)">同步中...</span>';
+  try{
+    // Google Sheets 公開 CSV 匯出端點，直接抓「獎卡兌換」分頁
+    const csvUrl=`https://docs.google.com/spreadsheets/d/${link.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('獎卡兌換')}`;
+    const res=await fetch(csvUrl);
+    if(!res.ok)throw new Error('無法讀取，請確認 Sheets 是否設成「知道連結的人可檢視」');
+    const csvText=await res.text();
+    if(csvText.includes('<HTML>')||csvText.includes('<!DOCTYPE')){
+      throw new Error('找不到「獎卡兌換」分頁，或權限未開放');
+    }
+    const rows=parseCSV(csvText);
+    if(rows.length<3)throw new Error('資料不足');
+    parseSheetRowsAndImport(rows,link.name);
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--green)">✅ ${nowStr()} 已同步</span>`;
+  }catch(e){
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
+    toast('同步失敗：'+e.message);
+  }
+}
+
+// 簡易 CSV parser（處理引號跳脫）
+function parseCSV(text){
+  const rows=[];
+  let row=[],cur='',inQuote=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i],next=text[i+1];
+    if(inQuote){
+      if(c==='"'&&next==='"'){cur+='"';i++;}
+      else if(c==='"'){inQuote=false;}
+      else cur+=c;
+    }else{
+      if(c==='"')inQuote=true;
+      else if(c===','){row.push(cur);cur='';}
+      else if(c==='\n'||c==='\r'){
+        if(c==='\r'&&next==='\n')i++;
+        row.push(cur);cur='';rows.push(row);row=[];
+      }else cur+=c;
+    }
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+
+function parseSheetRowsAndImport(rows,sourceName){
+  // 跟 parseAndImport 同樣的解析規則：Row0科目、Row1次數標籤、Row2起資料，遇「總分」停止
+  const subjRow=rows[0]||[];
+  const labelRow=rows[1]||[];
+  const dataRows=rows.slice(2);
+  const colMap={};
+  let curSubj='';
+  for(let c=2;c<Math.max(subjRow.length,labelRow.length);c++){
+    const s=subjRow[c];
+    if(s&&String(s).trim()){
+      const sStr=String(s).trim();
+      if(sStr==='總分')break;
+      curSubj=sStr;
+    }
+    const l=labelRow[c];
+    if(!l||!curSubj)continue;
+    const lbl=String(l).trim();
+    if(!lbl||lbl==='null')continue;
+    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`};
+  }
+  let imported=0;
+  const newScores={};
+  dataRows.forEach(row=>{
+    if(!row||!row.length)return;
+    const noRaw=row[0];
+    if(noRaw===undefined||noRaw==='')return;
+    const no=parseInt(noRaw);
+    if(isNaN(no)||!_nos.includes(no))return;
+    Object.entries(colMap).forEach(([c,{subj,label}])=>{
+      const v=row[parseInt(c)];
+      if(v===undefined||v==='')return;
+      const num=parseFloat(v);
+      if(isNaN(num))return;
+      if(!newScores[subj])newScores[subj]=[];
+      let entry=newScores[subj].find(e=>e.label===label);
+      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[subj].push(entry);}
+      entry.nos[no]=num;
+      imported++;
+    });
+  });
+  _scores=newScores;
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+  const subjCount=Object.keys(newScores).length;
+  const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
+  toast(`✅ 從「${sourceName}」同步完成：${subjCount}科、${examCount}次考試、${imported}筆分數`);
+}
 
 // ── 快速貼上成績（依目前班級座號順序動態對應）──
 let _pasteData=null;  // 暫存解析後待儲存的資料
@@ -1947,6 +2122,7 @@ window.addEventListener('offline',updOffline);
 function renderAll(){
   renderOverview();
   renderScoreLog();
+  renderGsList();
 }
 
 // ══ 初始化 ══
