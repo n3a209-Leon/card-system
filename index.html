@@ -411,8 +411,38 @@ tr:hover td{background:var(--accent-light)}
     <!-- 成績 -->
     <div class="panel" id="tab-score">
       <div class="card">
-        <div class="card-title">📤 上傳 Excel 成績檔</div>
-        <div class="tip">上傳成績 Excel（.xlsx）→ App 自動讀取「<b>獎卡兌換</b>」工作表 → 全部覆蓋更新。每次更新 Excel 後重新上傳即可。</div>
+        <div class="card-title">✏️ 快速貼上成績</div>
+        <div class="tip">從 Excel 複製一整欄分數（不含座號），依目前班級座號順序由小到大對應，缺席留空行。</div>
+        <div class="form-row">
+          <div class="fg" style="max-width:140px">
+            <label>科目</label>
+            <select id="ps-subj">
+              <option value="國習">國習</option>
+              <option value="聽寫">聽寫</option>
+              <option value="考卷">考卷</option>
+              <option value="生測">生測</option>
+              <option value="作文">作文</option>
+              <option value="數習">數習</option>
+              <option value="數綜">數綜</option>
+              <option value="數考">數考</option>
+              <option value="段考">段考</option>
+            </select>
+          </div>
+          <div class="fg" style="max-width:160px">
+            <label>考試名稱</label>
+            <input type="text" id="ps-label" placeholder="例：CH7、6/12聽寫">
+          </div>
+        </div>
+        <div class="score-input-area">
+          <textarea class="paste-ta" id="ps-paste" placeholder="在此貼上分數（每行一個，依座號順序）" oninput="previewPaste()"></textarea>
+        </div>
+        <div id="ps-status" style="font-size:12px;margin-top:8px;min-height:18px"></div>
+        <div id="ps-preview" style="margin-top:8px"></div>
+        <button class="btn-green btn-block" id="ps-submit" style="margin-top:10px;display:none" onclick="submitPaste()">✅ 確認儲存</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📤 整批匯入 Excel（進階）</div>
+        <div class="tip">適合學期初批次匯入。上傳成績 Excel（.xlsx）→ App 自動讀取「<b>獎卡兌換</b>」工作表 → 全部覆蓋更新。</div>
         <label class="upload-area" id="upload-area">
           <div class="upload-icon">📊</div>
           <div style="font-weight:700;font-size:14px">點此選取 Excel 檔案</div>
@@ -421,6 +451,7 @@ tr:hover td{background:var(--accent-light)}
         </label>
         <div id="xlsx-preview" style="margin-top:12px"></div>
       </div>
+
       <div class="card">
         <div class="card-title">📚 已匯入考試
           <button class="btn-ghost btn-sm ct-right" onclick="if(confirm('確定清除全部成績？'))clearScores()">清除全部</button>
@@ -910,6 +941,14 @@ async function loadFromFirestore(){
       document.getElementById('chip-text').textContent=firstCls.className||firstCls.id;
       await loadClass(firstCls.id);
       await loadGroupsForClass(firstCls.id);
+      if(!_nos.length){
+        toast(`⚠ 「${firstCls.className||firstCls.id}」尚未設定座號，請先設定`);
+        setTimeout(()=>{
+          goTab('more');
+          setTimeout(()=>goMore('settings'),50);
+          setTimeout(()=>switchStab('nos'),100);
+        },800);
+      }
     }
     if(parsed.groups&&Array.isArray(parsed.groups)){
       _groups=parsed.groups;
@@ -1073,14 +1112,22 @@ function switchClass(id){
   loadClass(id).then(()=>{
     // 切班後從 Firestore 讀該班分組
     loadGroupsForClass(id);
-    // 強制跳回總覽分頁，確保使用者看到變化
-    goTab('overview');
-    document.getElementById('tbtn-overview').classList.add('active');
-    ['score','redeem','give','more'].forEach(t=>{
-      const b=document.getElementById('tbtn-'+t);
-      if(b)b.classList.remove('active');
-    });
-    toast(`✅ 已切換到「${cls?cls.className||id:id}」`);
+    if(!_nos.length){
+      // 這個班還沒設定座號 → 強制導向座號管理，不能略過
+      toast(`⚠ 「${cls?cls.className||id:id}」尚未設定座號，請先設定`);
+      goTab('more');
+      setTimeout(()=>goMore('settings'),50);
+      setTimeout(()=>switchStab('nos'),100);
+    }else{
+      // 已有座號 → 正常跳回總覽
+      goTab('overview');
+      document.getElementById('tbtn-overview').classList.add('active');
+      ['score','redeem','give','more'].forEach(t=>{
+        const b=document.getElementById('tbtn-'+t);
+        if(b)b.classList.remove('active');
+      });
+      toast(`✅ 已切換到「${cls?cls.className||id:id}」`);
+    }
   });
 }
 
@@ -1175,6 +1222,96 @@ function renderOverview(){
 // ══ Excel 匯入 ══
 let _xlsxSheets={};  // {sheetName: [{座號,科目,次數,分數}]}
 let _xlsxSelSheets=[];
+
+// ── 快速貼上成績（依目前班級座號順序動態對應）──
+let _pasteData=null;  // 暫存解析後待儲存的資料
+
+function previewPaste(){
+  const raw=document.getElementById('ps-paste').value;
+  const statusEl=document.getElementById('ps-status');
+  const previewEl=document.getElementById('ps-preview');
+  const submitBtn=document.getElementById('ps-submit');
+
+  if(!raw.trim()){
+    statusEl.textContent='';previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;return;
+  }
+  if(!_nos.length){
+    statusEl.innerHTML='<span style="color:var(--red)">⚠ 請先在「設定→座號管理」設定本班座號</span>';
+    previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;return;
+  }
+
+  // 切行，去除最前最後的空行，但保留中間空行（代表缺席）
+  const rows=raw.split(/\r?\n/);
+  let s=0,e=rows.length-1;
+  while(s<=e&&rows[s].trim()==='')s++;
+  while(e>=s&&rows[e].trim()==='')e--;
+  const trimmed=s<=e?rows.slice(s,e+1):[];
+
+  const needCount=_nos.length;
+  if(trimmed.length!==needCount){
+    statusEl.innerHTML=`<span style="color:var(--red)">⚠ 需要 ${needCount} 行（本班 ${needCount} 人），目前貼了 ${trimmed.length} 行</span>`;
+    previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;
+    return;
+  }
+
+  // 動態依照目前座號順序對應
+  const sortedNos=[..._nos].sort((a,b)=>a-b);
+  const result=sortedNos.map((no,i)=>{
+    const v=trimmed[i].trim();
+    const num=v===''?null:parseFloat(v);
+    return{no,val:(num!==null&&!isNaN(num))?num:null,raw:v};
+  });
+  const filled=result.filter(r=>r.val!==null).length;
+  const absent=needCount-filled;
+
+  statusEl.innerHTML=`<span style="color:var(--green)">✅ 行數正確（${needCount}行）｜${filled} 人有分數${absent>0?`，${absent} 人缺席`:''}</span>`;
+
+  // 預覽表格（顯示全部，缺席標記）
+  previewEl.innerHTML=`<div class="sx" style="max-height:280px;overflow-y:auto"><table>
+    <thead><tr><th>座號</th><th>分數</th></tr></thead>
+    <tbody>${result.map(r=>`<tr>
+      <td>${r.no}號</td>
+      <td style="${r.val===null?'color:var(--text4)':r.val>=90?'color:var(--green);font-weight:700':r.val<60?'color:var(--red)':''}">${r.val!==null?r.val:'（缺席）'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  _pasteData=result;
+  submitBtn.style.display='';
+}
+
+function submitPaste(){
+  if(!_pasteData){toast('請先確認預覽無誤');return;}
+  const subj=document.getElementById('ps-subj').value;
+  const label=document.getElementById('ps-label').value.trim();
+  if(!label){toast('請輸入考試名稱');return;}
+
+  const fullLabel=`${subj}-${label}`;
+  if(!_scores[subj])_scores[subj]=[];
+  const nosMap={};
+  _pasteData.forEach(r=>{if(r.val!==null)nosMap[r.no]=r.val;});
+
+  const existIdx=_scores[subj].findIndex(e=>e.label===fullLabel);
+  const rec={key:fullLabel,label:fullLabel,date:new Date().toLocaleDateString('zh-TW'),nos:nosMap};
+  if(existIdx>=0){
+    if(!confirm(`「${fullLabel}」已存在，確定覆蓋嗎？`))return;
+    _scores[subj][existIdx]=rec;
+  }else{
+    _scores[subj].push(rec);
+  }
+
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+
+  // 清空表單
+  document.getElementById('ps-paste').value='';
+  document.getElementById('ps-label').value='';
+  document.getElementById('ps-status').textContent='';
+  document.getElementById('ps-preview').innerHTML='';
+  document.getElementById('ps-submit').style.display='none';
+  _pasteData=null;
+
+  toast(`✅ 已儲存「${fullLabel}」`);
+}
 
 // ── Excel 匯入（專門讀「獎卡兌換」工作表）──
 // 格式：Row0=科目大類，Row1=次數標籤，Row2起=座號+分數
@@ -1734,10 +1871,22 @@ function toggleNo(no,btn){
 }
 
 function saveNos(){
+  const wasEmpty=!_nos.length;
   _nos=[..._draftNos].sort((a,b)=>a-b);
   sched();scheduleSync();
   toast(`✅ 已儲存 ${_nos.length} 個座號`);
   renderOverview();
+  if(wasEmpty&&_nos.length){
+    // 第一次設定座號完成 → 自動跳回總覽
+    setTimeout(()=>{
+      goTab('overview');
+      document.getElementById('tbtn-overview').classList.add('active');
+      ['score','redeem','give','more'].forEach(t=>{
+        const b=document.getElementById('tbtn-'+t);
+        if(b)b.classList.remove('active');
+      });
+    },600);
+  }
 }
 
 // ══ CSV 匯出 ══
