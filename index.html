@@ -342,6 +342,16 @@ tr:hover td{background:var(--accent-light)}
 .sheet-tag{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s}
 .sheet-tag.sel{background:var(--accent);border-color:var(--accent);color:#fff}
 
+/* ══ COLUMN CONFIRM TABLE ══ */
+#col-confirm-table table{font-size:11px}
+#col-confirm-table th{cursor:pointer;user-select:none;transition:all .15s;padding:6px 4px;min-width:54px}
+#col-confirm-table th.col-excluded{background:var(--bg4);color:var(--text4);opacity:.45;text-decoration:line-through}
+#col-confirm-table th.col-included{background:var(--accent-light);color:var(--accent)}
+#col-confirm-table th .col-subj{display:block;font-weight:700;font-size:10px}
+#col-confirm-table th .col-label{display:block;font-size:10px;font-weight:400;margin-top:1px}
+#col-confirm-table td{padding:4px;font-size:11px}
+#col-confirm-table .col-nocol{background:var(--bg3);color:var(--text4);font-style:italic}
+
 /* ══ MODAL ══ */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
 .modal-bg.show{display:flex}
@@ -850,6 +860,23 @@ tr:hover td{background:var(--accent-light)}
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn-ghost btn-sm" onclick="closeModal('add-sheet-modal')">取消</button>
       <button class="btn-primary" onclick="addSheetLink()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 欄位預覽與確認 -->
+<div class="modal-bg" id="col-confirm-modal">
+  <div class="modal" style="max-width:600px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <h3 style="margin:0">確認要匯入的欄位</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('col-confirm-modal')">✕</button>
+    </div>
+    <div class="tip">以下是實際抓到的欄位內容，點擊欄位可切換「匯入／排除」（例如平均、總分等公式欄請排除）。</div>
+    <div id="col-confirm-info" style="font-size:12px;color:var(--text4);margin-bottom:8px"></div>
+    <div class="sx" style="max-height:50vh;overflow-y:auto" id="col-confirm-table"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-ghost btn-sm" onclick="closeModal('col-confirm-modal')">取消</button>
+      <button class="btn-green" onclick="confirmColImport()">✅ 確認匯入</button>
     </div>
   </div>
 </div>
@@ -1412,7 +1439,7 @@ async function syncFromGSheet(linkId){
   if(!link){toast('找不到這個連結');return;}
   if(!_nos.length){toast('請先設定座號（設定→座號管理）');return;}
   const statusEl=document.getElementById('gs-status-'+linkId);
-  if(statusEl)statusEl.innerHTML='<span style="color:var(--gold)">同步中...</span>';
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--gold)">讀取中...</span>';
   try{
     // Google Sheets 公開 CSV 匯出端點，直接抓「獎卡兌換」分頁
     const csvUrl=`https://docs.google.com/spreadsheets/d/${link.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('獎卡兌換')}`;
@@ -1424,11 +1451,11 @@ async function syncFromGSheet(linkId){
     }
     const rows=parseCSV(csvText);
     if(rows.length<3)throw new Error('資料不足');
-    parseSheetRowsAndImport(rows,link.name);
-    if(statusEl)statusEl.innerHTML=`<span style="color:var(--green)">✅ ${nowStr()} 已同步</span>`;
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--text4)">請於彈出視窗確認欄位</span>';
+    openColConfirm(rows,link.name,linkId);
   }catch(e){
     if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
-    toast('同步失敗：'+e.message);
+    toast('讀取失敗：'+e.message);
   }
 }
 
@@ -1455,34 +1482,91 @@ function parseCSV(text){
   return rows;
 }
 
-function parseSheetRowsAndImport(rows,sourceName){
-  // 跟 parseAndImport 同樣的解析規則：Row0科目、Row1次數標籤、Row2起資料，遇「總分」停止
+// ── 欄位預覽與手動確認（取代自動猜測格式）──
+let _colConfirmState=null;  // {rows, sourceName, linkId, maxCols, excluded:Set}
+
+function openColConfirm(rows,sourceName,linkId){
   const subjRow=rows[0]||[];
   const labelRow=rows[1]||[];
   const dataRows=rows.slice(2);
-  const colMap={};
+  // 欄數用整份資料中最長的一行決定，避免 CSV 尾端空欄被截斷
+  let maxCols=Math.max(subjRow.length,labelRow.length);
+  dataRows.forEach(r=>{if(r&&r.length>maxCols)maxCols=r.length;});
+
+  // 自動帶入「科目名稱」：往前找最近一個非空的 subjRow 值（同 Excel 合併儲存格邏輯）
+  // 但不自動排除任何欄位，全部交給使用者確認
+  const colInfo=[];
   let curSubj='';
-  for(let c=2;c<Math.max(subjRow.length,labelRow.length);c++){
+  for(let c=0;c<maxCols;c++){
     const s=subjRow[c];
-    if(s!==undefined&&s!==null&&String(s).trim()!==''){
-      const sStr=String(s).trim();
-      if(sStr==='總分')break;
-      curSubj=sStr;
-    }
+    if(s!==undefined&&s!==null&&String(s).trim()!=='')curSubj=String(s).trim();
     const l=labelRow[c];
-    if(l===undefined||l===null||String(l).trim()===''||!curSubj)continue;
-    const lbl=String(l).trim();
-    if(lbl==='null')continue;
-    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`};
+    const lbl=(l!==undefined&&l!==null)?String(l).trim():'';
+    colInfo.push({idx:c,subj:c<2?'':curSubj,label:lbl});
   }
 
-  if(Object.keys(colMap).length===0){
-    toast(`⚠️ 找不到任何科目欄位，請確認「獎卡兌換」分頁第1、2列是科目與次數標題`);
+  // 預設排除規則：欄位文字包含「平均」「總分」「總整」的自動打勾排除，其餘預設匯入
+  const excluded=new Set();
+  colInfo.forEach(ci=>{
+    const combo=(ci.subj+ci.label);
+    if(/平均|總分|總整|合計/.test(combo))excluded.add(ci.idx);
+    if(ci.idx<2)excluded.add(ci.idx); // 座號、姓名欄不算分數欄
+  });
+
+  _colConfirmState={rows,sourceName,linkId,maxCols,colInfo,excluded,dataRows};
+  renderColConfirmTable();
+  document.getElementById('col-confirm-modal').classList.add('show');
+}
+
+function renderColConfirmTable(){
+  const st=_colConfirmState;
+  if(!st)return;
+  const{colInfo,excluded,dataRows}=st;
+  const previewRows=dataRows.slice(0,5); // 只預覽前5筆資料列
+
+  document.getElementById('col-confirm-info').textContent=
+    `共偵測到 ${colInfo.length} 欄、${dataRows.length} 筆資料列。點欄位標題切換匯入/排除（灰色＝排除）。`;
+
+  const theadHtml='<table><thead><tr>'+colInfo.map(ci=>{
+    const isExcluded=excluded.has(ci.idx);
+    const isBase=ci.idx<2;
+    return `<th class="${isExcluded?'col-excluded':'col-included'}" ${isBase?'':`onclick="toggleColExclude(${ci.idx})"`} title="${isBase?'座號/姓名欄，固定保留':'點擊切換'}">
+      <span class="col-subj">${ci.subj||(isBase?(ci.idx===0?'座號':'姓名'):'(無科目)')}</span>
+      <span class="col-label">${ci.label||'—'}</span>
+    </th>`;
+  }).join('')+'</tr></thead><tbody>'+
+  previewRows.map(row=>'<tr>'+colInfo.map(ci=>{
+    const v=row[ci.idx];
+    const isExcluded=excluded.has(ci.idx);
+    return `<td class="${isExcluded?'col-nocol':''}">${v!==undefined&&v!==''?v:'—'}</td>`;
+  }).join('')+'</tr>').join('')
+  +'</tbody></table>';
+
+  document.getElementById('col-confirm-table').innerHTML=theadHtml;
+}
+
+function toggleColExclude(idx){
+  const st=_colConfirmState;
+  if(!st)return;
+  if(st.excluded.has(idx))st.excluded.delete(idx);
+  else st.excluded.add(idx);
+  renderColConfirmTable();
+}
+
+function confirmColImport(){
+  const st=_colConfirmState;
+  if(!st)return;
+  const{colInfo,excluded,dataRows,sourceName,linkId}=st;
+
+  // 只用未排除、且有科目名稱的欄位
+  const validCols=colInfo.filter(ci=>!excluded.has(ci.idx)&&ci.idx>=2&&ci.subj);
+  if(!validCols.length){
+    toast('⚠️ 沒有選取任何要匯入的欄位');
     return;
   }
 
   let imported=0;
-  let sheetNos=[];  // Sheet 裡實際出現的座號，用來除錯比對
+  let sheetNos=[];
   const newScores={};
   dataRows.forEach(row=>{
     if(!row||!row.length)return;
@@ -1492,25 +1576,27 @@ function parseSheetRowsAndImport(rows,sourceName){
     if(isNaN(no))return;
     sheetNos.push(no);
     if(!_nos.includes(no))return;
-    Object.entries(colMap).forEach(([c,{subj,label}])=>{
-      const v=row[parseInt(c)];
+    validCols.forEach(ci=>{
+      const v=row[ci.idx];
       if(v===undefined||String(v).trim()==='')return;
       const num=parseFloat(String(v).trim());
       if(isNaN(num))return;
-      if(!newScores[subj])newScores[subj]=[];
-      let entry=newScores[subj].find(e=>e.label===label);
-      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[subj].push(entry);}
+      const label=`${ci.subj}-${ci.label||ci.idx}`;
+      if(!newScores[ci.subj])newScores[ci.subj]=[];
+      let entry=newScores[ci.subj].find(e=>e.label===label);
+      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[ci.subj].push(entry);}
       entry.nos[no]=num;
       imported++;
     });
   });
 
-  if(imported===0&&sheetNos.length>0){
-    // 完全沒對到任何座號，明確告知差異，避免誤以為同步失敗
-    const sheetMin=Math.min(...sheetNos),sheetMax=Math.max(...sheetNos);
+  closeModal('col-confirm-modal');
+  const statusEl=document.getElementById('gs-status-'+linkId);
+
+  if(imported===0){
     const matchedCount=sheetNos.filter(n=>_nos.includes(n)).length;
-    const ourNos=_nos.length?`${Math.min(..._nos)}~${Math.max(..._nos)}（共${_nos.length}位）`:'（尚未設定）';
-    toast(`⚠️ 座號對上 ${matchedCount}/${sheetNos.length} 人，但科目欄位共 ${Object.keys(colMap).length} 欄卻無分數，請檢查 Sheet 內容格式`);
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ 座號對上 ${matchedCount}/${sheetNos.length} 人，但 0 筆分數</span>`;
+    toast(`⚠️ 座號對上 ${matchedCount}/${sheetNos.length} 人，但選取的欄位中沒有任何有效分數`);
     return;
   }
 
@@ -1519,7 +1605,9 @@ function parseSheetRowsAndImport(rows,sourceName){
   renderScoreLog();renderOverview();
   const subjCount=Object.keys(newScores).length;
   const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
-  toast(`✅ 從「${sourceName}」同步完成：${subjCount}科、${examCount}次考試、${imported}筆分數`);
+  if(statusEl)statusEl.innerHTML=`<span style="color:var(--green)">✅ ${nowStr()} 已同步</span>`;
+  toast(`✅ 從「${sourceName}」匯入完成：${subjCount}科、${examCount}次考試、${imported}筆分數`);
+  _colConfirmState=null;
 }
 
 // ── 快速貼上成績（依目前班級座號順序動態對應）──
