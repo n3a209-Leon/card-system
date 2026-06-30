@@ -110,17 +110,17 @@
 [data-theme="nebula"] .app{background:transparent}
 [data-theme="nebula"] .app>*{position:relative;z-index:1}
 [data-theme="nebula"] .scroll-area{background:transparent;position:relative}
-[data-theme="nebula"] .scroll-area::after{
+[data-theme="nebula"] .tab-bar::after{
   content:'VENUS CARD SYSTEM';
-  position:fixed;
-  bottom:90px;left:0;right:0;
+  position:absolute;
+  bottom:2px;left:0;right:0;
   text-align:center;
-  font-size:13px;font-weight:700;letter-spacing:6px;
-  color:rgba(168,128,255,.18);
+  font-size:9px;font-weight:700;letter-spacing:3px;
+  color:rgba(168,128,255,.35);
   pointer-events:none;
-  z-index:0;
   font-family:'Share Tech Mono',monospace;
 }
+[data-theme="nebula"] .tab-bar{position:relative}
 /* Header */
 [data-theme="nebula"] .app-header{
   background:rgba(6,3,20,.88);
@@ -1383,13 +1383,16 @@ function parseSheetRowsAndImport(rows,sourceName){
     colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`};
   }
   let imported=0;
+  let sheetNos=[];  // Sheet 裡實際出現的座號，用來除錯比對
   const newScores={};
   dataRows.forEach(row=>{
     if(!row||!row.length)return;
     const noRaw=row[0];
     if(noRaw===undefined||noRaw==='')return;
     const no=parseInt(noRaw);
-    if(isNaN(no)||!_nos.includes(no))return;
+    if(isNaN(no))return;
+    sheetNos.push(no);
+    if(!_nos.includes(no))return;
     Object.entries(colMap).forEach(([c,{subj,label}])=>{
       const v=row[parseInt(c)];
       if(v===undefined||v==='')return;
@@ -1402,6 +1405,15 @@ function parseSheetRowsAndImport(rows,sourceName){
       imported++;
     });
   });
+
+  if(imported===0&&sheetNos.length>0){
+    // 完全沒對到任何座號，明確告知差異，避免誤以為同步失敗
+    const sheetMin=Math.min(...sheetNos),sheetMax=Math.max(...sheetNos);
+    const ourNos=_nos.length?`${Math.min(..._nos)}~${Math.max(..._nos)}（共${_nos.length}位）`:'（尚未設定）';
+    toast(`⚠️ 0筆對應：Sheet座號為 ${sheetMin}~${sheetMax}，但本班座號是 ${ourNos}，請確認班級是否選對`);
+    return;
+  }
+
   _scores=newScores;
   sched();scheduleSync();
   renderScoreLog();renderOverview();
