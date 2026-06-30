@@ -198,7 +198,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .class-chip{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 10px;height:32px;border-radius:8px;border:1.5px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;line-height:1}
 .class-chip .arrow{font-size:9px;opacity:.7;transition:transform .2s}
 .class-chip.open .arrow{transform:rotate(180deg)}
-.class-dropdown{position:absolute;top:calc(100% + 6px);left:0;min-width:200px;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.15);z-index:9999;overflow:hidden;animation:drop-in .15s ease}
+.class-dropdown{position:fixed;top:calc(var(--header-h) + var(--safe-top) + 6px);left:10px;min-width:220px;max-width:80vw;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.25);z-index:99999;overflow:hidden;animation:drop-in .15s ease}
 @keyframes drop-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .cd-hdr{padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:2px}
 .cd-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
@@ -889,32 +889,39 @@ async function loadFromFirestore(){
     const dataCol=_db.collection('users').doc(uid).collection('data');
     // 讀 Venus OS 的 settings:main（含 classes）
     const settingsDoc=await dataCol.doc('settings:main').get();
-    if(settingsDoc.exists){
-      const raw=settingsDoc.data().value;
-      const parsed=typeof raw==='string'?JSON.parse(raw):raw;
-      if(parsed&&parsed.classes&&Array.isArray(parsed.classes)){
-        _classes=parsed.classes;
-        renderClassDD();
-        // 如果還沒選班級，自動選第一個
-        if(!_curClassId&&_classes.length){
-          const firstCls=_classes[0];
-          document.getElementById('chip-text').textContent=firstCls.className||firstCls.id;
-          await loadClass(firstCls.id);
-          await loadGroupsForClass(firstCls.id);
-        }
-      }
-      if(parsed&&parsed.groups&&Array.isArray(parsed.groups)){
-        _groups=parsed.groups;
-      }
+    if(!settingsDoc.exists){
+      toast('⚠️ 找不到 Venus OS 設定資料，請確認已用同一帳號在 Venus OS 登入過');
+      setSyncDot('ok');
+      return;
+    }
+    const raw=settingsDoc.data().value;
+    const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+    if(!parsed||!parsed.classes||!Array.isArray(parsed.classes)||!parsed.classes.length){
+      toast('⚠️ Venus OS 尚未建立任何班級');
+      setSyncDot('ok');
+      return;
+    }
+    _classes=parsed.classes;
+    renderClassDD();
+    toast(`✅ 讀到 ${_classes.length} 個班級`);
+    // 如果還沒選班級，自動選第一個
+    if(!_curClassId&&_classes.length){
+      const firstCls=_classes[0];
+      document.getElementById('chip-text').textContent=firstCls.className||firstCls.id;
+      await loadClass(firstCls.id);
+      await loadGroupsForClass(firstCls.id);
+    }
+    if(parsed.groups&&Array.isArray(parsed.groups)){
+      _groups=parsed.groups;
     }
     // 讀該班級的分組（Venus OS 用 hw5ren:groups:{classId} 當 key）
     if(_curClassId){
       try{
         const grpDoc=await dataCol.doc('hw5ren:groups:'+_curClassId).get();
         if(grpDoc.exists){
-          const raw=grpDoc.data().value;
-          const parsed=typeof raw==='string'?JSON.parse(raw):raw;
-          if(Array.isArray(parsed))_groups=parsed;
+          const raw2=grpDoc.data().value;
+          const parsed2=typeof raw2==='string'?JSON.parse(raw2):raw2;
+          if(Array.isArray(parsed2))_groups=parsed2;
         }
       }catch{}
     }
@@ -935,7 +942,7 @@ async function loadFromFirestore(){
       }
     }
     setSyncDot('ok');
-  }catch(e){setSyncDot('off');console.warn('Firestore read fail',e);}
+  }catch(e){setSyncDot('off');toast('❌ 讀取失敗：'+e.message);console.warn('Firestore read fail',e);}
 }
 
 async function doSync(){
