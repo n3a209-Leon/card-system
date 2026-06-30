@@ -109,7 +109,18 @@
 }
 [data-theme="nebula"] .app{background:transparent}
 [data-theme="nebula"] .app>*{position:relative;z-index:1}
-[data-theme="nebula"] .scroll-area{background:transparent}
+[data-theme="nebula"] .scroll-area{background:transparent;position:relative}
+[data-theme="nebula"] .scroll-area::after{
+  content:'VENUS CARD SYSTEM';
+  position:fixed;
+  bottom:90px;left:0;right:0;
+  text-align:center;
+  font-size:13px;font-weight:700;letter-spacing:6px;
+  color:rgba(168,128,255,.18);
+  pointer-events:none;
+  z-index:0;
+  font-family:'Share Tech Mono',monospace;
+}
 /* Header */
 [data-theme="nebula"] .app-header{
   background:rgba(6,3,20,.88);
@@ -403,6 +414,7 @@ tr:hover td{background:var(--accent-light)}
       <div class="card">
         <div class="card-title">👥 全班點數
           <span style="font-size:11px;font-weight:400;color:var(--text4)">橘色可換卡</span>
+          <button class="btn-ghost btn-sm ct-right" onclick="goTab('more');setTimeout(()=>goMore('settings'),50);setTimeout(()=>switchStab('nos'),100)">✏️ 修改人數</button>
         </div>
         <div class="stu-grid" id="stu-grid"></div>
       </div>
@@ -2010,39 +2022,50 @@ function switchStab(id){
 
 // ── 座號管理 ──
 let _draftNos=[..._nos];
+let _draftTotal=0;
 
 function renderNosPicker(){
   _draftNos=[..._nos];
   const total=_draftNos.length?Math.max(..._draftNos):0;
   document.getElementById('set-total').value=total||'';
+  _draftTotal=total;
   drawNosPicker();
 }
 
 function genNos(){
   const total=parseInt(document.getElementById('set-total').value)||0;
   if(!total||total<1){toast('請填入有效人數');return;}
-  // 產生 1~total 全部，再把現有不存在的移除
+  if(total>60){toast('人數請勿超過60');return;}
+  // 產生 1~total 全部，全部預設存在（全選）
   _draftNos=Array.from({length:total},(_,i)=>i+1);
+  _draftTotal=total;
   drawNosPicker();
+  toast(`✅ 已產生 1~${total} 號，全部預設存在，請點掉缺號學生`);
 }
 
 function drawNosPicker(){
-  const total=_draftNos.length?Math.max(..._draftNos,_draftNos.length):35;
-  const maxNo=Math.max(total,..._draftNos);
+  // 只顯示 1~_draftTotal 範圍內的格子，不額外多顯示
+  const maxNo=_draftTotal||(_draftNos.length?Math.max(..._draftNos):0);
   const picker=document.getElementById('nos-picker');
+  if(!maxNo){
+    picker.innerHTML='<div class="empty" style="padding:16px">請先在上方填入總人數並產生座號</div>';
+    document.getElementById('nos-count').textContent='';
+    return;
+  }
   picker.innerHTML=Array.from({length:maxNo},(_,i)=>{
     const no=i+1;
     const exists=_draftNos.includes(no);
     return `<button class="no-btn exist${exists?'':' absent'}" onclick="toggleNo(${no},this)">${no}</button>`;
   }).join('');
-  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位（範圍 1~${maxNo}）`;
 }
 
 function toggleNo(no,btn){
   const idx=_draftNos.indexOf(no);
   if(idx>=0){_draftNos.splice(idx,1);btn.className='no-btn exist absent';}
   else{_draftNos.push(no);_draftNos.sort((a,b)=>a-b);btn.className='no-btn exist';}
-  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
+  const maxNo=_draftTotal||(_draftNos.length?Math.max(..._draftNos):0);
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位（範圍 1~${maxNo}）`;
 }
 
 function saveNos(){
