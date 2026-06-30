@@ -289,6 +289,9 @@ button{border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:poin
 .no-btn.absent{background:var(--bg4);border-color:var(--border);color:var(--text4);opacity:.4}
 .no-btn.cadre1{background:var(--green);border-color:var(--green);color:#fff}
 .no-btn.cadre2{background:var(--orange);border-color:var(--orange);color:#fff}
+/* 座號管理專用：預設「存在」要明顯，不存在才灰階 */
+.no-btn.exist{background:var(--accent-light);border-color:var(--accent);color:var(--accent);font-weight:700}
+.no-btn.exist.absent{background:var(--bg3);border-color:var(--border);color:var(--text4);opacity:.4;font-weight:500}
 
 /* ══ TABLE ══ */
 .sx{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius2)}
@@ -882,33 +885,45 @@ async function loadFromFirestore(){
   if(!uid||!_db)return;
   setSyncDot('ing');
   try{
-    const doc=await _db.collection('users').doc(uid).get();
-    if(doc.exists){
-      const d=doc.data();
-      // 讀 Venus OS 的 settings:main
-      const settingsKey='settings:main';
-      const rawSettings=d[settingsKey];
-      if(rawSettings){
-        const parsed=typeof rawSettings==='string'?JSON.parse(rawSettings):rawSettings;
-        if(parsed.classes&&Array.isArray(parsed.classes)){
-          _classes=parsed.classes;
-          renderClassDD();
-        }
-        // 分組資料跟著當前班級
-        if(parsed.groups&&Array.isArray(parsed.groups)){
-          _groups=parsed.groups;
-        }
-      }
-      // 也嘗試讀各班的分組
-      if(_curClassId){
-        const grpRaw=d['groups:'+_curClassId];
-        if(grpRaw){
-          try{_groups=JSON.parse(grpRaw);}catch{}
+    // Venus OS 資料結構：users/{uid}/data/{key} → {value: ..., updatedAt: ...}
+    const dataCol=_db.collection('users').doc(uid).collection('data');
+    // 讀 Venus OS 的 settings:main（含 classes）
+    const settingsDoc=await dataCol.doc('settings:main').get();
+    if(settingsDoc.exists){
+      const raw=settingsDoc.data().value;
+      const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+      if(parsed&&parsed.classes&&Array.isArray(parsed.classes)){
+        _classes=parsed.classes;
+        renderClassDD();
+        // 如果還沒選班級，自動選第一個
+        if(!_curClassId&&_classes.length){
+          const firstCls=_classes[0];
+          document.getElementById('chip-text').textContent=firstCls.className||firstCls.id;
+          await loadClass(firstCls.id);
+          await loadGroupsForClass(firstCls.id);
         }
       }
-      // 讀此 App 自己的資料
-      if(_curClassId){
-        const yr=new Date().getFullYear();
+      if(parsed&&parsed.groups&&Array.isArray(parsed.groups)){
+        _groups=parsed.groups;
+      }
+    }
+    // 讀該班級的分組（Venus OS 用 hw5ren:groups:{classId} 當 key）
+    if(_curClassId){
+      try{
+        const grpDoc=await dataCol.doc('hw5ren:groups:'+_curClassId).get();
+        if(grpDoc.exists){
+          const raw=grpDoc.data().value;
+          const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+          if(Array.isArray(parsed))_groups=parsed;
+        }
+      }catch{}
+    }
+    // 讀此 App 自己的資料（獨立 vc-card collection，不跟 Venus OS 混）
+    if(_curClassId){
+      const yr=new Date().getFullYear();
+      const cardDoc=await _db.collection('vc-card-users').doc(uid).get();
+      if(cardDoc.exists){
+        const d=cardDoc.data();
         const pfx='vc:'+_curClassId+':';
         if(d[pfx+'scores:'+yr])try{_scores=JSON.parse(d[pfx+'scores:'+yr]);}catch{}
         if(d[pfx+'logs:'+yr])try{_logs=JSON.parse(d[pfx+'logs:'+yr]);}catch{}
@@ -938,7 +953,8 @@ async function doSync(){
     payload[pfx+'settings']=JSON.stringify(_settings);
     payload[pfx+'nos']=JSON.stringify(_nos);
     payload.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
-    await _db.collection('users').doc(uid).set(payload,{merge:true});
+    // 寫到獎卡 App 獨立的 collection，不寫入 Venus OS 的 users collection
+    await _db.collection('vc-card-users').doc(uid).set(payload,{merge:true});
     setSyncDot('ok');
     toast('\u2601\ufe0f 已同步到雲端');
   }catch(e){setSyncDot('off');toast('同步失敗：'+e.message);}
@@ -1038,13 +1054,25 @@ function switchClass(id){
   const cls=_classes.find(c=>c.id===id);
   if(cls){
     document.getElementById('chip-text').textContent=(cls.className||id);
-    // 讀該班分組
-    try{
-      const grpRaw=safeGet('hw5ren:groups:'+id);
-      if(grpRaw)_groups=JSON.parse(grpRaw);
-    }catch{}
   }
-  loadClass(id);
+  loadClass(id).then(()=>{
+    // 切班後從 Firestore 讀該班分組
+    loadGroupsForClass(id);
+  });
+}
+
+async function loadGroupsForClass(id){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db)return;
+  try{
+    const dataCol=_db.collection('users').doc(uid).collection('data');
+    const grpDoc=await dataCol.doc('hw5ren:groups:'+id).get();
+    if(grpDoc.exists){
+      const raw=grpDoc.data().value;
+      const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+      if(Array.isArray(parsed)){_groups=parsed;renderNoPicker();}
+    }
+  }catch{}
 }
 
 // ══ Tab 切換 ══
@@ -1670,15 +1698,15 @@ function drawNosPicker(){
   picker.innerHTML=Array.from({length:maxNo},(_,i)=>{
     const no=i+1;
     const exists=_draftNos.includes(no);
-    return `<button class="no-btn${exists?'':' absent'}" onclick="toggleNo(${no},this)">${no}</button>`;
+    return `<button class="no-btn exist${exists?'':' absent'}" onclick="toggleNo(${no},this)">${no}</button>`;
   }).join('');
   document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
 }
 
 function toggleNo(no,btn){
   const idx=_draftNos.indexOf(no);
-  if(idx>=0){_draftNos.splice(idx,1);btn.className='no-btn absent';}
-  else{_draftNos.push(no);_draftNos.sort((a,b)=>a-b);btn.className='no-btn';}
+  if(idx>=0){_draftNos.splice(idx,1);btn.className='no-btn exist absent';}
+  else{_draftNos.push(no);_draftNos.sort((a,b)=>a-b);btn.className='no-btn exist';}
   document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位`;
 }
 
@@ -1769,34 +1797,14 @@ function renderAll(){
       });
     }).catch(()=>{});
   }
-  // 嘗試讀上次班級
+  // 嘗試讀上次使用的班級（本機暫存，僅供離線快速恢復）
   const lastClass=safeGet('vc2:lastClass');
-  // 嘗試從 localStorage 讀 Venus OS 的 classes
-  try{
-    const raw=safeGet('hw5ren:classes');
-    if(raw){
-      _classes=JSON.parse(raw);
-      renderClassDD();
-    }
-  }catch{}
-  // 嘗試讀 Venus OS 當前班級
-  try{
-    const activeId=safeGet('hw5ren:activeClass');
-    if(activeId){
-      const cls=_classes.find(c=>c.id===activeId);
-      if(cls){
-        document.getElementById('chip-text').textContent=cls.className||activeId;
-        const grpRaw=safeGet('hw5ren:groups:'+activeId);
-        if(grpRaw)_groups=JSON.parse(grpRaw);
-      }
-      await loadClass(activeId);
-    }else if(lastClass){
-      await loadClass(lastClass);
-    }else{
-      renderAll();
-    }
-  }catch{renderAll();}
-  // Firebase
+  if(lastClass){
+    await loadClass(lastClass);
+  }else{
+    renderAll();
+  }
+  // Firebase（登入後會自動從 Firestore 讀取 Venus OS 的班級清單與分組）
   initFirebase();
   // 離線
   updOffline();
