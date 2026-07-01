@@ -1327,32 +1327,52 @@ async function loadExemptFromVenusOS(classId){
     const dataCol=_db.collection('users').doc(uid).collection('data');
     const pfx=`${classId}:day:`;
 
-    // 列出所有文件，篩選出屬於這個班級的 day: 文件
-    // 不用猜日期，直接掃描整個 data 子集合
-    const allDocs=await dataCol.listDocuments();
-    const dayDocs=allDocs.filter(ref=>ref.id.startsWith(pfx));
-
-    if(!dayDocs.length){
-      toast(`🔍 找到 0 筆 day: 文件（前綴：${pfx.slice(0,25)}）`,5000);
-      return;
+    // 先測試一筆已知日期，確認 key 格式正確
+    // 讀今年 6 月份（你說有記錄的月份）
+    const testKey=`${pfx}2026-06-17`;
+    const testDoc=await dataCol.doc(testKey).get();
+    if(testDoc.exists){
+      toast(`✅ key 格式正確！找到 2026-06-17 資料`,3000);
+    }else{
+      // 試另一種格式：用 classId 直接取 year 部分
+      const altKey=`2026_五年王班:day:2026-06-17`;
+      const altDoc=await dataCol.doc(altKey).get();
+      if(altDoc.exists){
+        toast(`✅ 使用備用格式找到！`,3000);
+      }else{
+        toast(`⚠ 找不到 key：${testKey.slice(0,30)}`,5000);
+        return;
+      }
     }
 
-    toast(`🔍 找到 ${dayDocs.length} 筆日期資料，讀取中...`,3000);
-
+    // 讀取 2026 年 1~7 月所有日期
     const newExempt={};
-    let exemptDayCount=0;
+    const dates=[];
+    for(let m=1;m<=7;m++){
+      const days=new Date(2026,m,0).getDate();
+      for(let d=1;d<=days;d++){
+        dates.push(`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      }
+    }
+    // 也讀 2025 年 8~12 月
+    for(let m=8;m<=12;m++){
+      const days=new Date(2025,m,0).getDate();
+      for(let d=1;d<=days;d++){
+        dates.push(`2025-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+      }
+    }
 
-    // 分批讀取
+    let hitCount=0,exemptDayCount=0;
     const BATCH=20;
-    for(let i=0;i<dayDocs.length;i+=BATCH){
-      const batch=dayDocs.slice(i,i+BATCH);
-      await Promise.all(batch.map(async ref=>{
+    for(let i=0;i<dates.length;i+=BATCH){
+      await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
         try{
-          const doc=await ref.get();
+          const doc=await dataCol.doc(`${pfx}${ds}`).get();
           if(!doc.exists)return;
+          hitCount++;
           const raw=doc.data().value;
           const parsed=typeof raw==='string'?JSON.parse(raw):raw;
-          if(!parsed||!parsed.exempt||!Object.keys(parsed.exempt).length)return;
+          if(!parsed?.exempt||!Object.keys(parsed.exempt).length)return;
           exemptDayCount++;
           Object.entries(parsed.exempt).forEach(([hw,val])=>{
             const nos=Array.isArray(val)?val:[];
@@ -1367,7 +1387,7 @@ async function loadExemptFromVenusOS(classId){
 
     _exemptMap=newExempt;
     const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
-    toast(`✅ 作業抵免：${dayDocs.length} 天中 ${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,4000);
+    toast(`✅ 抵免讀取完成：${hitCount} 天有記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,5000);
     renderOverview();
   }catch(e){
     toast(`❌ 讀取失敗：${e.message}`,5000);
