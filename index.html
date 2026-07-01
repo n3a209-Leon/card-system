@@ -179,34 +179,28 @@ html,body{height:100%;overflow:hidden;width:100%;background:var(--bg)}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif;font-size:14px;line-height:1.5}
 .app{display:flex;flex-direction:column;height:100%;height:100dvh;position:relative}
 
-/* ══ BOTTOM BAR（雙層）══ */
-.bottom-bar{background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;padding-bottom:var(--safe-bottom);z-index:100}
-.bar-row1{display:flex;align-items:center;padding:4px 6px 2px;gap:2px;border-bottom:1px solid var(--border)}
-.bar-row2{display:flex;align-items:center;padding:3px 10px;gap:8px;height:30px}
-.theme-select-bar{background:transparent;border:none;color:var(--text3);font-size:11px;font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;padding:0;height:24px}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+/* ══ HEADER ══ */
+.app-header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 10px;height:52px;
+  display:flex;align-items:center;gap:6px;
+  position:relative;z-index:100;flex-shrink:0;
+  padding-top:var(--safe-top);overflow:visible;
+}
+.header-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
 .sync-dot.off{background:var(--text4)}
 .sync-dot.ing{background:var(--gold);animation:pulse-nerv 1s infinite}
-.login-btn{background:var(--accent-light);border:1.5px solid var(--border);color:var(--accent);padding:0 8px;border-radius:6px;cursor:pointer;font-size:11px;height:22px;font-family:inherit;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;-webkit-appearance:none;margin-left:auto}
-[data-theme="nebula"] .bottom-bar{background:rgba(4,3,14,.95);backdrop-filter:blur(12px);border-top-color:rgba(100,60,220,.3)}
-[data-theme="nerv"] .bottom-bar{background:#080200;border-top-color:rgba(255,102,0,.3)}
-[data-theme="nebula"] .tab-btn.active{color:#c8a0ff;text-shadow:0 0 8px rgba(192,132,252,.6)}
-[data-theme="nebula"] .tab-btn.active::before{background:rgba(160,100,255,.8)}
-[data-theme="nerv"] .tab-btn.active{color:#FF6600}
-
-/* ══ TAB BUTTONS ══ */
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text4);cursor:pointer;font-family:inherit;padding:4px 2px;transition:color .15s;position:relative;-webkit-appearance:none;min-height:44px}
-.tab-btn .icon{font-size:28px;line-height:1}
-.tab-btn.active{color:var(--accent)}
-.tab-btn.active::before{content:"";position:absolute;top:0;left:15%;right:15%;height:2.5px;background:var(--accent);border-radius:0 0 3px 3px}
+.theme-select-bar{background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);padding:0 8px;border-radius:7px;font-size:12px;height:32px;font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;min-width:72px}
+.login-btn{background:var(--accent-light);border:1.5px solid var(--border);color:var(--accent);padding:0 10px;border-radius:7px;cursor:pointer;font-size:12px;height:32px;font-family:inherit;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;-webkit-appearance:none}
 
 /* ══ CLASS SWITCHER ══ */
 .class-switcher{position:relative;flex-shrink:0}
-.class-chip{display:inline-flex;align-items:center;gap:4px;padding:0 10px;height:36px;border-radius:8px;border:1.5px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1;-webkit-appearance:none}
+.class-chip{display:inline-flex;align-items:center;gap:4px;padding:0 10px;height:32px;border-radius:8px;border:1.5px solid var(--border2);background:var(--accent-light);color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1;-webkit-appearance:none}
 .class-chip .arrow{font-size:9px;opacity:.7;transition:transform .2s}
 .class-chip.open .arrow{transform:rotate(180deg)}
-.class-dropdown{position:fixed;bottom:calc(76px + var(--safe-bottom));left:8px;min-width:220px;max-width:80vw;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.25);z-index:99999;overflow:hidden;animation:drop-up .15s ease}
-@keyframes drop-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.class-dropdown{position:fixed;top:58px;left:10px;min-width:220px;max-width:80vw;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.25);z-index:99999;overflow:hidden;animation:drop-in .15s ease}
+@keyframes drop-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .cd-hdr{padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:2px}
 .cd-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
 .cd-item:last-child{border-bottom:none}
@@ -216,6 +210,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .cd-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-light);color:var(--green)}
 [data-theme="nebula"] .class-chip{background:rgba(100,50,200,.2);border-color:rgba(150,100,255,.45);color:#c8b0ff}
 [data-theme="nebula"] .class-dropdown{background:rgba(6,3,20,.95);border-color:rgba(120,80,255,.35);backdrop-filter:blur(20px)}
+[data-theme="nebula"] .cd-item:hover,[data-theme="nebula"] .cd-item.active{background:rgba(100,60,200,.2)}
 [data-theme="nerv"] .class-chip{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.4);color:#FF6600}
 
 /* ══ SCROLL AREA ══ */
@@ -224,6 +219,20 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .scroll-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .panel{display:none;padding:12px 10px;max-width:900px;margin:0 auto}
 .panel.active{display:block}
+
+/* ══ TAB BAR ══ */
+.tab-bar{background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:stretch;height:calc(56px + var(--safe-bottom));padding-bottom:var(--safe-bottom);flex-shrink:0}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:none;background:transparent;color:var(--text4);cursor:pointer;font-family:inherit;font-size:10px;font-weight:600;padding:6px 2px 4px;transition:color .15s;position:relative;-webkit-appearance:none}
+.tab-btn .icon{font-size:24px;line-height:1}
+.tab-btn.active{color:var(--accent)}
+.tab-btn.active::before{content:"";position:absolute;top:0;left:15%;right:15%;height:2.5px;background:var(--accent);border-radius:0 0 3px 3px}
+[data-theme="nebula"] .tab-btn.active{color:#c8a0ff;text-shadow:0 0 8px rgba(192,132,252,.6)}
+[data-theme="nebula"] .tab-btn.active::before{background:rgba(160,100,255,.8)}
+[data-theme="nerv"] .tab-btn.active{color:#FF6600}
+[data-theme="nebula"] .tab-bar{background:rgba(4,3,14,.95);border-top-color:rgba(100,60,220,.3)}
+[data-theme="nebula"] .tab-bar::after{content:'VENUS CARD SYSTEM';position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(168,128,255,.35);pointer-events:none;font-family:'Share Tech Mono',monospace}
+[data-theme="nebula"] .tab-bar{position:relative}
+[data-theme="nerv"] .tab-bar{background:#080200;border-top-color:rgba(255,102,0,.3)}
 
 /* ══ CARDS ══ */
 .card{background:var(--bg2);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid var(--border)}
@@ -241,29 +250,31 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .stat.red .sn{color:var(--red)}
 .stat.gld .sn{color:var(--gold)}
 
-/* ══ STUDENT GRID（新格子：左emoji+說明，右大數字）══ */
-.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+/* ══ STUDENT GRID（2×2格子，顏色分辨）══ */
+.stu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .stu-cell{background:var(--bg3);border-radius:12px;padding:10px 12px;border:2px solid transparent;cursor:pointer;transition:all .15s}
 .stu-cell:active{transform:scale(.97)}
 .stu-cell.ready{border-color:var(--orange);background:var(--orange-light)}
-.stu-no-badge{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-bottom:5px}
-.stu-cell.ready .stu-no-badge{background:var(--orange)}
-.stu-can{font-size:10px;font-weight:700;color:var(--orange);text-align:right;min-height:13px;margin-bottom:4px}
-.stu-metric{display:flex;align-items:center;justify-content:space-between;padding:2px 0}
-.stu-metric-left{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2;min-width:44px}
-.stu-emoji{font-size:15px;line-height:1}
-.stu-label{font-size:9px;color:var(--text4);font-weight:600;margin-top:1px}
-.stu-val{font-size:22px;font-weight:800;color:var(--accent);line-height:1}
-.stu-val.green{color:var(--green)}
-.stu-val.red{color:var(--red)}
-.stu-val.pts{font-size:16px}
-.stu-divider{border:none;border-top:1px solid var(--border);margin:4px 0}
+/* 座號圓圈 */
+.stu-no-circle{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.stu-cell.ready .stu-no-circle{background:var(--orange)}
+.stu-can{font-size:10px;font-weight:700;color:var(--orange)}
+/* 指標列 */
+.stu-metric{display:flex;align-items:center;justify-content:space-between;padding:3px 0}
+.stu-ml{display:flex;flex-direction:column;line-height:1.2}
+.stu-emoji{font-size:16px}
+.stu-lbl{font-size:9px;color:var(--text4);font-weight:600;margin-top:1px}
+/* 各指標顏色 */
+.stu-v-gold{font-size:22px;font-weight:800;color:var(--gold);line-height:1}
+.stu-v-blue{font-size:22px;font-weight:800;color:var(--accent);line-height:1}
+.stu-v-red{font-size:22px;font-weight:800;color:var(--red);line-height:1}
+.stu-v-green{font-size:20px;font-weight:800;color:var(--green);line-height:1}
+.stu-div{border:none;border-top:1px solid var(--border);margin:4px 0}
 [data-theme="nebula"] .stu-cell{background:rgba(12,8,32,.6);border-color:rgba(100,60,200,.2)}
 [data-theme="nebula"] .stu-cell.ready{border-color:#FCD34D;background:rgba(252,211,77,.06)}
-[data-theme="nebula"] .stu-val{color:#a070ff}
+[data-theme="nebula"] .stu-v-blue{color:#a070ff}
 [data-theme="nerv"] .stu-cell{border-color:rgba(255,102,0,.2)}
 [data-theme="nerv"] .stu-cell.ready{border-color:#FFCC00;background:rgba(255,204,0,.08)}
-[data-theme="nerv"] .stu-val{color:#FF6600}
 
 /* ══ FORMS ══ */
 .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
@@ -479,6 +490,26 @@ tr:hover td{background:var(--accent-light)}
 </div>
 
 <div class="app" id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="class-switcher" id="class-switcher">
+      <button class="class-chip" id="class-chip" onclick="toggleClassDD()">
+        <span id="chip-text">選擇班級</span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="class-dropdown" id="class-dd" style="display:none"></div>
+    </div>
+    <div class="header-right">
+      <span class="sync-dot off" id="sync-dot"></span>
+      <select id="theme-select" onchange="applyTheme(this.value)" class="theme-select-bar">
+        <option value="default">☀️ 日間</option>
+        <option value="nerv">🔴 NERV</option>
+        <option value="nebula">🌌 星雲</option>
+      </select>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">登入</button>
+    </div>
+  </header>
 
   <!-- OFFLINE BANNER -->
   <div id="offline-banner">✈️ 離線模式 — 恢復網路後自動同步</div>
@@ -804,44 +835,23 @@ tr:hover td{background:var(--accent-light)}
 
   </div><!-- /scroll-area -->
 
-  <!-- BOTTOM BAR（雙層）-->
-  <nav class="bottom-bar">
-    <!-- 第一行：班級切換 + 5個主要 Tab -->
-    <div class="bar-row1">
-      <div class="class-switcher" id="class-switcher">
-        <button class="class-chip" id="class-chip" onclick="toggleClassDD()">
-          <span id="chip-text">選擇班級</span>
-          <span class="arrow">▾</span>
-        </button>
-        <div class="class-dropdown" id="class-dd" style="display:none"></div>
-      </div>
-      <button class="tab-btn active" id="tbtn-overview" onclick="goTab('overview',this)">
-        <span class="icon">🏠</span>
-      </button>
-      <button class="tab-btn" id="tbtn-score" onclick="goTab('score',this)">
-        <span class="icon">📊</span>
-      </button>
-      <button class="tab-btn" id="tbtn-redeem" onclick="goTab('redeem',this)">
-        <span class="icon">🎴</span>
-      </button>
-      <button class="tab-btn" id="tbtn-give" onclick="goTab('give',this)">
-        <span class="icon">⚡</span>
-      </button>
-      <button class="tab-btn" id="tbtn-more" onclick="goTab('more',this)">
-        <span class="icon">☰</span>
-      </button>
-    </div>
-    <!-- 第二行：主題切換 + 同步點 + 登入 -->
-    <div class="bar-row2">
-      <select id="theme-select" onchange="applyTheme(this.value)" class="theme-select-bar">
-        <option value="default">☀️ 日間</option>
-        <option value="nerv">🔴 NERV</option>
-        <option value="nebula">🌌 星雲</option>
-      </select>
-      <span class="sync-dot off" id="sync-dot"></span>
-      <span style="font-size:11px;color:var(--text4)" id="bar-class-label">VENUS CARD SYSTEM</span>
-      <button class="login-btn" id="login-btn" onclick="doLogin()">登入</button>
-    </div>
+  <!-- TAB BAR -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" id="tbtn-overview" onclick="goTab('overview',this)">
+      <span class="icon">🏠</span><span>總覽</span>
+    </button>
+    <button class="tab-btn" id="tbtn-score" onclick="goTab('score',this)">
+      <span class="icon">📊</span><span>成績</span>
+    </button>
+    <button class="tab-btn" id="tbtn-redeem" onclick="goTab('redeem',this)">
+      <span class="icon">🎴</span><span>兌換</span>
+    </button>
+    <button class="tab-btn" id="tbtn-give" onclick="goTab('give',this)">
+      <span class="icon">⚡</span><span>給卡</span>
+    </button>
+    <button class="tab-btn" id="tbtn-more" onclick="goTab('more',this)">
+      <span class="icon">☰</span><span>更多</span>
+    </button>
   </nav>
 
 </div><!-- /app -->
@@ -1471,25 +1481,25 @@ function renderOverview(){
     cell.className='stu-cell'+(can>0?' ready':'');
     cell.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-        <div class="stu-no-badge">${no}</div>
-        <div class="stu-can">${can>0?`▶ 可換 ${can} 張`:''}</div>
+        <div class="stu-no-circle">${no}</div>
+        ${can>0?`<div class="stu-can">▶ 可換 ${can} 張</div>`:''}
       </div>
-      <hr class="stu-divider">
+      <hr class="stu-div">
       <div class="stu-metric">
-        <div class="stu-metric-left"><span class="stu-emoji">🏆</span><span class="stu-label">總獎卡</span></div>
-        <div class="stu-val green">${cc.total}</div>
-      </div>
-      <div class="stu-metric">
-        <div class="stu-metric-left"><span class="stu-emoji">✅</span><span class="stu-label">淨持有</span></div>
-        <div class="stu-val${cc.netHold===0?' red':''}">${cc.netHold}</div>
+        <div class="stu-ml"><span class="stu-emoji">🏆</span><span class="stu-lbl">總獎卡</span></div>
+        <div class="stu-v-gold">${cc.total}</div>
       </div>
       <div class="stu-metric">
-        <div class="stu-metric-left"><span class="stu-emoji">📋</span><span class="stu-label">已折抵</span></div>
-        <div class="stu-val${cc.exemptUsed>0?' red':''}">${cc.exemptUsed}</div>
+        <div class="stu-ml"><span class="stu-emoji">✅</span><span class="stu-lbl">淨持有</span></div>
+        <div class="stu-v-blue">${cc.netHold}</div>
       </div>
       <div class="stu-metric">
-        <div class="stu-metric-left"><span class="stu-emoji">⚡</span><span class="stu-label">剩餘點</span></div>
-        <div class="stu-val pts">${rem}</div>
+        <div class="stu-ml"><span class="stu-emoji">📋</span><span class="stu-lbl">已折抵</span></div>
+        <div class="stu-v-red">${cc.exemptUsed}</div>
+      </div>
+      <div class="stu-metric">
+        <div class="stu-ml"><span class="stu-emoji">⚡</span><span class="stu-lbl">剩餘點</span></div>
+        <div class="stu-v-green">${rem}</div>
       </div>`;
     cell.onclick=()=>showChart(no);
     grid.appendChild(cell);
