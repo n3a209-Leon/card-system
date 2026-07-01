@@ -525,6 +525,7 @@ tr:hover td{background:var(--accent-light)}
         </div>
         <div class="stu-grid" id="stu-grid"></div>
       </div>
+      <div class="card" id="exempt-summary-card" style="display:none"></div>
     </div>
 
     <!-- 成績 -->
@@ -1325,41 +1326,49 @@ async function loadExemptFromVenusOS(classId){
   if(!uid||!_db||!classId)return;
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
-    const pfx=`${classId}:day:`;
 
-    // 先測試一筆已知日期，確認 key 格式正確
-    // 讀今年 6 月份（你說有記錄的月份）
-    const testKey=`${pfx}2026-06-17`;
-    const testDoc=await dataCol.doc(testKey).get();
-    if(testDoc.exists){
-      toast(`✅ key 格式正確！找到 2026-06-17 資料`,3000);
-    }else{
-      // 試另一種格式：用 classId 直接取 year 部分
-      const altKey=`2026_五年王班:day:2026-06-17`;
-      const altDoc=await dataCol.doc(altKey).get();
-      if(altDoc.exists){
-        toast(`✅ 使用備用格式找到！`,3000);
-      }else{
-        toast(`⚠ 找不到 key：${testKey.slice(0,30)}`,5000);
-        return;
-      }
+    // classId 格式可能是 "2025_五年王班" 或 "2026_五年王班"
+    // 先試 classId 本身，再試把年份換掉
+    const testDate='2026-06-17';
+    let workingPfx=null;
+
+    // 嘗試多種前綴格式
+    const candidatePfxs=[
+      `${classId}:day:`,           // 用 Firestore 讀到的 classId
+    ];
+    // 也試把年份換成另一年
+    const yearMatch=classId.match(/^(\d{4})_(.+)$/);
+    if(yearMatch){
+      const yr=parseInt(yearMatch[1]);
+      const name=yearMatch[2];
+      candidatePfxs.push(`${yr-1}_${name}:day:`);
+      candidatePfxs.push(`${yr+1}_${name}:day:`);
     }
 
-    // 讀取 2026 年 1~7 月所有日期
+    for(const pfx of candidatePfxs){
+      const testDoc=await dataCol.doc(`${pfx}${testDate}`).get();
+      if(testDoc.exists){workingPfx=pfx;break;}
+    }
+
+    if(!workingPfx){
+      toast(`⚠ 找不到符合的 key 格式，試過：${candidatePfxs.map(p=>p.slice(0,18)).join(' / ')}`,6000);
+      return;
+    }
+
+    toast(`✅ 找到格式：${workingPfx.slice(0,25)}，讀取中...`,3000);
+
+    // 讀取 2025/8 ~ 2026/7 整學年
     const newExempt={};
     const dates=[];
-    for(let m=1;m<=7;m++){
-      const days=new Date(2026,m,0).getDate();
-      for(let d=1;d<=days;d++){
-        dates.push(`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
-      }
-    }
-    // 也讀 2025 年 8~12 月
     for(let m=8;m<=12;m++){
       const days=new Date(2025,m,0).getDate();
-      for(let d=1;d<=days;d++){
+      for(let d=1;d<=days;d++)
         dates.push(`2025-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
-      }
+    }
+    for(let m=1;m<=7;m++){
+      const days=new Date(2026,m,0).getDate();
+      for(let d=1;d<=days;d++)
+        dates.push(`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
     }
 
     let hitCount=0,exemptDayCount=0;
@@ -1367,7 +1376,7 @@ async function loadExemptFromVenusOS(classId){
     for(let i=0;i<dates.length;i+=BATCH){
       await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
         try{
-          const doc=await dataCol.doc(`${pfx}${ds}`).get();
+          const doc=await dataCol.doc(`${workingPfx}${ds}`).get();
           if(!doc.exists)return;
           hitCount++;
           const raw=doc.data().value;
@@ -1387,12 +1396,35 @@ async function loadExemptFromVenusOS(classId){
 
     _exemptMap=newExempt;
     const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
-    toast(`✅ 抵免讀取完成：${hitCount} 天有記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,5000);
+    toast(`✅ 共 ${hitCount} 天記錄，${exemptDayCount} 天有抵免，累計 ${totalExempt} 筆`,5000);
     renderOverview();
+    renderExemptSummary();
   }catch(e){
     toast(`❌ 讀取失敗：${e.message}`,5000);
     console.warn('loadExempt fail',e);
   }
+}
+
+// 在總覽頁顯示「作業抵免統計」卡片
+function renderExemptSummary(){
+  const area=document.getElementById('exempt-summary-card');
+  if(!area)return;
+  const total=Object.values(_exemptMap).reduce((a,b)=>a+b,0);
+  if(!total){area.style.display='none';return;}
+  area.style.display='';
+  const rows=Object.entries(_exemptMap)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([no,cnt])=>`<tr><td>${no}號</td><td style="color:var(--red);font-weight:700">-${cnt}張</td><td style="color:var(--green);font-weight:700">${Math.max(0,(cardCounts(parseInt(no)).total)-cnt)}張</td></tr>`)
+    .join('');
+  area.innerHTML=`
+    <div class="card-title">📋 作業抵免統計
+      <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">本學年累計</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--red);font-weight:700">共 ${total} 筆</span>
+    </div>
+    <div class="sx"><table>
+      <thead><tr><th>座號</th><th>已抵免</th><th>淨持有</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
 }
 
 // ══ Tab 切換 ══
