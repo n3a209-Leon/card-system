@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .stat.gld .sn{color:var(--gold)}
 
 /* ══ STUDENT GRID ══ */
-.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
+.stu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
 .stu-cell{background:var(--bg3);border-radius:10px;padding:10px;border:2px solid transparent;cursor:pointer;transition:all .15s;position:relative}
 .stu-cell:active{transform:scale(.97)}
 .stu-cell.ready{border-color:var(--orange);background:var(--orange-light)}
@@ -392,7 +392,7 @@ tr:hover td{background:var(--accent-light)}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 @media(max-width:480px){
-  .stu-grid{grid-template-columns:repeat(3,1fr)}
+  .stu-grid{grid-template-columns:repeat(2,1fr)}
   .stat-row{grid-template-columns:repeat(3,1fr)}
 }
 /* ══ SPLASH SCREEN ══ */
@@ -1473,34 +1473,53 @@ function renderOverview(){
       </div>`;
     return;
   }
-  let totalCards=0,totalPts=0,canCnt=0;
+  let totalNetCards=0,totalPts=0,canCnt=0,totalExempt=0;
   const grid=document.getElementById('stu-grid');
   grid.innerHTML='';
   _nos.forEach(no=>{
     const rem=remPoints(no);
     const can=canRedeem(no);
     const cc=cardCounts(no);
-    const np=noonPoints(no);
-    totalCards+=cc.netHold;totalPts+=rem;if(can>0)canCnt++;
-    const pct=Math.min(100,((rem%thr)/thr*100)).toFixed(0);
+    totalNetCards+=cc.netHold;totalPts+=rem;
+    if(can>0)canCnt++;
+    totalExempt+=cc.exemptUsed;
     const cell=document.createElement('div');
     cell.className='stu-cell'+(can>0?' ready':'');
-    // 右上角顯示「淨持有張數」（已扣作業抵免）
-    if(cc.netHold>0)cell.innerHTML+=`<span class="stu-badge">\uD83C\uDFC6\u00d7${cc.netHold}</span>`;
-    else if(cc.total>0&&cc.netHold===0)cell.innerHTML+=`<span class="stu-badge" style="color:var(--text4)">用盡</span>`;
-    cell.innerHTML+=`<div class="stu-no">${no}\u865f</div>
-    <div class="stu-pts">${rem}<span style="font-size:10px;font-weight:400;color:var(--text4)">pt</span></div>
-    <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
-    <div class="stu-info">${can>0?`<span style="color:var(--orange);font-weight:700">\u25b6\u53ef\u63db${can}\u5f35</span>`:rem>=thr*0.8?`\u518d${thr-((rem%thr+thr)%thr)}pt`:''}${cc.exemptUsed>0?`<span style="color:var(--red);font-size:10px"> \u6298${cc.exemptUsed}\u5f35</span>`:''}</div>`;
+    // 座號標題列
+    const noRow=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:11px;font-weight:700;color:var(--text4)">${no}號</span>
+      ${can>0?`<span style="font-size:10px;font-weight:700;color:var(--orange)">▶可換${can}張</span>`:''}
+    </div>`;
+    // 四個核心數字
+    const metricsRow=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div style="background:var(--bg4);border-radius:6px;padding:4px 6px">
+        <div style="font-size:9px;color:var(--text4)">🏆 總獎卡</div>
+        <div style="font-size:14px;font-weight:800;color:var(--green)">${cc.total}</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:6px;padding:4px 6px">
+        <div style="font-size:9px;color:var(--text4)">✅ 淨持有</div>
+        <div style="font-size:14px;font-weight:800;color:${cc.netHold>0?'var(--accent)':'var(--text4)'}">${cc.netHold}</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:6px;padding:4px 6px">
+        <div style="font-size:9px;color:var(--text4)">📋 已折抵</div>
+        <div style="font-size:14px;font-weight:800;color:${cc.exemptUsed>0?'var(--red)':'var(--text4)'}">${cc.exemptUsed}</div>
+      </div>
+      <div style="background:var(--bg4);border-radius:6px;padding:4px 6px">
+        <div style="font-size:9px;color:var(--text4)">⚡ 剩餘點</div>
+        <div style="font-size:13px;font-weight:800;color:var(--accent)">${rem}</div>
+      </div>
+    </div>`;
+    cell.innerHTML=noRow+metricsRow;
     cell.onclick=()=>showChart(no);
     grid.appendChild(cell);
   });
   const avg=_nos.length?Math.round(totalPts/_nos.length):0;
   document.getElementById('stat-row').innerHTML=`
     <div class="stat"><span class="stat-icon">👥</span><div><div class="sn">${_nos.length}</div><div class="sl">全班人數</div></div></div>
-    <div class="stat ora"><span class="stat-icon">🎴</span><div><div class="sn">${totalCards}</div><div class="sl">淨持有卡</div></div></div>
-    <div class="stat grn"><span class="stat-icon">⚡</span><div><div class="sn">${avg}</div><div class="sl">平均剩餘點</div></div></div>
-    <div class="stat red"><span class="stat-icon">🔔</span><div><div class="sn">${canCnt}</div><div class="sl">可換卡人數</div></div></div>`;
+    <div class="stat grn"><span class="stat-icon">🏆</span><div><div class="sn">${totalNetCards}</div><div class="sl">淨持有卡</div></div></div>
+    <div class="stat red"><span class="stat-icon">📋</span><div><div class="sn">${totalExempt}</div><div class="sl">累計折抵</div></div></div>
+    <div class="stat ora"><span class="stat-icon">🔔</span><div><div class="sn">${canCnt}</div><div class="sl">可換卡人數</div></div></div>`;
 }
 
 // ══ Excel 匯入 ══
