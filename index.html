@@ -1325,19 +1325,16 @@ async function loadExemptFromVenusOS(classId){
   if(!uid||!_db||!classId)return;
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
-    // 取出所有 key，找出屬於這個班級的 day: 文件
-    // Venus OS 的 classPrefix 格式：year_className:
-    // 我們從 _classes 找到對應班級的 year+className 組成前綴
     const cls=_classes.find(c=>c.id===classId);
     if(!cls)return;
-    const pfx=`${cls.year}_${cls.className}:day:`;
-
-    // Firestore 不支援前綴查詢，改用 listDocuments 或逐一讀
-    // 用已知的座號範圍年份區間讀取（讀當學年所有 day: 文件）
-    // 為效能考量，只讀近一年的資料（180天）
+    // classId 本身就是 year_className，直接用它組前綴
+    // 例如 classId = "2025_五年王班" → pfx = "2025_五年王班:day:"
+    const pfx=`${classId}:day:`;
+    toast(`🔍 讀取前綴：${pfx.slice(0,20)}...`,4000);
     const newExempt={};
     const today=new Date();
     const promises=[];
+    let hitCount=0;
     for(let i=0;i<180;i++){
       const d=new Date(today);
       d.setDate(d.getDate()-i);
@@ -1346,10 +1343,10 @@ async function loadExemptFromVenusOS(classId){
       promises.push(
         dataCol.doc(key).get().then(doc=>{
           if(!doc.exists)return;
+          hitCount++;
           const raw=doc.data().value;
           const parsed=typeof raw==='string'?JSON.parse(raw):raw;
           if(!parsed||!parsed.exempt)return;
-          // exempt: {hwName: [座號陣列]} 或 {hwName: {personal:[...], ...}}
           Object.entries(parsed.exempt).forEach(([hw,val])=>{
             const nos=Array.isArray(val)?val:(val&&Array.isArray(val.personal)?val.personal:[]);
             nos.forEach(no=>{
@@ -1360,14 +1357,16 @@ async function loadExemptFromVenusOS(classId){
         }).catch(()=>{})
       );
     }
-    // 分批執行，避免同時發出 180 個請求
     const BATCH=20;
     for(let i=0;i<promises.length;i+=BATCH){
       await Promise.all(promises.slice(i,i+BATCH));
     }
     _exemptMap=newExempt;
+    const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
+    toast(`✅ 作業抵免：讀到 ${hitCount} 天資料，共 ${totalExempt} 筆抵免`,4000);
     renderOverview();
   }catch(e){
+    toast(`❌ 讀取失敗：${e.message}`,4000);
     console.warn('loadExempt fail',e);
   }
 }
