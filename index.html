@@ -594,7 +594,10 @@ tr:hover td{background:var(--accent-light)}
         </div>
         <div id="redeem-area"><div class="empty">載入中...</div></div>
         <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
-        <button class="btn-orange btn-block" id="btn-redeem" style="display:none;font-size:14px" onclick="doRedeem()">🎴 全部兌換</button>
+        <div id="btn-redeem-group" style="display:none;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary btn-block" id="btn-redeem-one" onclick="doRedeemOne()" style="flex:1;font-size:13px">🎴 全班各換1張</button>
+          <button class="btn-orange btn-block" id="btn-redeem" onclick="doRedeem()" style="flex:1;font-size:13px">🎴 全部兌換</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">📋 兌換紀錄
@@ -1857,10 +1860,11 @@ function renderRedeem(){
   const thr=_settings.threshold||300;
   const area=document.getElementById('redeem-area');
   const eligible=_nos.filter(no=>canRedeem(no)>0);
+  const btnGrp=document.getElementById('btn-redeem-group');
   if(!eligible.length){
     area.innerHTML=`<div class="empty">目前沒有學生累積達 ${thr} 點</div>`;
     document.getElementById('redeem-summary').style.display='none';
-    document.getElementById('btn-redeem').style.display='none';
+    if(btnGrp)btnGrp.style.display='none';
     renderRedeemLog();return;
   }
   const grid=document.createElement('div');grid.className='rdm-grid';
@@ -1868,29 +1872,51 @@ function renderRedeem(){
     const rem=remPoints(no);const can=canRedeem(no);
     const d=document.createElement('div');
     d.className='rdm-card';d.id='rc_'+no;
-    d.innerHTML=`<button class="rdm-skip-btn" onclick="toggleSkip(${no})">✕</button>
-    <div style="font-size:11px;color:var(--text4)">${no}號</div>
-    <div style="font-size:20px;font-weight:800;color:var(--orange)">${rem}pt</div>
-    <div style="font-size:12px;color:var(--green);font-weight:600">可換 ${can} 張</div>
-    <button class="btn-primary btn-xs" style="margin-top:6px;width:100%" onclick="redeemSingle(${no})">只換1張（扣${thr}）</button>
+    d.innerHTML=`
+    <button class="rdm-skip-btn" onclick="toggleSkip(${no})" title="本次不換">✕</button>
+    <div style="font-size:11px;color:var(--text4);margin-bottom:2px">${no}號</div>
+    <div style="font-size:22px;font-weight:800;color:var(--orange);line-height:1">${rem}pt</div>
+    <div style="font-size:12px;color:var(--green);font-weight:600;margin:3px 0">可換 ${can} 張</div>
+    <div style="display:flex;gap:4px;align-items:center;margin-top:6px">
+      <input type="number" id="custom-cnt-${no}" min="1" max="${can}" value="1"
+        style="width:52px;height:30px;font-size:13px;font-weight:700;text-align:center;border-radius:6px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);padding:0 4px">
+      <span style="font-size:11px;color:var(--text4)">張</span>
+      <button class="btn-green btn-xs" style="flex:1;height:30px;min-height:unset" onclick="redeemCustom(${no})">換</button>
+    </div>
     <textarea id="skip-note-${no}" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:4px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text);resize:none" rows="2" placeholder="不換原因（選填）"></textarea>`;
     grid.appendChild(d);
   });
   area.innerHTML='';area.appendChild(grid);
   updRedeemSummary(eligible);
-  document.getElementById('btn-redeem').style.display='';
+  if(btnGrp)btnGrp.style.display='flex';
   renderRedeemLog();
 }
 
-// 單人只換1張，固定扣 threshold 點數（不論累積多少點都只扣一份）
-function redeemSingle(no){
+// 單人自訂張數兌換
+function redeemCustom(no){
   const thr=_settings.threshold||300;
-  const rem=remPoints(no);
-  if(rem<thr){toast(`${no}號 點數不足 ${thr} 點`);return;}
-  if(!confirm(`確定為 ${no}號 兌換 1 張獎卡（扣 ${thr} 點）？`))return;
-  _logs.push({id:genId(),t:nowStr(),no,k:'兌換',v:thr,c:1,note:`單張兌換扣${thr}點`});
+  const can=canRedeem(no);
+  const input=document.getElementById('custom-cnt-'+no);
+  const cnt=Math.max(1,Math.min(can,parseInt(input?input.value:1)||1));
+  const pts=cnt*thr;
+  if(!confirm(`確定為 ${no}號 兌換 ${cnt} 張獎卡（扣 ${pts} 點）？`))return;
+  _logs.push({id:genId(),t:nowStr(),no,k:'兌換',v:pts,c:cnt,note:`兌換${cnt}張扣${pts}點`});
   sched();scheduleSync();renderRedeem();renderOverview();
-  toast(`✅ ${no}號 已兌換 1 張`);
+  toast(`✅ ${no}號 已兌換 ${cnt} 張`);
+}
+
+// 全班每人各換1張（不管可換幾張，每人只扣1份threshold）
+function doRedeemOne(){
+  const thr=_settings.threshold||300;
+  const el=_nos.filter(n=>canRedeem(n)>0);
+  const wr=el.filter(n=>!_skipMap[n]);
+  if(!wr.length){toast('沒有人要兌換');return;}
+  if(!confirm(`確定為 ${wr.length} 位學生各換 1 張？\n${wr.map(n=>n+'號').join('、')}`))return;
+  wr.forEach(no=>{
+    _logs.push({id:genId(),t:nowStr(),no,k:'兌換',v:thr,c:1,note:`全班各換1張扣${thr}點`});
+  });
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ 全班各換1張完成，共 ${wr.length} 人`);
 }
 
 function toggleSkip(no){
