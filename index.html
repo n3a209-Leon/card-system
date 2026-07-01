@@ -1330,8 +1330,7 @@ async function loadExemptFromVenusOS(classId){
 
     // 先讀一筆已知有資料的日期，確認 value 結構
     const diagDoc=await dataCol.doc(`${pfx}2026-06-29`).get();
-    if(diagDoc.exists){
-      const raw=diagDoc.data().value;
+    if(diagDoc.exists){      const raw=diagDoc.data().value;
       const rawType=typeof raw;
       let parsed;
       if(rawType==='string'){
@@ -1342,7 +1341,7 @@ async function loadExemptFromVenusOS(classId){
       const exemptKeys=parsed?.exempt?Object.keys(parsed.exempt):[];
       toast(`🔍 06-29: type=${rawType}, exempt keys=${exemptKeys.join(',') || '(空)'}`,6000);
     }else{
-      toast(`⚠ 06-29 不存在，pfx=${pfx.slice(0,25)}`,6000);
+      toast(`⚠ 06-29 不存在，classId=${classId}，uid=${uid.slice(0,8)}`,8000);
       return;
     }
 
