@@ -182,32 +182,37 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 /* ══ HEADER ══ */
 .app-header{
   background:var(--bg2);border-bottom:1px solid var(--border);
-  padding:0 12px;height:52px;
+  padding:0 12px;
+  /* 52px 按鍵高 + safe-top（iPhone 劉海區）*/
+  height:calc(52px + var(--safe-top));
+  padding-top:var(--safe-top);
   display:flex;align-items:center;gap:8px;
   position:relative;z-index:100;flex-shrink:0;
-  padding-top:var(--safe-top);overflow:visible;
+  overflow:visible;
 }
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
 .sync-dot.off{background:var(--text4)}
 .sync-dot.ing{background:var(--gold);animation:pulse-nerv 1s infinite}
-/* 主題選單：視覺尺寸固定，觸控區域用 padding 撐大 */
+/* 主題選單 */
 .theme-select-bar{
   background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);
-  padding:0 10px;border-radius:7px;font-size:12px;height:36px;
+  padding:0 8px;border-radius:7px;font-size:12px;height:34px;
   font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;
-  min-width:76px;flex-shrink:0;
+  min-width:80px;flex-shrink:0;
 }
-/* 登入按鈕：明確可點擊感 */
+/* 登入按鈕 */
 .login-btn{
   background:var(--accent);color:#fff;
   padding:0 12px;border-radius:7px;cursor:pointer;font-size:12px;
-  height:36px;font-family:inherit;font-weight:700;white-space:nowrap;
-  display:inline-flex;align-items:center;-webkit-appearance:none;
-  border:none;flex-shrink:0;
+  height:34px;font-family:inherit;font-weight:700;white-space:nowrap;
+  display:inline-flex;align-items:center;border:none;flex-shrink:0;
+  -webkit-appearance:none;
 }
-[data-theme="nebula"] .login-btn{background:rgba(100,50,200,.7);color:#fff}
-[data-theme="nerv"] .login-btn{background:rgba(255,102,0,.8);color:#fff}
+[data-theme="nebula"] .login-btn{background:rgba(120,60,220,.8);color:#fff}
+[data-theme="nerv"] .login-btn{background:rgba(255,102,0,.9);color:#fff}
+[data-theme="nebula"] .app-header{background:rgba(6,3,20,.95);border-bottom-color:rgba(120,80,255,.35);backdrop-filter:blur(12px)}
+[data-theme="nerv"] .app-header{background:linear-gradient(180deg,#120400,#080200);border-bottom-color:#FF6600}
 
 /* ══ CLASS SWITCHER ══ */
 .class-switcher{position:relative;flex-shrink:0}
@@ -1516,26 +1521,31 @@ function renderOverview(){
     const cell=document.createElement('div');
     cell.className='stu-cell'+(can>0?' ready':'');
     cell.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div class="stu-no-circle">${no}</div>
-        ${can>0?`<div class="stu-can">▶ 可換 ${can} 張</div>`:''}
+        ${can>0?`<div style="font-size:10px;font-weight:700;color:var(--orange)">▶ 可換${can}張</div>`:''}
       </div>
-      <hr class="stu-div">
-      <div class="stu-metric">
-        <div class="stu-ml"><span class="stu-emoji">🏆</span><span class="stu-lbl">總獎卡</span></div>
-        <div class="stu-v-gold">${cc.total}</div>
-      </div>
-      <div class="stu-metric">
-        <div class="stu-ml"><span class="stu-emoji">✅</span><span class="stu-lbl">淨持有</span></div>
-        <div class="stu-v-blue">${cc.netHold}</div>
-      </div>
-      <div class="stu-metric">
-        <div class="stu-ml"><span class="stu-emoji">📋</span><span class="stu-lbl">已折抵</span></div>
-        <div class="stu-v-red">${cc.exemptUsed}</div>
-      </div>
-      <div class="stu-metric">
-        <div class="stu-ml"><span class="stu-emoji">⚡</span><span class="stu-lbl">剩餘點</span></div>
-        <div class="stu-v-green">${rem}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
+          <div style="font-size:13px;margin-bottom:2px">🏆</div>
+          <div style="font-size:20px;font-weight:800;color:var(--gold);line-height:1">${cc.total}</div>
+          <div style="font-size:9px;color:var(--text4);margin-top:2px">總獎卡</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
+          <div style="font-size:13px;margin-bottom:2px">✅</div>
+          <div style="font-size:20px;font-weight:800;color:var(--accent);line-height:1">${cc.netHold}</div>
+          <div style="font-size:9px;color:var(--text4);margin-top:2px">淨持有</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
+          <div style="font-size:13px;margin-bottom:2px">📋</div>
+          <div style="font-size:20px;font-weight:800;color:${cc.exemptUsed>0?'var(--red)':'var(--text4)'};line-height:1">${cc.exemptUsed}</div>
+          <div style="font-size:9px;color:var(--text4);margin-top:2px">已折抵</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
+          <div style="font-size:13px;margin-bottom:2px">⚡</div>
+          <div style="font-size:18px;font-weight:800;color:var(--green);line-height:1">${rem}</div>
+          <div style="font-size:9px;color:var(--text4);margin-top:2px">剩餘點</div>
+        </div>
       </div>`;
     cell.onclick=()=>showChart(no);
     grid.appendChild(cell);
