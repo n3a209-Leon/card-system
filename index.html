@@ -211,6 +211,16 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 }
 [data-theme="nebula"] .login-btn{background:rgba(120,60,220,.8);color:#fff}
 [data-theme="nerv"] .login-btn{background:rgba(255,102,0,.9);color:#fff}
+/* 登入後使用者按鈕（小巧，不佔空間）*/
+.user-btn{
+  background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);
+  padding:0 8px;border-radius:7px;cursor:pointer;font-size:12px;
+  height:34px;font-family:inherit;font-weight:600;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;-webkit-appearance:none;
+  flex-shrink:0;
+}
+[data-theme="nebula"] .user-btn{background:rgba(80,40,160,.3);border-color:rgba(150,100,255,.4);color:#c8b0ff}
+[data-theme="nerv"] .user-btn{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.3);color:#FF8844}
 [data-theme="nebula"] .app-header{background:rgba(6,3,20,.95);border-bottom-color:rgba(120,80,255,.35);backdrop-filter:blur(12px)}
 [data-theme="nerv"] .app-header{background:linear-gradient(180deg,#120400,#080200);border-bottom-color:#FF6600}
 
@@ -530,6 +540,21 @@ tr:hover td{background:var(--accent-light)}
   <div class="splash-spinner"><span></span><span></span><span></span></div>
 </div>
 
+<!-- 全螢幕登入頁面（未登入時顯示）-->
+<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
+  <div style="width:100%;max-width:360px;text-align:center">
+    <img src="splash.jpg" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:20px;margin-bottom:20px;box-shadow:0 8px 32px rgba(120,60,220,.3)">
+    <h1 style="font-size:22px;font-weight:800;letter-spacing:2px;margin-bottom:6px">VENUS CARD SYSTEM</h1>
+    <p style="font-size:13px;color:var(--text4);margin-bottom:32px">獎卡兌換管理系統</p>
+    <button onclick="doLogin()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;color:#1e3a5f;border:none;border-radius:50px;padding:16px 24px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.15);font-family:inherit;margin-bottom:16px">
+      <span style="font-weight:900;font-size:18px;color:#4285F4">G</span>
+      使用 Google 帳號登入
+    </button>
+    <p style="font-size:11px;color:var(--text4);line-height:1.6">登入後可同步 Venus OS 的班級資料<br>獎卡紀錄會自動雲端備份</p>
+    <div id="login-error" style="display:none;margin-top:16px;padding:10px 14px;background:var(--red-light);border-radius:8px;font-size:12px;color:var(--red)"></div>
+  </div>
+</div>
+
 <div class="app" id="app">
 
   <!-- HEADER -->
@@ -548,7 +573,10 @@ tr:hover td{background:var(--accent-light)}
         <option value="nerv">🔴 NERV</option>
         <option value="nebula">🌌 星雲</option>
       </select>
-      <button class="login-btn" id="login-btn" onclick="doLogin()">登入</button>
+      <!-- 登入後顯示使用者名稱，可點選登出 -->
+      <button class="user-btn" id="user-btn" onclick="showUserMenu()" style="display:none">
+        <span id="user-name">👤</span>
+      </button>
     </div>
   </header>
 
@@ -1027,20 +1055,27 @@ function initFirebase(){
 }
 
 function updateLoginUI(user){
-  const lb=document.getElementById('login-btn');
+  const loginScreen=document.getElementById('login-screen');
+  const userBtn=document.getElementById('user-btn');
+  const userName=document.getElementById('user-name');
   const slb=document.getElementById('set-login-btn');
   const ssb=document.getElementById('set-sync-btn');
   const sob=document.getElementById('set-logout-btn');
   const ss=document.getElementById('sync-status');
   if(user){
-    lb.textContent=user.displayName?user.displayName.slice(0,4):'已登入';
+    // 已登入：隱藏登入頁面，顯示使用者按鈕
+    if(loginScreen)loginScreen.style.display='none';
+    if(userBtn)userBtn.style.display='';
+    if(userName)userName.textContent=user.displayName?user.displayName.slice(0,4):'👤';
     if(slb)slb.style.display='none';
     if(ssb)ssb.style.display='';
     if(sob)sob.style.display='';
     if(ss)ss.textContent='已登入：'+(user.email||'');
     setSyncDot('ok');
   }else{
-    lb.textContent='登入';
+    // 未登入：顯示全螢幕登入頁面
+    if(loginScreen)loginScreen.style.display='flex';
+    if(userBtn)userBtn.style.display='none';
     if(slb)slb.style.display='';
     if(ssb)ssb.style.display='none';
     if(sob)sob.style.display='none';
@@ -1049,10 +1084,26 @@ function updateLoginUI(user){
   }
 }
 
+function showUserMenu(){
+  const user=_auth?_auth.currentUser:null;
+  if(!user)return;
+  const name=user.displayName||'使用者';
+  const email=user.email||'';
+  if(confirm(`登入：${name}\n${email}\n\n點確定登出`)){
+    doLogout();
+  }
+}
+
 async function doLogin(){
-  if(!_fbReady){toast('請先設定 Firebase');return;}
-  try{await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}
-  catch(e){toast('登入失敗：'+e.message);}
+  if(!_fbReady){toast('Firebase 初始化中，請稍候');return;}
+  const errEl=document.getElementById('login-error');
+  if(errEl)errEl.style.display='none';
+  try{
+    await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  }catch(e){
+    if(errEl){errEl.textContent='登入失敗：'+e.message;errEl.style.display='';}
+    else toast('登入失敗：'+e.message);
+  }
 }
 async function doLogout(){if(_auth)await _auth.signOut();toast('已登出');}
 
