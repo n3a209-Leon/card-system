@@ -1210,7 +1210,7 @@ function cardCounts(no){
     if(l.k==='調整')adjust+=(l.c||0);
   }
   const total=cadre+toilet+special+redeemed+adjust;
-  const exemptUsed=_exemptMap[no]||0;  // 從 Venus OS 作業抵免讀取
+  const exemptUsed=_exemptMap[parseInt(no)]||0;  // 確保用數字 key 查詢
   const netHold=Math.max(0,total-exemptUsed);  // 淨持有（不可負數）
   return{cadre,toilet,special,redeemed,adjust,total,exemptUsed,netHold};
 }
@@ -1326,7 +1326,8 @@ async function loadExemptFromVenusOS(classId){
   if(!uid||!_db||!classId)return;
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
-    const pfx=`${classId}:day:`;
+    const cls=_classes.find(c=>c.id===classId);
+    const pfx=cls?`${cls.year}_${cls.className}:day:`:`${classId}:day:`;
 
     // 先讀一筆已知有資料的日期，確認 value 結構
     const diagDoc=await dataCol.doc(`${pfx}2026-06-29`).get();
@@ -1375,7 +1376,7 @@ async function loadExemptFromVenusOS(classId){
           Object.entries(parsed.exempt).forEach(([hw,val])=>{
             const nos=Array.isArray(val)?val:[];
             nos.forEach(no=>{
-              const n=parseInt(no);
+              const n=parseInt(no);  // 確保 key 是數字
               if(!isNaN(n))newExempt[n]=(newExempt[n]||0)+1;
             });
           });
@@ -1384,7 +1385,10 @@ async function loadExemptFromVenusOS(classId){
     }
     _exemptMap=newExempt;
     const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
-    toast(`✅ 作業抵免：${hitCount} 天記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,4000);
+    // Debug：確認有沒有統計到座號
+    const keys=Object.keys(newExempt);
+    toast(`📋 抵免統計：${keys.length} 人，座號 ${keys.join(',')}`,6000);
+    setTimeout(()=>toast(`✅ 作業抵免：${hitCount} 天記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,4000),6500);
     renderOverview();
     renderExemptSummary();
   }catch(e){
