@@ -1326,40 +1326,12 @@ async function loadExemptFromVenusOS(classId){
   if(!uid||!_db||!classId)return;
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
-
-    // classId 格式可能是 "2025_五年王班" 或 "2026_五年王班"
-    // 先試 classId 本身，再試把年份換掉
-    const testDate='2026-06-17';
-    let workingPfx=null;
-
-    // 嘗試多種前綴格式
-    const candidatePfxs=[
-      `${classId}:day:`,           // 用 Firestore 讀到的 classId
-    ];
-    // 也試把年份換成另一年
-    const yearMatch=classId.match(/^(\d{4})_(.+)$/);
-    if(yearMatch){
-      const yr=parseInt(yearMatch[1]);
-      const name=yearMatch[2];
-      candidatePfxs.push(`${yr-1}_${name}:day:`);
-      candidatePfxs.push(`${yr+1}_${name}:day:`);
-    }
-
-    for(const pfx of candidatePfxs){
-      const testDoc=await dataCol.doc(`${pfx}${testDate}`).get();
-      if(testDoc.exists){workingPfx=pfx;break;}
-    }
-
-    if(!workingPfx){
-      toast(`⚠ 找不到符合的 key 格式，試過：${candidatePfxs.map(p=>p.slice(0,18)).join(' / ')}`,6000);
-      return;
-    }
-
-    toast(`✅ 找到格式：${workingPfx.slice(0,25)}，讀取中...`,3000);
-
-    // 讀取 2025/8 ~ 2026/7 整學年
+    // 從截圖確認：key 格式就是 "{classId}:day:{YYYY-MM-DD}"
+    // classId 本身就是 "2026_五年王班" 這樣的格式
+    const pfx=`${classId}:day:`;
     const newExempt={};
     const dates=[];
+    // 讀 2025/8 ~ 2026/7 整學年
     for(let m=8;m<=12;m++){
       const days=new Date(2025,m,0).getDate();
       for(let d=1;d<=days;d++)
@@ -1370,16 +1342,16 @@ async function loadExemptFromVenusOS(classId){
       for(let d=1;d<=days;d++)
         dates.push(`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
     }
-
     let hitCount=0,exemptDayCount=0;
     const BATCH=20;
     for(let i=0;i<dates.length;i+=BATCH){
       await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
         try{
-          const doc=await dataCol.doc(`${workingPfx}${ds}`).get();
+          const doc=await dataCol.doc(`${pfx}${ds}`).get();
           if(!doc.exists)return;
           hitCount++;
           const raw=doc.data().value;
+          // value 是 JSON 字串或物件
           const parsed=typeof raw==='string'?JSON.parse(raw):raw;
           if(!parsed?.exempt||!Object.keys(parsed.exempt).length)return;
           exemptDayCount++;
@@ -1393,10 +1365,9 @@ async function loadExemptFromVenusOS(classId){
         }catch{}
       }));
     }
-
     _exemptMap=newExempt;
     const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
-    toast(`✅ 共 ${hitCount} 天記錄，${exemptDayCount} 天有抵免，累計 ${totalExempt} 筆`,5000);
+    toast(`✅ 作業抵免：${hitCount} 天記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,4000);
     renderOverview();
     renderExemptSummary();
   }catch(e){
