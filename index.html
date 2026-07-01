@@ -1326,12 +1326,29 @@ async function loadExemptFromVenusOS(classId){
   if(!uid||!_db||!classId)return;
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
-    // 從截圖確認：key 格式就是 "{classId}:day:{YYYY-MM-DD}"
-    // classId 本身就是 "2026_五年王班" 這樣的格式
     const pfx=`${classId}:day:`;
+
+    // 先讀一筆已知有資料的日期，確認 value 結構
+    const diagDoc=await dataCol.doc(`${pfx}2026-06-29`).get();
+    if(diagDoc.exists){
+      const raw=diagDoc.data().value;
+      const rawType=typeof raw;
+      let parsed;
+      if(rawType==='string'){
+        try{parsed=JSON.parse(raw);}catch(e){toast(`❌ JSON.parse 失敗：${e.message}`,5000);return;}
+      }else if(rawType==='object'){
+        parsed=raw;
+      }
+      const exemptKeys=parsed?.exempt?Object.keys(parsed.exempt):[];
+      toast(`🔍 06-29: type=${rawType}, exempt keys=${exemptKeys.join(',') || '(空)'}`,6000);
+    }else{
+      toast(`⚠ 06-29 不存在，pfx=${pfx.slice(0,25)}`,6000);
+      return;
+    }
+
+    // 正式讀取全學年
     const newExempt={};
     const dates=[];
-    // 讀 2025/8 ~ 2026/7 整學年
     for(let m=8;m<=12;m++){
       const days=new Date(2025,m,0).getDate();
       for(let d=1;d<=days;d++)
@@ -1351,8 +1368,9 @@ async function loadExemptFromVenusOS(classId){
           if(!doc.exists)return;
           hitCount++;
           const raw=doc.data().value;
-          // value 是 JSON 字串或物件
-          const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+          let parsed;
+          if(typeof raw==='string'){try{parsed=JSON.parse(raw);}catch{return;}}
+          else parsed=raw;
           if(!parsed?.exempt||!Object.keys(parsed.exempt).length)return;
           exemptDayCount++;
           Object.entries(parsed.exempt).forEach(([hw,val])=>{
