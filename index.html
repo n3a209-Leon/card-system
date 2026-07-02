@@ -1041,18 +1041,22 @@ async function storeSet(k,v){
 let _auth=null,_db=null,_fbReady=false;
 let firebaseUidRef={current:null};
 
-function initFirebase(){
+async function initFirebase(){
   try{
     if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
     _auth=firebase.auth();
     _db=firebase.firestore();
-    // 明確設定持久登入（LOCAL = 關閉App/重開機仍保持登入狀態）
-    _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    // 明確設定持久登入，必須等待完成才能確保後續判斷登入狀態正確
+    // PWA standalone 模式下 storage 環境較特殊，LOCAL 是最持久的選項
+    try{
+      await _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    }catch(persistErr){
+      console.warn('setPersistence fail',persistErr);
+    }
     _auth.onAuthStateChanged(user=>{
       firebaseUidRef.current=user?user.uid:null;
       updateLoginUI(user);
       if(user)loadFromFirestore();
-      // 第一次判斷完成，隱藏「判斷登入中」的過渡狀態
       const authChecking=document.getElementById('auth-checking');
       if(authChecking)authChecking.style.display='none';
     });
