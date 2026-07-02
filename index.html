@@ -664,12 +664,12 @@ tr:hover td{background:var(--accent-light)}
         <div class="card-title">🎴 點數換卡
           <button class="btn-ghost btn-sm ct-right" onclick="renderRedeem()">重整</button>
         </div>
-        <div id="redeem-area"><div class="empty">載入中...</div></div>
-        <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
-        <div id="btn-redeem-group" style="display:none;gap:8px;flex-wrap:wrap">
+        <div id="btn-redeem-group" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           <button class="btn-primary btn-block" id="btn-redeem-one" onclick="doRedeemOne()" style="flex:1;font-size:13px">🎴 全班各換1張</button>
           <button class="btn-orange btn-block" id="btn-redeem" onclick="doRedeem()" style="flex:1;font-size:13px">🎴 全部兌換</button>
         </div>
+        <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
+        <div id="redeem-area"><div class="empty">載入中...</div></div>
       </div>
       <div class="card">
         <div class="card-title">📋 兌換紀錄
@@ -698,15 +698,13 @@ tr:hover td{background:var(--accent-light)}
         </div>
       </div>
       <div class="card">
-        <div class="card-title">✏️ 手動調整</div>
-        <div class="form-row">
-          <div class="fg" style="max-width:100px">
-            <label>座號</label>
-            <select id="give-no"></select>
-          </div>
-          <div class="fg" style="max-width:120px">
+        <div class="card-title">⚡ 快速給卡
+          <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">點座號選取，可複選</span>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="fg" style="max-width:130px">
             <label>類型</label>
-            <select id="give-type">
+            <select id="qg-type">
               <option value="幹部">🏅 幹部</option>
               <option value="廁所">🚽 廁所</option>
               <option value="特殊">⭐ 特殊</option>
@@ -715,15 +713,18 @@ tr:hover td{background:var(--accent-light)}
           </div>
           <div class="fg" style="max-width:80px">
             <label>張數</label>
-            <input type="number" id="give-cards" value="1" min="-99" max="99">
+            <input type="number" id="qg-cards" value="1" min="-99" max="99">
           </div>
           <div class="fg">
-            <label>備註</label>
-            <input type="text" id="give-note" placeholder="選填">
+            <label>備註（選填）</label>
+            <input type="text" id="qg-note" placeholder="例：本週表現優異">
           </div>
-          <div style="align-self:flex-end">
-            <button class="btn-orange" onclick="giveManual()">送出</button>
-          </div>
+        </div>
+        <div class="no-picker" id="qg-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+          <span id="qg-count" style="font-size:12px;color:var(--text4);flex:1">已選 0 人</span>
+          <button class="btn-ghost btn-sm" onclick="clearQgSel()">清除選取</button>
+          <button class="btn-orange btn-sm" onclick="submitQuickGive()">送出</button>
         </div>
       </div>
       <div class="card">
@@ -1532,7 +1533,7 @@ function goTab(id,btn){
     overview:renderOverview,
     score:()=>{renderScoreLog();renderGsList();},
     redeem:renderRedeem,
-    give:()=>{renderNoPicker();fillNoSelect('give-no');renderGiveDetail();},
+    give:()=>{renderNoPicker();renderQgPicker();renderGiveDetail();},
     noon:()=>{fillNoSelect('noon-no');renderNoonList();updateNoonLabel();},
     table:renderScoreTable,
     log:renderLog,
@@ -2321,16 +2322,48 @@ function fillNoSelect(id){
   el.innerHTML=_nos.map(n=>`<option value="${n}">${n}號</option>`).join('');
 }
 
-function giveManual(){
-  const no=parseInt(document.getElementById('give-no').value);
-  const type=document.getElementById('give-type').value;
-  const c=parseInt(document.getElementById('give-cards').value)||0;
-  const note=document.getElementById('give-note').value.trim();
-  if(!_nos.includes(no)){toast('無效座號');return;}
-  _logs.push({id:genId(),t:nowStr(),no,k:type,v:0,c,note:note||type});
+// ── 快速給卡：點座號多選，一次送出 ──
+let _qgSel=new Set();
+
+function renderQgPicker(){
+  const picker=document.getElementById('qg-picker');
+  if(!picker)return;
+  picker.innerHTML=_nos.map(no=>
+    `<button class="no-btn${_qgSel.has(no)?' sel':''}" onclick="toggleQgSel(${no},this)">${no}</button>`
+  ).join('');
+  updQgCount();
+}
+
+function toggleQgSel(no,btn){
+  if(_qgSel.has(no)){_qgSel.delete(no);btn.className='no-btn';}
+  else{_qgSel.add(no);btn.className='no-btn sel';}
+  updQgCount();
+}
+
+function updQgCount(){
+  const el=document.getElementById('qg-count');
+  if(el)el.textContent=`已選 ${_qgSel.size} 人`;
+}
+
+function clearQgSel(){
+  _qgSel.clear();
+  renderQgPicker();
+}
+
+function submitQuickGive(){
+  if(!_qgSel.size){toast('請先點選座號');return;}
+  const type=document.getElementById('qg-type').value;
+  const c=parseInt(document.getElementById('qg-cards').value)||0;
+  const note=document.getElementById('qg-note').value.trim();
+  const nos=[..._qgSel].sort((a,b)=>a-b);
+  if(!confirm(`確定給 ${nos.length} 人「${type}」${c>0?'+':''}${c} 張？\n${nos.map(n=>n+'號').join('、')}`))return;
+  nos.forEach(no=>{
+    _logs.push({id:genId(),t:nowStr(),no,k:type,v:0,c,note:note||type});
+  });
   sched();scheduleSync();
-  document.getElementById('give-note').value='';
-  toast(`✅ ${no}號 ${c>0?'獲得':'扣除'} ${Math.abs(c)} 張`);
+  toast(`✅ ${nos.length} 人各${c>0?'獲得':'扣除'} ${Math.abs(c)} 張`);
+  document.getElementById('qg-note').value='';
+  clearQgSel();
   renderGiveDetail();renderOverview();
 }
 
