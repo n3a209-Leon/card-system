@@ -1574,28 +1574,36 @@ function renderOverview(){
     cell.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div class="stu-no-circle">${no}</div>
-        ${can>0?`<div style="font-size:10px;font-weight:700;color:var(--orange)">▶ 可換${can}張</div>`:''}
+        ${can>0?`<div style="font-size:10px;font-weight:700;color:var(--orange)">▶可換${can}</div>`:''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
-          <div style="font-size:13px;margin-bottom:2px">🏆</div>
-          <div style="font-size:20px;font-weight:800;color:var(--gold);line-height:1">${cc.total}</div>
-          <div style="font-size:9px;color:var(--text4);margin-top:2px">總獎卡</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">🏆</span>
+            <span style="font-size:24px;font-weight:800;color:var(--gold);line-height:1">${cc.total}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">總獎卡</div>
         </div>
-        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
-          <div style="font-size:13px;margin-bottom:2px">✅</div>
-          <div style="font-size:20px;font-weight:800;color:var(--accent);line-height:1">${cc.netHold}</div>
-          <div style="font-size:9px;color:var(--text4);margin-top:2px">淨持有</div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">✅</span>
+            <span style="font-size:24px;font-weight:800;color:var(--accent);line-height:1">${cc.netHold}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">淨持有</div>
         </div>
-        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
-          <div style="font-size:13px;margin-bottom:2px">📋</div>
-          <div style="font-size:20px;font-weight:800;color:${cc.exemptUsed>0?'var(--red)':'var(--text4)'};line-height:1">${cc.exemptUsed}</div>
-          <div style="font-size:9px;color:var(--text4);margin-top:2px">已折抵</div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">📋</span>
+            <span style="font-size:24px;font-weight:800;color:${cc.exemptUsed>0?'var(--red)':'var(--text4)'};line-height:1">${cc.exemptUsed}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">已折抵</div>
         </div>
-        <div style="background:var(--bg4);border-radius:8px;padding:7px 8px">
-          <div style="font-size:13px;margin-bottom:2px">⚡</div>
-          <div style="font-size:18px;font-weight:800;color:var(--green);line-height:1">${rem}</div>
-          <div style="font-size:9px;color:var(--text4);margin-top:2px">剩餘點</div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">⚡</span>
+            <span style="font-size:20px;font-weight:800;color:var(--green);line-height:1">${rem}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">剩餘點</div>
         </div>
       </div>`;
     cell.onclick=()=>showChart(no);
