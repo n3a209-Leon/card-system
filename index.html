@@ -541,7 +541,7 @@ tr:hover td{background:var(--accent-light)}
 </div>
 
 <!-- 全螢幕登入頁面（未登入時顯示）-->
-<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px">
+<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:32px">
   <div style="width:100%;max-width:360px;text-align:center">
     <img src="splash.jpg" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:20px;margin-bottom:20px;box-shadow:0 8px 32px rgba(120,60,220,.3)">
     <h1 style="font-size:22px;font-weight:800;letter-spacing:2px;margin-bottom:6px">VENUS CARD SYSTEM</h1>
@@ -1046,13 +1046,22 @@ function initFirebase(){
     if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
     _auth=firebase.auth();
     _db=firebase.firestore();
+    // 明確設定持久登入（LOCAL = 關閉App/重開機仍保持登入狀態）
+    _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
     _auth.onAuthStateChanged(user=>{
       firebaseUidRef.current=user?user.uid:null;
       updateLoginUI(user);
       if(user)loadFromFirestore();
+      // 第一次判斷完成，隱藏「判斷登入中」的過渡狀態
+      const authChecking=document.getElementById('auth-checking');
+      if(authChecking)authChecking.style.display='none';
     });
     _fbReady=true;
-  }catch(e){console.warn('FB init fail',e);}
+  }catch(e){
+    console.warn('FB init fail',e);
+    const authChecking=document.getElementById('auth-checking');
+    if(authChecking)authChecking.style.display='none';
+  }
 }
 
 function updateLoginUI(user){
@@ -1198,15 +1207,24 @@ async function loadFromFirestore(){
     _classes=parsed.classes;
     renderClassDD();
     toast(`✅ 讀到 ${_classes.length} 個班級`);
-    // 如果還沒選班級，自動選第一個
+    // 如果已有 _curClassId（離線恢復），確保顯示正確的班級名稱
+    if(_curClassId){
+      const curCls=_classes.find(c=>c.id===_curClassId);
+      if(curCls)document.getElementById('chip-text').textContent=curCls.className||curCls.id;
+      // 背景讀取分組與作業抵免，不阻擋畫面
+      loadGroupsForClass(_curClassId);
+      loadExemptFromVenusOS(_curClassId);
+    }
+    // 如果還沒選班級，優先用上次使用的班級，找不到才用第一個
     if(!_curClassId&&_classes.length){
-      const firstCls=_classes[0];
-      document.getElementById('chip-text').textContent=firstCls.className||firstCls.id;
-      await loadClass(firstCls.id);
-      await loadGroupsForClass(firstCls.id);
-      loadExemptFromVenusOS(firstCls.id);  // 背景讀取，不 await（180天資料較多）
+      const lastClassId=safeGet('vc2:lastClass');
+      const preferCls=(lastClassId&&_classes.find(c=>c.id===lastClassId))||_classes[0];
+      document.getElementById('chip-text').textContent=preferCls.className||preferCls.id;
+      await loadClass(preferCls.id);
+      await loadGroupsForClass(preferCls.id);
+      loadExemptFromVenusOS(preferCls.id);  // 背景讀取，不 await（180天資料較多）
       if(!_nos.length){
-        toast(`⚠ 「${firstCls.className||firstCls.id}」尚未設定座號，請先設定`);
+        toast(`⚠ 「${preferCls.className||preferCls.id}」尚未設定座號，請先設定`);
         setTimeout(()=>{
           goTab('more');
           setTimeout(()=>goMore('settings'),50);
@@ -1424,24 +1442,9 @@ async function loadExemptFromVenusOS(classId){
     const cls=_classes.find(c=>c.id===classId);
     const pfx=cls?`${cls.year}_${cls.className}:day:`:`${classId}:day:`;
 
-    // 先讀一筆已知有資料的日期，確認 value 結構
-    const diagDoc=await dataCol.doc(`${pfx}2026-06-29`).get();
-    if(diagDoc.exists){      const raw=diagDoc.data().value;
-      const rawType=typeof raw;
-      let parsed;
-      if(rawType==='string'){
-        try{parsed=JSON.parse(raw);}catch(e){toast(`❌ JSON.parse 失敗：${e.message}`,5000);return;}
-      }else if(rawType==='object'){
-        parsed=raw;
-      }
-      const exemptKeys=parsed?.exempt?Object.keys(parsed.exempt):[];
-      toast(`🔍 06-29: type=${rawType}, exempt keys=${exemptKeys.join(',') || '(空)'}`,6000);
-    }else{
-      toast(`⚠ 06-29 不存在，classId=${classId}，uid=${uid.slice(0,8)}`,8000);
-      return;
-    }
+    setSyncDot('ing');
 
-    // 正式讀取全學年
+    // 讀取整學年（2025/8 ~ 2026/7）所有 day: 文件，統計作業抵免
     const newExempt={};
     const dates=[];
     for(let m=8;m<=12;m++){
@@ -1454,40 +1457,37 @@ async function loadExemptFromVenusOS(classId){
       for(let d=1;d<=days;d++)
         dates.push(`2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
     }
-    let hitCount=0,exemptDayCount=0;
-    const BATCH=20;
+    const BATCH=25;
     for(let i=0;i<dates.length;i+=BATCH){
       await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
         try{
           const doc=await dataCol.doc(`${pfx}${ds}`).get();
           if(!doc.exists)return;
-          hitCount++;
           const raw=doc.data().value;
           let parsed;
           if(typeof raw==='string'){try{parsed=JSON.parse(raw);}catch{return;}}
           else parsed=raw;
           if(!parsed?.exempt||!Object.keys(parsed.exempt).length)return;
-          exemptDayCount++;
           Object.entries(parsed.exempt).forEach(([hw,val])=>{
             const nos=Array.isArray(val)?val:[];
             nos.forEach(no=>{
-              const n=parseInt(no);  // 確保 key 是數字
+              const n=parseInt(no);
               if(!isNaN(n))newExempt[n]=(newExempt[n]||0)+1;
             });
           });
         }catch{}
       }));
+      // 每批次結束就更新一次畫面，讓使用者感覺持續在載入而非卡住
+      _exemptMap={...newExempt};
+      renderOverview();
+      renderExemptSummary();
     }
     _exemptMap=newExempt;
-    const totalExempt=Object.values(newExempt).reduce((a,b)=>a+b,0);
-    // Debug：確認有沒有統計到座號
-    const keys=Object.keys(newExempt);
-    toast(`📋 抵免統計：${keys.length} 人，座號 ${keys.join(',')}`,6000);
-    setTimeout(()=>toast(`✅ 作業抵免：${hitCount} 天記錄，${exemptDayCount} 天有抵免，共 ${totalExempt} 筆`,4000),6500);
     renderOverview();
     renderExemptSummary();
+    setSyncDot(firebaseUidRef.current?'ok':'off');
   }catch(e){
-    toast(`❌ 讀取失敗：${e.message}`,5000);
+    setSyncDot('off');
     console.warn('loadExempt fail',e);
   }
 }
@@ -2705,6 +2705,10 @@ const _splashStartTime=Date.now();
   const lastClass=safeGet('vc2:lastClass');
   if(lastClass){
     await loadClass(lastClass);
+    // chip-text 稍後會在 loadFromFirestore 讀到 _classes 後正確顯示班級名稱
+    // 這裡先顯示 ID 避免空白
+    const chipEl=document.getElementById('chip-text');
+    if(chipEl&&chipEl.textContent==='選擇班級')chipEl.textContent=lastClass;
   }else{
     renderAll();
   }
