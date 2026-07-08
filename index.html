@@ -765,6 +765,11 @@ tr:hover td{background:var(--accent-light)}
           <span>匯出 CSV</span>
           <span class="mi-arr">›</span>
         </div>
+        <div class="more-item" style="padding:14px 16px" onclick="window.open('https://exquisite-toffee-dd7e78.netlify.app')">
+          <span class="mi-icon">🏫</span>
+          <span>開啟 Venus OS</span>
+          <span class="mi-arr">›</span>
+        </div>
       </div>
     </div>
 
@@ -852,6 +857,16 @@ tr:hover td{background:var(--accent-light)}
             </div>
             <div style="align-self:flex-end">
               <button class="btn-primary" onclick="saveBasic()">儲存</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="fg">
+              <label>第一次段考日</label>
+              <input type="date" id="set-exam1">
+            </div>
+            <div class="fg">
+              <label>第二次段考日</label>
+              <input type="date" id="set-exam2">
             </div>
           </div>
         </div>
@@ -975,6 +990,21 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
     <canvas id="chart-canvas" width="500" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
+  </div>
+</div>
+
+<!-- MODAL: score alert -->
+<div class="modal-bg center" id="score-alert-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">⚠️ 成績驟降預警</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('score-alert-modal')">✕</button>
+    </div>
+    <div id="score-alert-list" style="font-size:13px;display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-ghost btn-sm" onclick="closeModal('score-alert-modal')">關閉</button>
+      <button class="btn-primary btn-sm" onclick="copyScoreAlertDraft()">📋 複製輔導草稿</button>
+    </div>
   </div>
 </div>
 
@@ -1857,6 +1887,11 @@ function confirmColImport(){
   _scores=newScores;
   sched();scheduleSync();
   renderScoreLog();renderOverview();
+  let _alerts=[];
+  Object.keys(newScores).forEach(s=>{
+    newScores[s].forEach(entry=>{_alerts=_alerts.concat(checkScoreAlert(s,entry));});
+  });
+  if(_alerts.length)showScoreAlertModal(_alerts);
   const subjCount=Object.keys(newScores).length;
   const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
   if(statusEl)statusEl.innerHTML=`<span style="color:var(--green)">✅ ${nowStr()} 已同步</span>`;
@@ -1942,6 +1977,9 @@ function submitPaste(){
 
   sched();scheduleSync();
   renderScoreLog();renderOverview();
+
+  const _alerts=checkScoreAlert(subj,rec);
+  if(_alerts.length)showScoreAlertModal(_alerts);
 
   // 清空表單
   document.getElementById('ps-paste').value='';
@@ -2434,6 +2472,61 @@ function calcStats(arr){
   return {n, avg:+avg.toFixed(1), sd:+sd.toFixed(1), med:+med.toFixed(1), pass:+(v.filter(x=>x>=60).length/n*100).toFixed(0)};
 }
 
+// ══ 段考期別工具 ══
+function normDate(s){
+  if(!s)return '';
+  const m=String(s).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if(!m)return String(s);
+  return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+function examPeriod(dateStr){
+  const e1=_settings.exam1,e2=_settings.exam2;
+  if(!e1)return '全學期';
+  const d=normDate(dateStr);
+  if(d<=e1)return '第一次段考';
+  if(!e2||d<=e2)return '第二次段考';
+  return '期末';
+}
+function isExamSubj(s){return s.includes('段考')||s.includes('考')&&s.includes('段');}
+
+// ══ 成績驟降預警 ══
+let _scoreAlerts=[];
+function checkScoreAlert(subj,newEntry){
+  const alerts=[];
+  if(!newEntry||!newEntry.nos)return alerts;
+  const history=(_scores[subj]||[]).filter(e=>e!==newEntry);
+  Object.keys(newEntry.nos).forEach(noStr=>{
+    const no=parseInt(noStr);
+    const val=newEntry.nos[noStr];
+    if(val===null||val===undefined||isNaN(val))return;
+    const histVals=history.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+    if(histVals.length<3)return;
+    const st=calcStats(histVals);
+    if(!st)return;
+    if(val<st.avg-st.sd){
+      alerts.push({no,subj,val,avg:st.avg,sd:st.sd});
+    }
+  });
+  return alerts;
+}
+function showScoreAlertModal(alerts){
+  if(!alerts||!alerts.length)return;
+  _scoreAlerts=alerts;
+  const list=document.getElementById('score-alert-list');
+  list.innerHTML=alerts.map(a=>
+    `<div style="padding:8px 10px;background:rgba(220,38,38,.08);border-radius:8px">${a.no}號 ${a.subj} 本次${a.val}（個人平均${a.avg}）</div>`
+  ).join('');
+  document.getElementById('score-alert-modal').classList.add('show');
+}
+function copyScoreAlertDraft(){
+  if(!_scoreAlerts.length){toast('無資料可複製');return;}
+  const today=new Date().toISOString().slice(0,10);
+  const text=_scoreAlerts.map(a=>
+    `${today}｜${a.no}號｜學習輔導｜${a.subj}成績驟降：本次${a.val}分，低於個人平均${a.avg}分（標準差${a.sd}），已關注並了解原因。`
+  ).join('\n');
+  copyToClipboard(text,'已複製，可貼到 Venus OS 輔導紀錄');
+}
+
 // ══ 成績總表 ══
 function renderScoreTable(){
   const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
@@ -2639,12 +2732,16 @@ function clearLogs(){_logs=[];sched();renderLog();renderOverview();toast('已清
 // ══ 設定 ══
 function renderSettings(){
   document.getElementById('set-thr').value=_settings.threshold||300;
+  document.getElementById('set-exam1').value=_settings.exam1||'';
+  document.getElementById('set-exam2').value=_settings.exam2||'';
   renderNosPicker();
 }
 
 function saveBasic(){
   const thr=parseInt(document.getElementById('set-thr').value)||300;
   _settings.threshold=thr;
+  _settings.exam1=document.getElementById('set-exam1').value||'';
+  _settings.exam2=document.getElementById('set-exam2').value||'';
   sched();scheduleSync();
   toast('✅ 設定已儲存');
   updateNoonLabel();
@@ -2757,6 +2854,8 @@ function dlText(text,filename,type){
 function exportClassReport(){
   const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
   if(!allSubjs.length){toast('尚無成績資料');return;}
+  const normalSubjs=allSubjs.filter(s=>!isExamSubj(s));
+  const examSubjs=allSubjs.filter(s=>isExamSubj(s));
   let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>全班成績報告</title><style>
     body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
     .stu{margin-bottom:28px;page-break-inside:avoid}
@@ -2765,8 +2864,10 @@ function exportClassReport(){
     .charts img{width:260px;border:1px solid #ddd;border-radius:6px}
     table{border-collapse:collapse;margin-top:8px;font-size:12px}
     td,th{border:1px solid #ccc;padding:3px 8px;text-align:center}
-    @media print{.stu{page-break-inside:avoid}}
+    h3.sec{font-size:13px;margin:10px 0 4px;color:#555}
+    @media print{.stu{page-break-inside:avoid}button{display:none}}
   </style></head><body>
+  <button onclick="window.close();setTimeout(()=>history.back(),300)" style="position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;z-index:99;padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px">← 關閉報告</button>
   <h1 style="font-size:20px">${curClassName()} 全班成績報告 — ${new Date().toLocaleDateString('zh-TW')}</h1>`;
   _nos.forEach(no=>{
     const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
@@ -2783,7 +2884,44 @@ function exportClassReport(){
       const st=calcStats(vals);
       if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
     });
-    html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table></div>`;
+    html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table>`;
+
+    // a. 分期統計表
+    const periodsSet=new Set();
+    subjs.forEach(s=>{(_scores[s]||[]).forEach(e=>{periodsSet.add(examPeriod(e.date));});});
+    const periodOrder=['全學期','第一次段考','第二次段考','期末'].filter(p=>periodsSet.has(p));
+    if(periodOrder.length){
+      let pHtml=`<h3 class="sec">分期統計</h3><table><tr><th>期別</th>${subjs.map(s=>`<th>${s}</th>`).join('')}</tr>`;
+      periodOrder.forEach(p=>{
+        const cells=subjs.map(s=>{
+          const vals=(_scores[s]||[]).filter(e=>examPeriod(e.date)===p).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+          const st=calcStats(vals);
+          return `<td>${st?st.avg:'—'}</td>`;
+        }).join('');
+        pHtml+=`<tr><td>${p}</td>${cells}</tr>`;
+      });
+      pHtml+='</table>';
+      html+=pHtml;
+    }
+
+    // b. 平時 vs 段考對照表
+    if(normalSubjs.length){
+      const examVals=examSubjs.flatMap(s=>(_scores[s]||[]).map(e=>e.nos&&e.nos[no])).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const examSt=calcStats(examVals);
+      let cHtml=`<h3 class="sec">平時 vs 段考對照</h3><table><tr><th>科目</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>`;
+      normalSubjs.forEach(s=>{
+        const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+        const st=calcStats(vals);
+        if(!st){cHtml+=`<tr><td>${s}</td><td>—</td><td>—</td><td>—</td></tr>`;return;}
+        if(!examSt){cHtml+=`<tr><td>${s}</td><td>${st.avg}</td><td>—</td><td>—</td></tr>`;return;}
+        const diff=+(examSt.avg-st.avg).toFixed(1);
+        const color=diff<0?'color:#DC2626':'';
+        cHtml+=`<tr><td>${s}</td><td>${st.avg}</td><td>${examSt.avg}</td><td style="${color}">${diff}</td></tr>`;
+      });
+      cHtml+='</table>';
+      html+=cHtml;
+    }
+    html+='</div>';
   });
   html+=`<script>window.print()<\/script></body></html>`;
   const w=window.open('');
@@ -2825,22 +2963,24 @@ function copyAIReport(){
   text+=`\n請根據以上資料，為每位學生撰寫一段成績評語（繁體中文，正向鼓勵為主，指出進步或需加強科目）。`;
   copyToClipboard(text);
 }
-function copyToClipboard(text){
+function copyToClipboard(text,successMsg){
+  const msg=successMsg||'已複製，可貼給 AI 使用';
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(()=>{
-      toast('已複製，可貼給 AI 使用');
-    }).catch(()=>{fallbackCopy(text);});
+      toast(msg);
+    }).catch(()=>{fallbackCopy(text,msg);});
   }else{
-    fallbackCopy(text);
+    fallbackCopy(text,msg);
   }
 }
-function fallbackCopy(text){
+function fallbackCopy(text,successMsg){
+  const msg=successMsg||'已複製，可貼給 AI 使用';
   const ta=document.createElement('textarea');
   ta.value=text;
   ta.style.position='fixed';ta.style.left='-9999px';
   document.body.appendChild(ta);
   ta.focus();ta.select();
-  try{document.execCommand('copy');toast('已複製，可貼給 AI 使用');}
+  try{document.execCommand('copy');toast(msg);}
   catch(e){toast('複製失敗，請手動選取');}
   document.body.removeChild(ta);
 }
