@@ -794,7 +794,9 @@ tr:hover td{background:var(--accent-light)}
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
         <div style="font-weight:700;font-size:15px">📊 成績總表</div>
-        <button class="btn-orange btn-sm" style="margin-left:auto" onclick="exportCSV()">匯出 CSV</button>
+        <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="copyAIReport()">📋 AI 報告素材</button>
+        <button class="btn-ghost btn-sm" onclick="exportClassReport()">🖨 全班報告</button>
+        <button class="btn-orange btn-sm" onclick="exportCSV()">匯出 CSV</button>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
         <div class="sx"><table><thead id="table-thead"></thead><tbody id="table-tbody"></tbody></table></div>
@@ -968,10 +970,11 @@ tr:hover td{background:var(--accent-light)}
   <div class="modal">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <h3 id="chart-title" style="margin:0">成績趨勢</h3>
+      <button class="btn-ghost btn-sm" onclick="exportChartPNG()">📥 匯出</button>
       <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('chart-modal')">✕</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
-    <canvas id="chart-canvas" width="500" height="200" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
+    <canvas id="chart-canvas" width="500" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
   </div>
 </div>
 
@@ -1126,6 +1129,11 @@ async function doLogout(){if(_auth)await _auth.signOut();toast('已登出');}
 let _classes=[];      // [{id,year,school,className,createdAt}]
 let _groups=[];       // [{id,label,members,leader,secretary}]
 let _curClassId='';   // 目前選取的班級 id
+let _chartCur=null;   // {no,subj} 目前圖表視窗顯示中的座號/科目
+function curClassName(){
+  const c=_classes.find(x=>x.id===_curClassId);
+  return c?(c.className||c.id):'';
+}
 // 以下資料是此 App 自己的，用 vc:{classId}:key 存
 let _nos=[];          // 存在的座號 [1,2,3,5,...]
 let _scores={};       // {subjLabel:[{label,date,nos:{1:85,2:90,...}}]}
@@ -2415,6 +2423,17 @@ function renderNoonList(){
     <td><button class="btn-red btn-xs" onclick="delLog('${l.id}')">刪</button></td></tr>`).join('');
 }
 
+// ══ 成績統計 ══
+function calcStats(arr){
+  const v=arr.filter(x=>x!==null&&x!==undefined&&!isNaN(x));
+  if(!v.length)return null;
+  const n=v.length, avg=v.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(v.reduce((a,b)=>a+(b-avg)**2,0)/n);
+  const s=[...v].sort((a,b)=>a-b);
+  const med=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+  return {n, avg:+avg.toFixed(1), sd:+sd.toFixed(1), med:+med.toFixed(1), pass:+(v.filter(x=>x>=60).length/n*100).toFixed(0)};
+}
+
 // ══ 成績總表 ══
 function renderScoreTable(){
   const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
@@ -2437,6 +2456,22 @@ function renderScoreTable(){
     <td style="font-weight:700;color:var(--orange)">${scorePoints(no)}</td>
     <td style="font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
   }).join('');
+  const statRows=[
+    {label:'平均',key:'avg'},
+    {label:'標準差',key:'sd'},
+    {label:'中位數',key:'med'},
+    {label:'及格率%',key:'pass'}
+  ].map(({label,key})=>{
+    const cells=allE.map(({e})=>{
+      const st=calcStats(Object.values(e.nos||{}));
+      if(!st)return `<td style="font-size:11px;color:var(--text4)">—</td>`;
+      const val=st[key];
+      const color=key==='pass'&&val<60?'color:var(--red)':'color:var(--text4)';
+      return `<td style="font-size:11px;${color}">${val}${key==='pass'?'%':''}</td>`;
+    }).join('');
+    return `<tr style="font-size:11px;color:var(--text4)"><td style="font-size:11px;color:var(--text4)">${label}</td>${cells}<td>—</td><td>—</td></tr>`;
+  }).join('');
+  tbody.innerHTML+=statRows;
 }
 
 // ══ 折線圖 ══
@@ -2453,18 +2488,30 @@ function showChart(no){
 const CHART_COLORS={'國習':'#2563EB','聽寫':'#7C3AED','考卷':'#DC2626','生測':'#16A34A','作文':'#0891B2','數習':'#EA580C','數綜':'#0D9488','數考':'#DB2777','段考':'#9333EA'};
 
 function drawChart(no,subj){
-  const entries=_scores[subj]||[];
-  const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
+  _chartCur={no,subj};
   const canvas=document.getElementById('chart-canvas');
   const ctx=canvas.getContext('2d');
-  const W=canvas.width,H=canvas.height;
-  const pad={l:40,r:16,t:20,b:32};
-  ctx.clearRect(0,0,W,H);
   const bg=getComputedStyle(document.body).getPropertyValue('--bg2')||'#fff';
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  renderChartTo(ctx,canvas.width,canvas.height,no,subj,bg);
+}
+
+// 圖表繪製核心（螢幕畫面與離屏匯出共用）。座標系固定 500x240，依實際尺寸等比縮放。
+function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
+  const baseW=500,baseH=240;
+  const scale=Math.min(canvasW/baseW,canvasH/baseH);
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,0,0);
+  const W=baseW,H=baseH;
+  const pad={l:40,r:16,t:20,b:72};
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=bgColor||'#fff';ctx.fillRect(0,0,W,H);
+  const entries=_scores[subj]||[];
+  const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
+  const classAvgs=entries.map(e=>{const st=calcStats(Object.values(e.nos||{}));return st?st.avg:null;});
   const vals=data.map(d=>d.val).filter(v=>v!==null&&!isNaN(v));
-  if(!vals.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('無資料',W/2,H/2);return;}
-  const mn=Math.max(0,Math.min(...vals)-10),mx=Math.min(100,Math.max(...vals)+10);
+  if(!vals.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('無資料',W/2,H/2);ctx.restore();return;}
+  const rangeVals=[...vals,...classAvgs.filter(v=>v!==null&&!isNaN(v))];
+  const mn=Math.max(0,Math.min(...rangeVals)-10),mx=Math.min(100,Math.max(...rangeVals)+10);
   const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
   const toX=i=>pad.l+(i/(data.length-1||1))*cW;
   const toY=v=>pad.t+cH-((v-mn)/(mx-mn||1))*cH;
@@ -2476,13 +2523,22 @@ function drawChart(no,subj){
   }
   ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
   data.forEach((d,i)=>{const short=d.label.replace(/^[^-]+-/,'');ctx.fillText(short,toX(i),H-pad.b+12);});
-  // avg line
+  // 個人平均水平線（自己跨次成績的平均）
   const avg=+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1);
   const ay=toY(avg);
   ctx.strokeStyle='rgba(234,88,12,.35)';ctx.setLineDash([4,4]);ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(pad.l,ay);ctx.lineTo(W-pad.r,ay);ctx.stroke();
   ctx.setLineDash([]);
-  // line
+  // 全班平均對照線（每次考試的全班平均連線）
+  ctx.strokeStyle='rgba(107,114,128,.5)';ctx.setLineDash([2,3]);ctx.lineWidth=1.5;
+  ctx.beginPath();let firstA=true;
+  classAvgs.forEach((v,i)=>{
+    if(v===null||isNaN(v))return;
+    if(firstA){ctx.moveTo(toX(i),toY(v));firstA=false;}else ctx.lineTo(toX(i),toY(v));
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // 個人折線
   const color=CHART_COLORS[subj]||'#2563EB';
   ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
   ctx.beginPath();let first=true;
@@ -2497,6 +2553,53 @@ function drawChart(no,subj){
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(toX(i),toY(d.val),2.5,0,Math.PI*2);ctx.fill();
     ctx.fillStyle=color;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(d.val,toX(i),toY(d.val)-8);
   });
+  // 統計文字（我的 / 全班）
+  const myStats=calcStats(vals);
+  const classAll=entries.flatMap(e=>Object.values(e.nos||{}));
+  const clsStats=calcStats(classAll);
+  ctx.font='11px sans-serif';ctx.textAlign='left';
+  if(myStats){
+    ctx.fillStyle='#666';
+    ctx.fillText(`我的：平均 ${myStats.avg}｜標準差 ${myStats.sd}｜中位數 ${myStats.med}`,pad.l,H-pad.b+30);
+  }
+  if(clsStats){
+    ctx.fillStyle='#999';
+    ctx.fillText(`全班：平均 ${clsStats.avg}｜標準差 ${clsStats.sd}｜中位數 ${clsStats.med}`,pad.l,H-pad.b+46);
+  }
+  ctx.restore();
+}
+
+// ══ 折線圖 PNG 匯出 ══
+function exportChartPNG(){
+  if(!_chartCur){toast('尚未選取圖表');return;}
+  const {no,subj}=_chartCur;
+  const off=document.createElement('canvas');
+  off.width=1000;off.height=480;
+  const ctx=off.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,off.width,off.height);
+  // 標題
+  ctx.save();
+  ctx.font='bold 22px sans-serif';ctx.fillStyle='#222';ctx.textAlign='left';
+  const today=new Date().toLocaleDateString('zh-TW');
+  ctx.fillText(`${curClassName()} ${no}號 ${subj} 成績趨勢 ${today}`,20,34);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(0,40);
+  renderChartTo(ctx,off.width,off.height-40,no,subj,'#fff');
+  ctx.restore();
+  off.toBlob(blob=>{
+    if(!blob){toast('匯出失敗');return;}
+    const isIOS=/iPad|iPhone/.test(navigator.userAgent);
+    if(isIOS){
+      window.open(URL.createObjectURL(blob));
+      toast('長按圖片即可儲存');
+    }else{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=`成績_${no}號_${subj}.png`;a.click();
+      URL.revokeObjectURL(url);
+    }
+  },'image/png');
 }
 
 // ══ 紀錄查詢 ══
@@ -2648,6 +2751,98 @@ function dlText(text,filename,type){
   const a=document.createElement('a');
   a.href=url;a.download=filename;a.click();
   URL.revokeObjectURL(url);
+}
+
+// ══ 全班報告列印 ══
+function exportClassReport(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>全班成績報告</title><style>
+    body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
+    .stu{margin-bottom:28px;page-break-inside:avoid}
+    .stu h2{font-size:16px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px}
+    .charts{display:flex;flex-wrap:wrap;gap:8px}
+    .charts img{width:260px;border:1px solid #ddd;border-radius:6px}
+    table{border-collapse:collapse;margin-top:8px;font-size:12px}
+    td,th{border:1px solid #ccc;padding:3px 8px;text-align:center}
+    @media print{.stu{page-break-inside:avoid}}
+  </style></head><body>
+  <h1 style="font-size:20px">${curClassName()} 全班成績報告 — ${new Date().toLocaleDateString('zh-TW')}</h1>`;
+  _nos.forEach(no=>{
+    const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
+    if(!subjs.length)return;
+    html+=`<div class="stu"><h2>${no}號</h2><div class="charts">`;
+    const rows=[];
+    subjs.forEach(s=>{
+      const off=document.createElement('canvas');off.width=400;off.height=220;
+      const ctx=off.getContext('2d');
+      renderChartTo(ctx,400,220,no,s,'#fff');
+      const url=off.toDataURL('image/png');
+      html+=`<img src="${url}" alt="${s}">`;
+      const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const st=calcStats(vals);
+      if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
+    });
+    html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table></div>`;
+  });
+  html+=`<script>window.print()<\/script></body></html>`;
+  const w=window.open('');
+  if(!w){toast('請允許彈出視窗');return;}
+  w.document.write(html);
+  w.document.close();
+}
+
+// ══ 複製 AI 報告素材 ══
+function copyAIReport(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  const today=new Date().toLocaleDateString('zh-TW');
+  let text=`【班級成績分析素材】${curClassName()} 產生日期:${today}\n\n`;
+  text+=`— 全班統計 —\n`;
+  allSubjs.forEach(s=>{
+    (_scores[s]||[]).forEach(e=>{
+      const vals=Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const st=calcStats(vals);
+      if(!st)return;
+      const mx=Math.max(...vals),mn=Math.min(...vals);
+      text+=`${e.label}: 平均${st.avg} 標準差${st.sd} 中位數${st.med} 及格率${st.pass}% 最高${mx} 最低${mn}\n`;
+    });
+  });
+  text+=`\n— 個人資料 —\n`;
+  _nos.forEach(no=>{
+    const cc=cardCounts(no);
+    let line=`${no}號｜成績點:${scorePoints(no)}｜持卡:${cc.total}`;
+    allSubjs.forEach(s=>{
+      const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      if(!vals.length)return;
+      const myAvg=+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+      const classVals=(_scores[s]||[]).flatMap(e=>Object.values(e.nos||{})).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const clsAvg=classVals.length?+(classVals.reduce((a,b)=>a+b,0)/classVals.length).toFixed(1):'—';
+      line+=`｜${s}:平均${myAvg}(全班${clsAvg})`;
+    });
+    text+=line+'\n';
+  });
+  text+=`\n請根據以上資料，為每位學生撰寫一段成績評語（繁體中文，正向鼓勵為主，指出進步或需加強科目）。`;
+  copyToClipboard(text);
+}
+function copyToClipboard(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      toast('已複製，可貼給 AI 使用');
+    }).catch(()=>{fallbackCopy(text);});
+  }else{
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text){
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  try{document.execCommand('copy');toast('已複製，可貼給 AI 使用');}
+  catch(e){toast('複製失敗，請手動選取');}
+  document.body.removeChild(ta);
 }
 
 // ══ 主題切換 ══
