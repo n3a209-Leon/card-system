@@ -859,16 +859,6 @@ tr:hover td{background:var(--accent-light)}
               <button class="btn-primary" onclick="saveBasic()">儲存</button>
             </div>
           </div>
-          <div class="form-row">
-            <div class="fg">
-              <label>第一次段考日</label>
-              <input type="date" id="set-exam1">
-            </div>
-            <div class="fg">
-              <label>第二次段考日</label>
-              <input type="date" id="set-exam2">
-            </div>
-          </div>
         </div>
         <div class="card">
           <div class="card-title">📤 資料匯出</div>
@@ -986,6 +976,7 @@ tr:hover td{background:var(--accent-light)}
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <h3 id="chart-title" style="margin:0">成績趨勢</h3>
       <button class="btn-ghost btn-sm" onclick="exportChartPNG()">📥 匯出</button>
+      <button class="btn-ghost btn-sm" onclick="exportClassReport(_chartCur.no)">🖨 個人報告</button>
       <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('chart-modal')">✕</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
@@ -1868,7 +1859,7 @@ function confirmColImport(){
       const label=`${ci.subj}-${ci.label||ci.idx}`;
       if(!newScores[ci.subj])newScores[ci.subj]=[];
       let entry=newScores[ci.subj].find(e=>e.label===label);
-      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[ci.subj].push(entry);}
+      if(!entry){entry={key:label,label,date:extractDate(ci.label)||todayISO(),nos:{}};newScores[ci.subj].push(entry);}
       entry.nos[no]=num;
       imported++;
     });
@@ -1967,7 +1958,7 @@ function submitPaste(){
   _pasteData.forEach(r=>{if(r.val!==null)nosMap[r.no]=r.val;});
 
   const existIdx=_scores[subj].findIndex(e=>e.label===fullLabel);
-  const rec={key:fullLabel,label:fullLabel,date:new Date().toLocaleDateString('zh-TW'),nos:nosMap};
+  const rec={key:fullLabel,label:fullLabel,date:extractDate(label)||todayISO(),nos:nosMap};
   if(existIdx>=0){
     if(!confirm(`「${fullLabel}」已存在，確定覆蓋嗎？`))return;
     _scores[subj][existIdx]=rec;
@@ -1995,6 +1986,22 @@ function submitPaste(){
 // ── Excel 匯入（專門讀「獎卡兌換」工作表）──
 // 格式：Row0=科目大類，Row1=次數標籤，Row2起=座號+分數
 // 遇到「總分」欄後停止；跳過公式欄、空欄、None欄
+// ══ 日期抽取（手動優先、自動備援）══
+function extractDate(label){
+  const m=String(label).match(/(\d{1,2})[\/\-月](\d{1,2})/);
+  if(!m)return null;
+  const mo=parseInt(m[1]),d=parseInt(m[2]);
+  if(mo<1||mo>12||d<1||d>31)return null;
+  let y=new Date().getFullYear();
+  const cand=new Date(y,mo-1,d);
+  if(cand-Date.now()>30*864e5)y--;
+  return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function todayISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 const TARGET_SHEET_KEYWORDS = ['\u734e\u5361\u5151\u63db', '\u734e\u5361\u5151\u63db2'];
 
 function handleXlsx(input){
@@ -2068,7 +2075,7 @@ function parseAndImport(ws,sheetName){
     if(!lbl||lbl==='null'||lbl==='None')continue;
     // 跳過：平均、段考以外含「段」「考」「平均」的純統計欄
     // 保留：CH系列、44-45、甲、乙、日期格式、段考
-    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`};
+    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`,date:extractDate(lbl)};
   }
 
   // 解析資料行
@@ -2080,7 +2087,7 @@ function parseAndImport(ws,sheetName){
     if(noRaw===null||noRaw===undefined)return;
     const no=parseInt(noRaw);
     if(isNaN(no)||!_nos.includes(no)){noMatch++;return;}
-    Object.entries(colMap).forEach(([c,{subj,label}])=>{
+    Object.entries(colMap).forEach(([c,{subj,label,date}])=>{
       const v=row[parseInt(c)];
       // 跳過 null、字串公式、字串
       if(v===null||v===undefined)return;
@@ -2089,7 +2096,7 @@ function parseAndImport(ws,sheetName){
       if(isNaN(num))return;
       if(!newScores[subj])newScores[subj]=[];
       let entry=newScores[subj].find(e=>e.label===label);
-      if(!entry){entry={key:label,label,date:new Date().toLocaleDateString('zh-TW'),nos:{}};newScores[subj].push(entry);}
+      if(!entry){entry={key:label,label,date:date||todayISO(),nos:{}};newScores[subj].push(entry);}
       entry.nos[no]=num;
       imported++;
     });
@@ -2479,15 +2486,36 @@ function normDate(s){
   if(!m)return String(s);
   return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
 }
-function examPeriod(dateStr){
-  const e1=_settings.exam1,e2=_settings.exam2;
-  if(!e1)return '全學期';
-  const d=normDate(dateStr);
-  if(d<=e1)return '第一次段考';
-  if(!e2||d<=e2)return '第二次段考';
-  return '期末';
+// ══ 學科歸戶與期別判斷 ══
+function subjGroup(s){
+  if(/國|聽寫|作文|生測/.test(s))return '國語';
+  if(/數/.test(s))return '數學';
+  if(/英/.test(s))return '英語';
+  return '其他';
 }
-function isExamSubj(s){return s.includes('段考')||s.includes('考')&&s.includes('段');}
+function isExamSubj(s){return /第[一二三]次段考/.test(s)||/[國數英]段/.test(s);}
+function examBoundaries(){
+  const b={};
+  for(const s of Object.keys(_scores)){
+    const m=s.match(/第([一二三])次段考/);
+    if(!m)continue;
+    for(const e of _scores[s]||[]){
+      const k=m[1],dt=normDate(e.date);
+      if(!b[k]||dt>b[k])b[k]=dt;
+    }
+  }
+  return b;
+}
+function entryPeriod(subj,date){
+  if(/第一次段考/.test(subj))return '第一次段考';
+  if(/第二次段考/.test(subj))return '第二次段考';
+  if(/第三次段考/.test(subj))return '第三次段考';
+  const b=examBoundaries(),dt=normDate(date);
+  if(!b['一'])return '全學期';
+  if(dt<=b['一'])return '第一次段考';
+  if(!b['二']||dt<=b['二'])return '第二次段考';
+  return '第三次段考';
+}
 
 // ══ 成績驟降預警 ══
 let _scoreAlerts=[];
@@ -2588,6 +2616,27 @@ function drawChart(no,subj){
   renderChartTo(ctx,canvas.width,canvas.height,no,subj,bg);
 }
 
+// 依日期尋找期別分界線在圖表上的 x 座標（於資料點之間依日期比例內插）
+function dateBoundaryX(entries,boundaryDateStr,toX){
+  const withTs=entries.map((e,i)=>({i,ts:new Date(normDate(e.date)).getTime()})).filter(o=>!isNaN(o.ts));
+  if(!withTs.length)return null;
+  const sorted=[...withTs].sort((a,b)=>a.ts-b.ts);
+  const bts=new Date(boundaryDateStr).getTime();
+  if(isNaN(bts))return null;
+  const minTs=sorted[0].ts,maxTs=sorted[sorted.length-1].ts;
+  if(bts<minTs||bts>maxTs)return null;
+  for(let k=0;k<sorted.length-1;k++){
+    const a=sorted[k],b=sorted[k+1];
+    if(bts>=a.ts&&bts<=b.ts){
+      const frac=(b.ts===a.ts)?0:(bts-a.ts)/(b.ts-a.ts);
+      const xa=toX(a.i),xb=toX(b.i);
+      return xa+(xb-xa)*frac;
+    }
+  }
+  const exact=sorted.find(o=>o.ts===bts);
+  return exact?toX(exact.i):null;
+}
+
 // 圖表繪製核心（螢幕畫面與離屏匯出共用）。座標系固定 500x240，依實際尺寸等比縮放。
 function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
   const baseW=500,baseH=240;
@@ -2595,9 +2644,13 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
   ctx.save();
   ctx.setTransform(scale,0,0,scale,0,0);
   const W=baseW,H=baseH;
-  const pad={l:40,r:16,t:20,b:72};
+  const pad={l:40,r:16,t:32,b:72};
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle=bgColor||'#fff';ctx.fillRect(0,0,W,H);
+  const color=CHART_COLORS[subj]||'#2563EB';
+  // 科目標題
+  ctx.font='bold 13px sans-serif';ctx.fillStyle=color;ctx.textAlign='left';
+  ctx.fillText(subj,pad.l,14);
   const entries=_scores[subj]||[];
   const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
   const classAvgs=entries.map(e=>{const st=calcStats(Object.values(e.nos||{}));return st?st.avg:null;});
@@ -2614,8 +2667,27 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
     const yy=toY(y);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
     ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(y,pad.l-3,yy+3);
   }
+  // x 軸標籤（過長只取末 4 字）
   ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
-  data.forEach((d,i)=>{const short=d.label.replace(/^[^-]+-/,'');ctx.fillText(short,toX(i),H-pad.b+12);});
+  data.forEach((d,i)=>{
+    let short=d.label.replace(/^[^-]+-/,'');
+    if(short.length>4)short=short.slice(-4);
+    ctx.fillText(short,toX(i),H-pad.b+12);
+  });
+  // 期別分界虛線
+  const bnds=examBoundaries();
+  const bndLabels={'一':'一段','二':'二段','三':'三段'};
+  Object.keys(bndLabels).forEach(k=>{
+    const dt=bnds[k];
+    if(!dt)return;
+    const bx=dateBoundaryX(entries,dt,toX);
+    if(bx===null)return;
+    ctx.strokeStyle='rgba(0,0,0,.25)';ctx.setLineDash([3,3]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(bx,pad.t);ctx.lineTo(bx,H-pad.b);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(bndLabels[k],Math.min(Math.max(bx,pad.l+8),W-pad.r-8),pad.t-4);
+  });
   // 個人平均水平線（自己跨次成績的平均）
   const avg=+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1);
   const ay=toY(avg);
@@ -2632,7 +2704,6 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
   ctx.stroke();
   ctx.setLineDash([]);
   // 個人折線
-  const color=CHART_COLORS[subj]||'#2563EB';
   ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
   ctx.beginPath();let first=true;
   data.forEach((d,i)=>{
@@ -2640,13 +2711,18 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor){
     if(first){ctx.moveTo(toX(i),toY(d.val));first=false;}else ctx.lineTo(toX(i),toY(d.val));
   });
   ctx.stroke();
+  // 防重疊：相鄰點間距 <24px 時數值標籤隔點顯示；靠近頂端時標籤改畫下方
+  const spacing=cW/(data.length-1||1);
   data.forEach((d,i)=>{
     if(d.val===null||isNaN(d.val))return;
     ctx.fillStyle=color;ctx.beginPath();ctx.arc(toX(i),toY(d.val),5,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(toX(i),toY(d.val),2.5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=color;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(d.val,toX(i),toY(d.val)-8);
+    if(spacing<24&&i%2!==0)return;
+    const py=toY(d.val);
+    const labelY=py<pad.t+12?py+14:py-8;
+    ctx.fillStyle=color;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(d.val,toX(i),labelY);
   });
-  // 統計文字（我的 / 全班）
+  // 統計文字（我的 / 全班），與 x 軸標籤間至少留 8px
   const myStats=calcStats(vals);
   const classAll=entries.flatMap(e=>Object.values(e.nos||{}));
   const clsStats=calcStats(classAll);
@@ -2732,16 +2808,12 @@ function clearLogs(){_logs=[];sched();renderLog();renderOverview();toast('已清
 // ══ 設定 ══
 function renderSettings(){
   document.getElementById('set-thr').value=_settings.threshold||300;
-  document.getElementById('set-exam1').value=_settings.exam1||'';
-  document.getElementById('set-exam2').value=_settings.exam2||'';
   renderNosPicker();
 }
 
 function saveBasic(){
   const thr=parseInt(document.getElementById('set-thr').value)||300;
   _settings.threshold=thr;
-  _settings.exam1=document.getElementById('set-exam1').value||'';
-  _settings.exam2=document.getElementById('set-exam2').value||'';
   sched();scheduleSync();
   toast('✅ 設定已儲存');
   updateNoonLabel();
@@ -2851,78 +2923,313 @@ function dlText(text,filename,type){
 }
 
 // ══ 全班報告列印 ══
-function exportClassReport(){
-  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
-  if(!allSubjs.length){toast('尚無成績資料');return;}
-  const normalSubjs=allSubjs.filter(s=>!isExamSubj(s));
-  const examSubjs=allSubjs.filter(s=>isExamSubj(s));
-  let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>全班成績報告</title><style>
-    body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
-    .stu{margin-bottom:28px;page-break-inside:avoid}
-    .stu h2{font-size:16px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px}
-    .charts{display:flex;flex-wrap:wrap;gap:8px}
-    .charts img{width:260px;border:1px solid #ddd;border-radius:6px}
-    table{border-collapse:collapse;margin-top:8px;font-size:12px}
-    td,th{border:1px solid #ccc;padding:3px 8px;text-align:center}
-    h3.sec{font-size:13px;margin:10px 0 4px;color:#555}
-    @media print{.stu{page-break-inside:avoid}button{display:none}}
-  </style></head><body>
-  <button onclick="window.close();setTimeout(()=>history.back(),300)" style="position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;z-index:99;padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px">← 關閉報告</button>
-  <h1 style="font-size:20px">${curClassName()} 全班成績報告 — ${new Date().toLocaleDateString('zh-TW')}</h1>`;
-  _nos.forEach(no=>{
-    const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
-    if(!subjs.length)return;
-    html+=`<div class="stu"><h2>${no}號</h2><div class="charts">`;
-    const rows=[];
-    subjs.forEach(s=>{
+const ALL_GROUPS=['國語','數學','英語','其他'];
+const GROUP_COLORS={'國語':'#2563EB','數學':'#EA580C','英語':'#16A34A','其他':'#9333EA'};
+
+function totalVals(no,periodFilter){
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    (_scores[s]||[]).forEach(e=>{
+      if(periodFilter!==null&&entryPeriod(s,e.date)!==periodFilter)return;
+      if(no===null){
+        vals=vals.concat(Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v)));
+      }else{
+        const v=e.nos&&e.nos[no];
+        if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      }
+    });
+  });
+  return vals;
+}
+
+function classSummaryHTML(){
+  const groups=ALL_GROUPS.filter(g=>groupVals(null,g,null).length>0);
+  const items=[];
+  groups.forEach(g=>{
+    const p1=calcStats(groupVals(null,g,'第一次段考'));
+    if(p1)items.push({label:`${g}一期`,val:p1.avg,color:GROUP_COLORS[g]||'#555'});
+    const p2=calcStats(groupVals(null,g,'第二次段考'));
+    if(p2)items.push({label:`${g}二期`,val:p2.avg,color:GROUP_COLORS[g]||'#555'});
+  });
+  const totalSt=calcStats(totalVals(null,null));
+  if(totalSt)items.push({label:'總成績',val:totalSt.avg,color:'#111827'});
+
+  let chartImg='';
+  if(items.length){
+    const barH=26,gap=8,padT=16,padL=76,padR=50;
+    const chH=items.length*(barH+gap)+padT;
+    const chW=560;
+    const off=document.createElement('canvas');off.width=chW;off.height=chH;
+    const ctx=off.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,chW,chH);
+    const maxBarW=chW-padL-padR;
+    items.forEach((it,i)=>{
+      const y=padT+i*(barH+gap);
+      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='right';
+      ctx.fillText(it.label,padL-8,y+barH/2+4);
+      ctx.fillStyle=it.color;
+      ctx.fillRect(padL,y,maxBarW*Math.max(0,Math.min(it.val,100))/100,barH);
+      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(it.val,padL+maxBarW*Math.max(0,Math.min(it.val,100))/100+6,y+barH/2+4);
+    });
+    chartImg=off.toDataURL('image/png');
+  }
+
+  const rankList=_nos.map(no=>{
+    const p1=calcStats(totalVals(no,'第一次段考'));
+    const p2=calcStats(totalVals(no,'第二次段考'));
+    if(!p1||!p2)return {no,ok:false};
+    return {no,ok:true,diff:+(p2.avg-p1.avg).toFixed(1)};
+  });
+  rankList.sort((a,b)=>{
+    if(a.ok&&b.ok)return b.diff-a.diff;
+    if(a.ok&&!b.ok)return -1;
+    if(!a.ok&&b.ok)return 1;
+    return a.no-b.no;
+  });
+  const markerHtml=r=>{
+    if(!r.ok)return `<span style="color:#999">資料不足</span>`;
+    if(Math.abs(r.diff)<1)return `<span style="color:#999">持平</span>`;
+    if(r.diff>0)return `<span style="color:#16A34A">▲+${r.diff}</span>`;
+    return `<span style="color:#DC2626">▼${r.diff}</span>`;
+  };
+  const rankTableHtml=list=>`<table><tr><th>座號</th><th>一期→二期變化</th></tr>${list.map(r=>`<tr><td>${r.no}號</td><td>${markerHtml(r)}</td></tr>`).join('')}</table>`;
+  const half=Math.ceil(rankList.length/2);
+  const left=rankList.slice(0,half),right=rankList.slice(half);
+
+  let html=`<h3 class="sec">學科群 × 期別 全班平均</h3>`;
+  html+=chartImg?`<img src="${chartImg}" style="max-width:100%;border:1px solid #eee;border-radius:8px">`:`<div style="color:#999;font-size:12px">尚無資料</div>`;
+  html+=`<h3 class="sec">一期 → 二期 進退步排行</h3>`;
+  html+=`<div style="display:flex;gap:16px;flex-wrap:wrap">${rankTableHtml(left)}${right.length?rankTableHtml(right):''}</div>`;
+  html+=`<div style="page-break-after:always"></div>`;
+  return html;
+}
+
+function groupVals(no,group,periodFilter){
+  // no===null 時彙整全班（不分座號）
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    if(subjGroup(s)!==group)return;
+    (_scores[s]||[]).forEach(e=>{
+      if(periodFilter!==null&&entryPeriod(s,e.date)!==periodFilter)return;
+      if(no===null){
+        vals=vals.concat(Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v)));
+      }else{
+        const v=e.nos&&e.nos[no];
+        if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      }
+    });
+  });
+  return vals;
+}
+function groupValsClassify(no,group,periodFilter,exam){
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    if(subjGroup(s)!==group)return;
+    if(isExamSubj(s)!==exam)return;
+    (_scores[s]||[]).forEach(e=>{
+      if(periodFilter!==null&&entryPeriod(s,e.date)!==periodFilter)return;
+      const v=e.nos&&e.nos[no];
+      if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+    });
+  });
+  return vals;
+}
+
+function renderRadarTo(ctx,canvasW,canvasH,no,periodFilter){
+  const baseW=360,baseH=300;
+  const scale=Math.min(canvasW/baseW,canvasH/baseH);
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,0,0);
+  const W=baseW,H=baseH;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const axes=ALL_GROUPS.filter(g=>groupVals(null,g,periodFilter).length>0);
+  if(!axes.length){
+    ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('尚無資料',W/2,H/2);
+    ctx.restore();return;
+  }
+  const myAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,periodFilter));return st?st.avg:null;});
+  const clsAvgs=axes.map(g=>{const st=calcStats(groupVals(null,g,periodFilter));return st?st.avg:null;});
+  if(axes.length<3){
+    const padL=64,padR=16,padT=16,barH=18,gap=10;
+    let y=padT;
+    axes.forEach((g,i)=>{
+      const maxW=W-padL-padR;
+      const cv=clsAvgs[i]||0,mv=myAvgs[i]||0;
+      ctx.font='11px sans-serif';ctx.fillStyle='#333';ctx.textAlign='right';
+      ctx.fillText(g,padL-6,y+barH/2+4);
+      ctx.fillStyle='rgba(107,114,128,.35)';
+      ctx.fillRect(padL,y,maxW*Math.min(cv,100)/100,barH/2-1);
+      ctx.fillStyle='#2563EB';
+      ctx.fillRect(padL,y+barH/2+1,maxW*Math.min(mv,100)/100,barH/2-1);
+      ctx.fillStyle='#666';ctx.textAlign='left';ctx.font='9px sans-serif';
+      ctx.fillText(`全班${cv||'—'}`,padL+maxW+4,y+barH/2-2);
+      ctx.fillText(`個人${mv||'—'}`,padL+maxW+4,y+barH-2);
+      y+=barH+gap;
+    });
+    ctx.restore();return;
+  }
+  const cx=W/2,cy=H/2-6,R=Math.min(W,H)/2-56;
+  const n=axes.length;
+  const angleFor=i=>-Math.PI/2+i*(2*Math.PI/n);
+  ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=1;
+  [0.6,0.8,1].forEach(f=>{
+    ctx.beginPath();
+    for(let i=0;i<=n;i++){
+      const a=angleFor(i%n),r=R*f;
+      const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+  for(let i=0;i<n;i++){
+    const a=angleFor(i);
+    ctx.strokeStyle='rgba(0,0,0,.12)';
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();
+    ctx.fillStyle='#555';ctx.font='11px sans-serif';
+    const lx=cx+Math.cos(a)*(R+14),ly=cy+Math.sin(a)*(R+14);
+    ctx.textAlign=Math.cos(a)>0.3?'left':Math.cos(a)<-0.3?'right':'center';
+    ctx.fillText(axes[i],lx,ly+4);
+  }
+  const toPt=(vals,i)=>{
+    const v=Math.max(0,Math.min(100,vals[i]||0));
+    const a=angleFor(i),r=R*(v/100);
+    return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];
+  };
+  const drawPoly=(vals,fill,stroke,lw)=>{
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const[x,y]=toPt(vals,i);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+  };
+  drawPoly(clsAvgs,'rgba(107,114,128,.15)','rgba(107,114,128,.5)',1.5);
+  drawPoly(myAvgs,'rgba(37,99,235,.2)','#2563EB',2);
+  ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.strokeStyle='#2563EB';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W-70,H-18);ctx.lineTo(W-56,H-18);ctx.stroke();
+  ctx.fillStyle='#333';ctx.fillText('個人',W-54,H-15);
+  ctx.strokeStyle='rgba(107,114,128,.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(W-70,H-6);ctx.lineTo(W-56,H-6);ctx.stroke();
+  ctx.fillStyle='#333';ctx.fillText('全班',W-54,H-3);
+  ctx.restore();
+}
+
+function fmtDiff(examAvg,normAvg){
+  if(examAvg===null||examAvg===undefined||normAvg===null||normAvg===undefined)return '—';
+  const diff=+(examAvg-normAvg).toFixed(1);
+  if(Math.abs(diff)<1)return `<span style="color:#999">≈持平</span>`;
+  if(diff>0)return `<span style="color:#16A34A">▲+${diff}</span>`;
+  return `<span style="color:#DC2626">▼${diff}</span>`;
+}
+
+function studentReportHTML(no,allSubjs){
+  const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
+  if(!subjs.length)return '';
+  let html=`<div class="stu"><h2>${no}號</h2>`;
+
+  // 三雷達圖
+  html+=`<div class="radars">`;
+  [['第一次段考期','第一次段考'],['第二次段考期','第二次段考'],['學習總成績',null]].forEach(([title,pf])=>{
+    const off=document.createElement('canvas');off.width=360;off.height=300;
+    const ctx=off.getContext('2d');
+    renderRadarTo(ctx,360,300,no,pf);
+    html+=`<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:2px">${title}</div><img src="${off.toDataURL('image/png')}" style="width:100%;max-width:280px;border:1px solid #eee;border-radius:8px"></div>`;
+  });
+  html+=`</div>`;
+
+  // 折線圖 / 精簡卡片
+  html+=`<div class="charts">`;
+  const rows=[];
+  subjs.forEach(s=>{
+    const entries=_scores[s]||[];
+    const color=CHART_COLORS[s]||'#2563EB';
+    if(entries.length===1){
+      const e=entries[0];
+      const val=e.nos&&e.nos[no];
+      const classVals=Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const clsAvg=classVals.length?(classVals.reduce((a,b)=>a+b,0)/classVals.length).toFixed(1):'—';
+      html+=`<div style="border:1px solid #ddd;border-radius:6px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px">
+        <div style="font-weight:700;color:${color}">${s}</div>
+        <div style="font-size:28px;font-weight:700;margin:6px 0">${val!==undefined&&val!==null?val:'—'}</div>
+        <div style="font-size:11px;color:#999">僅 1 筆・全班平均 ${clsAvg}</div>
+      </div>`;
+    }else{
       const off=document.createElement('canvas');off.width=400;off.height=220;
       const ctx=off.getContext('2d');
       renderChartTo(ctx,400,220,no,s,'#fff');
-      const url=off.toDataURL('image/png');
-      html+=`<img src="${url}" alt="${s}">`;
-      const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-      const st=calcStats(vals);
-      if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
-    });
-    html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table>`;
-
-    // a. 分期統計表
-    const periodsSet=new Set();
-    subjs.forEach(s=>{(_scores[s]||[]).forEach(e=>{periodsSet.add(examPeriod(e.date));});});
-    const periodOrder=['全學期','第一次段考','第二次段考','期末'].filter(p=>periodsSet.has(p));
-    if(periodOrder.length){
-      let pHtml=`<h3 class="sec">分期統計</h3><table><tr><th>期別</th>${subjs.map(s=>`<th>${s}</th>`).join('')}</tr>`;
-      periodOrder.forEach(p=>{
-        const cells=subjs.map(s=>{
-          const vals=(_scores[s]||[]).filter(e=>examPeriod(e.date)===p).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-          const st=calcStats(vals);
-          return `<td>${st?st.avg:'—'}</td>`;
-        }).join('');
-        pHtml+=`<tr><td>${p}</td>${cells}</tr>`;
-      });
-      pHtml+='</table>';
-      html+=pHtml;
+      html+=`<img src="${off.toDataURL('image/png')}" alt="${s}">`;
     }
-
-    // b. 平時 vs 段考對照表
-    if(normalSubjs.length){
-      const examVals=examSubjs.flatMap(s=>(_scores[s]||[]).map(e=>e.nos&&e.nos[no])).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-      const examSt=calcStats(examVals);
-      let cHtml=`<h3 class="sec">平時 vs 段考對照</h3><table><tr><th>科目</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>`;
-      normalSubjs.forEach(s=>{
-        const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-        const st=calcStats(vals);
-        if(!st){cHtml+=`<tr><td>${s}</td><td>—</td><td>—</td><td>—</td></tr>`;return;}
-        if(!examSt){cHtml+=`<tr><td>${s}</td><td>${st.avg}</td><td>—</td><td>—</td></tr>`;return;}
-        const diff=+(examSt.avg-st.avg).toFixed(1);
-        const color=diff<0?'color:#DC2626':'';
-        cHtml+=`<tr><td>${s}</td><td>${st.avg}</td><td>${examSt.avg}</td><td style="${color}">${diff}</td></tr>`;
-      });
-      cHtml+='</table>';
-      html+=cHtml;
-    }
-    html+='</div>';
+    const vals=entries.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+    const st=calcStats(vals);
+    if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
   });
+  html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table>`;
+
+  // 三期統計表
+  const groups=ALL_GROUPS.filter(g=>groupVals(null,g,null).length>0);
+  if(groups.length){
+    let pHtml=`<h3 class="sec">三期統計</h3><table><tr><th>期別</th>${groups.map(g=>`<th>${g}</th>`).join('')}</tr>`;
+    [['第一次段考期','第一次段考'],['第二次段考期','第二次段考'],['學習總成績',null]].forEach(([title,pf])=>{
+      const cells=groups.map(g=>{
+        const st=calcStats(groupVals(no,g,pf));
+        return `<td>${st?st.avg:'—'}</td>`;
+      }).join('');
+      pHtml+=`<tr><td>${title}</td>${cells}</tr>`;
+    });
+    pHtml+='</table>';
+    html+=pHtml;
+  }
+
+  // 平時 vs 段考對照表
+  let cRows='';
+  groups.forEach(g=>{
+    [['第一期','第一次段考'],['第二期','第二次段考']].forEach(([label,pf])=>{
+      const clsNormal=groupValsClassify(null,g,pf,false);
+      const clsExam=groupValsClassify(null,g,pf,true);
+      if(!clsNormal.length&&!clsExam.length)return;
+      const myNormalSt=calcStats(groupValsClassify(no,g,pf,false));
+      const myExamSt=calcStats(groupValsClassify(no,g,pf,true));
+      const nAvg=myNormalSt?myNormalSt.avg:null,eAvg=myExamSt?myExamSt.avg:null;
+      cRows+=`<tr><td>${g} ${label}</td><td>${nAvg!==null?nAvg:'—'}</td><td>${eAvg!==null?eAvg:'—'}</td><td>${fmtDiff(eAvg,nAvg)}</td></tr>`;
+    });
+  });
+  if(cRows){
+    html+=`<h3 class="sec">平時 vs 段考對照</h3><table><tr><th>學科期別</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>${cRows}</table>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+function exportClassReport(targetNo){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  const single=targetNo!==undefined&&targetNo!==null&&targetNo!=='';
+  const no=single?parseInt(targetNo):null;
+  const titleText=single?`${curClassName()} ${no}號 個人成績報告 — ${new Date().toLocaleDateString('zh-TW')}`:`${curClassName()} 全班成績報告 — ${new Date().toLocaleDateString('zh-TW')}`;
+  let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
+    body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
+    .stu{margin-bottom:28px;page-break-inside:avoid}
+    .stu h2{font-size:16px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px}
+    .radars{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:10px}
+    .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+    .charts img{width:100%;border:1px solid #ddd;border-radius:6px}
+    table{border-collapse:collapse;margin-top:6px;font-size:12px;max-width:520px}
+    td,th{border:1px solid #ccc;padding:6px;text-align:center}
+    h3.sec{font-size:14px;margin:8px 0 3px;color:#555}
+    @media print{.stu{page-break-inside:avoid}button{display:none}}
+  </style></head><body>
+  <button onclick="window.close();setTimeout(()=>history.back(),300)" style="position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;z-index:99;padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px">← 關閉報告</button>
+  <h1 style="font-size:20px">${titleText}</h1>`;
+  if(!single)html+=classSummaryHTML();
+  if(single){
+    html+=studentReportHTML(no,allSubjs);
+  }else{
+    _nos.forEach(n=>{html+=studentReportHTML(n,allSubjs);});
+  }
   html+=`<script>window.print()<\/script></body></html>`;
   const w=window.open('');
   if(!w){toast('請允許彈出視窗');return;}
@@ -2931,10 +3238,18 @@ function exportClassReport(){
 }
 
 // ══ 複製 AI 報告素材 ══
+function fmtDiffText(examAvg,normAvg){
+  if(examAvg===null||examAvg===undefined||normAvg===null||normAvg===undefined)return '—';
+  const diff=+(examAvg-normAvg).toFixed(1);
+  if(Math.abs(diff)<1)return '≈持平';
+  return diff>0?`▲+${diff}`:`▼${diff}`;
+}
+
 function copyAIReport(){
   const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
   if(!allSubjs.length){toast('尚無成績資料');return;}
   const today=new Date().toLocaleDateString('zh-TW');
+  const groups=ALL_GROUPS.filter(g=>groupVals(null,g,null).length>0);
   let text=`【班級成績分析素材】${curClassName()} 產生日期:${today}\n\n`;
   text+=`— 全班統計 —\n`;
   allSubjs.forEach(s=>{
@@ -2946,18 +3261,20 @@ function copyAIReport(){
       text+=`${e.label}: 平均${st.avg} 標準差${st.sd} 中位數${st.med} 及格率${st.pass}% 最高${mx} 最低${mn}\n`;
     });
   });
+  if(groups.length){
+    const fmtG=pf=>groups.map(g=>{const st=calcStats(groupVals(null,g,pf));return `${g}${st?st.avg:'—'}`;}).join(' ');
+    text+=`三期全班平均：一期 ${fmtG('第一次段考')}｜二期 ${fmtG('第二次段考')}｜總 ${fmtG(null)}\n`;
+  }
   text+=`\n— 個人資料 —\n`;
   _nos.forEach(no=>{
     const cc=cardCounts(no);
-    let line=`${no}號｜成績點:${scorePoints(no)}｜持卡:${cc.total}`;
-    allSubjs.forEach(s=>{
-      const vals=(_scores[s]||[]).map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-      if(!vals.length)return;
-      const myAvg=+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-      const classVals=(_scores[s]||[]).flatMap(e=>Object.values(e.nos||{})).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
-      const clsAvg=classVals.length?+(classVals.reduce((a,b)=>a+b,0)/classVals.length).toFixed(1):'—';
-      line+=`｜${s}:平均${myAvg}(全班${clsAvg})`;
-    });
+    const fmtStu=pf=>groups.map(g=>{const st=calcStats(groupVals(no,g,pf));return `${g}${st?st.avg:'—'}`;}).join(' ');
+    const diffStu=groups.map(g=>{
+      const examAvg=calcStats(groupValsClassify(no,g,null,true))?.avg;
+      const normAvg=calcStats(groupValsClassify(no,g,null,false))?.avg;
+      return `${g}${fmtDiffText(examAvg,normAvg)}`;
+    }).join(' ');
+    const line=`${no}號｜成績點:${scorePoints(no)}｜持卡:${cc.total}｜一期:${fmtStu('第一次段考')}｜二期:${fmtStu('第二次段考')}｜總:${fmtStu(null)}｜段考vs平時差:${diffStu}`;
     text+=line+'\n';
   });
   text+=`\n請根據以上資料，為每位學生撰寫一段成績評語（繁體中文，正向鼓勵為主，指出進步或需加強科目）。`;
