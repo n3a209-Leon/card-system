@@ -790,6 +790,11 @@ tr:hover td{background:var(--accent-light)}
           <span>開啟 Venus OS</span>
           <span class="mi-arr">›</span>
         </div>
+        <div class="more-item" style="padding:14px 16px" onclick="diagExempt()">
+          <span class="mi-icon">🩺</span>
+          <span>抵免診斷</span>
+          <span class="mi-arr">›</span>
+        </div>
       </div>
     </div>
 
@@ -1041,7 +1046,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.1.0';
+const APP_VERSION='2.1.1';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -1778,6 +1783,52 @@ async function loadExemptFromVenusOS(classId){
     setSyncDot('off');
     console.warn('loadExempt fail',e);
   }
+}
+
+// 🩺 抵免診斷：用寬範圍掃多種年度前綴，把實際抓到的內容印出來（供截圖排查）
+async function diagExempt(){
+  const uid=firebaseUidRef.current;
+  const cls=_classes.find(c=>c.id===_curClassId);
+  const range=academicRangeForClass(_curClassId);
+  const lines=[];
+  lines.push('uid:'+(uid?uid.slice(0,6)+'…':'(無)'));
+  lines.push('db:'+(_db?'ok':'無'));
+  lines.push('classId:'+_curClassId);
+  lines.push('cls.year:'+(cls?JSON.stringify(cls.year):'(找不到cls)'));
+  lines.push('className:'+(cls?cls.className:'?'));
+  lines.push('目前掃描範圍:'+range.start+'~'+range.end);
+  if(!uid||!_db||!cls){alert(lines.join('\n'));return;}
+  const nm=cls.className;
+  const yrs=['2024','2025','2026','2027','113','114','115','116'];
+  const dataCol=_db.collection('users').doc(uid).collection('data');
+  const fid=firebase.firestore.FieldPath.documentId();
+  let sampleKeys=[],sampleExempt='',anyDoc=false;
+  for(const y of yrs){
+    const pfx=y+'_'+nm+':day:';
+    try{
+      const snap=await dataCol.where(fid,'>=',pfx+'2020-01-01').where(fid,'<=',pfx+'2030-12-31').get();
+      if(snap.size>0){
+        anyDoc=true;let withEx=0,cnt=0;
+        snap.forEach(d=>{
+          if(sampleKeys.length<4)sampleKeys.push(d.id);
+          const p=parseStored(d.data().value,null);
+          if(p&&p.exempt){
+            withEx++;
+            cnt+=Object.values(p.exempt).reduce((a,v)=>a+(Array.isArray(v)?v.length:0),0);
+            if(!sampleExempt)sampleExempt=d.id+' → '+JSON.stringify(p.exempt).slice(0,140);
+          }
+        });
+        lines.push('✔ '+pfx+' 文件:'+snap.size+' 有exempt:'+withEx+' 張數:'+cnt);
+      }
+    }catch(e){
+      lines.push('✖ '+pfx+' err:'+(e.code||e.message));
+    }
+  }
+  if(!anyDoc)lines.push('（所有年度前綴都掃不到任何 day 文件）');
+  if(sampleKeys.length)lines.push('樣本鍵:'+sampleKeys.join(' | '));
+  if(sampleExempt)lines.push('exempt樣本:'+sampleExempt);
+  else if(anyDoc)lines.push('（掃到 day 文件但都沒有 exempt 欄位）');
+  alert(lines.join('\n'));
 }
 
 // 在總覽頁顯示「作業抵免統計」卡片
