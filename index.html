@@ -1046,7 +1046,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.1.1';
+const APP_VERSION='2.1.2';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -1706,7 +1706,10 @@ function academicRangeForClass(classId){
     const now=new Date();
     startYear=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;
   }
-  return{start:`${startYear}-08-01`,end:`${startYear+1}-07-31`,startYear};
+  // 掃描窗前後各擴一年：Venus OS 把同一班所有 day 資料塞在同一個 {年}_{班名}: 前綴下，
+  // 而 cls.year 可能代表學年起始年或結束年，日期實際可能落在 startYear 的前一個學年。
+  // 前綴已鎖定單一班級，擴大日期窗只會多讀同班自己的文件，不會跨班污染。
+  return{start:`${startYear-1}-08-01`,end:`${startYear+1}-07-31`,startYear};
 }
 
 async function loadExemptFromVenusOS(classId){
