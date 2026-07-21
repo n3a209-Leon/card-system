@@ -1713,7 +1713,14 @@ async function loadExemptFromVenusOS(classId){
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
     const cls=_classes.find(c=>c.id===classId);
-    const pfx=cls?`${cls.year}_${cls.className}:day:`:`${classId}:day:`;
+    // 建構候選前綴：Venus OS 的學年可能存西元或民國，三種都試（去重），哪個對得上就抓到，其餘回空無副作用。
+    let pfxList;
+    if(cls){
+      const yrTokens=new Set([String(cls.year),String(range.startYear),String(range.startYear-1911)]);
+      pfxList=[...yrTokens].map(y=>`${y}_${cls.className}:day:`);
+    }else{
+      pfxList=[`${classId}:day:`];
+    }
 
     // 先顯示上次結果，切頁時不必重新等待；同一次開啟 App 每班只完整掃描一次。
     const cached=await storeGet(cacheKey);
@@ -1741,17 +1748,21 @@ async function loadExemptFromVenusOS(classId){
     // 優先用文件 ID 範圍查詢，一次只取實際存在的日期；若規則不允許 list，再退回逐日讀取。
     try{
       const fid=firebase.firestore.FieldPath.documentId();
-      const snap=await dataCol.where(fid,'>=',pfx+range.start).where(fid,'<=',pfx+range.end).get();
-      snap.forEach(ingest);
+      for(const pfx of pfxList){
+        const snap=await dataCol.where(fid,'>=',pfx+range.start).where(fid,'<=',pfx+range.end).get();
+        snap.forEach(ingest);
+      }
     }catch(queryErr){
       const dates=[];
       for(let d=new Date(range.start+'T00:00:00');d<=new Date(range.end+'T00:00:00');d.setDate(d.getDate()+1)){
         dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
       }
+      const ids=[];
+      for(const pfx of pfxList){for(const ds of dates)ids.push(pfx+ds);}
       const BATCH=25;
-      for(let i=0;i<dates.length;i+=BATCH){
-        await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
-          try{ingest(await dataCol.doc(pfx+ds).get());}catch{}
+      for(let i=0;i<ids.length;i+=BATCH){
+        await Promise.all(ids.slice(i,i+BATCH).map(async id=>{
+          try{ingest(await dataCol.doc(id).get());}catch{}
         }));
         if(token!==_exemptLoadToken||classId!==_curClassId)return;
         _exemptMap={...newExempt};renderOverview();renderExemptSummary();
