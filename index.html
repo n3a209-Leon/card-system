@@ -1,0 +1,3905 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#08051C">
+<meta name="application-name" content="Venus Card System">
+<meta name="description" content="班級獎卡、成績點數、兌換與給卡管理">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<title>獎卡系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ══ BASE ══ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F0F4F8;--bg2:#FFFFFF;--bg3:#E8EDF2;--bg4:#DDE3EA;
+  --accent:#2563EB;--accent2:#1D4ED8;--accent-light:#EFF6FF;
+  --green:#16A34A;--green-light:#F0FDF4;
+  --orange:#EA580C;--orange-light:#FFF7ED;
+  --red:#DC2626;--red-light:#FEF2F2;
+  --gold:#D97706;--gold-light:#FFFBEB;
+  --purple:#7C3AED;--purple-light:#F5F3FF;
+  --text:#0F172A;--text2:#374151;--text3:#6B7280;--text4:#9CA3AF;
+  --border:#E2E8F0;--border2:#CBD5E1;
+  --radius:12px;--radius2:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --header-h:52px;--tabar-h:60px;
+}
+
+/* ══ NERV THEME ══ */
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes flicker{0%,95%,100%{opacity:1}96%,98%{opacity:.88}}
+@keyframes pulse-nerv{0%,100%{box-shadow:0 0 8px rgba(255,102,0,.4)}50%{box-shadow:0 0 18px rgba(255,102,0,.8)}}
+[data-theme="nerv"]{
+  --bg:#050200;--bg2:#0a0400;--bg3:#100500;--bg4:#160800;
+  --accent:#FF6600;--accent2:#FF4400;--accent-light:rgba(255,102,0,.12);
+  --green:#39FF14;--green-light:rgba(57,255,20,.08);
+  --orange:#FFCC00;--orange-light:rgba(255,204,0,.1);
+  --red:#FF3600;--red-light:rgba(255,54,0,.1);
+  --gold:#FFCC00;--gold-light:rgba(255,204,0,.1);
+  --purple:#FF6600;--purple-light:rgba(255,102,0,.1);
+  --text:#FF6600;--text2:#FF8844;--text3:#CC4400;--text4:#883300;
+  --border:rgba(255,102,0,.2);--border2:rgba(255,102,0,.4);
+  font-family:"Share Tech Mono","Noto Sans TC",monospace;
+  animation:flicker 8s infinite;
+}
+[data-theme="nerv"]::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9998}
+[data-theme="nerv"] .app-header{background:linear-gradient(180deg,#120400,#080200);border-bottom:1px solid #FF6600;box-shadow:0 0 30px rgba(255,102,0,.25)}
+[data-theme="nerv"] .tab-bar{background:#080200;border-top:1px solid rgba(255,102,0,.3)}
+[data-theme="nerv"] .tab-btn.active{color:#FF6600;text-shadow:0 0 8px rgba(255,102,0,.8)}
+[data-theme="nerv"] .card{border:1px solid rgba(255,102,0,.15);background:#0a0400}
+[data-theme="nerv"] .btn-primary{background:rgba(255,102,0,.15);color:#FF6600;border:1px solid rgba(255,102,0,.5)}
+[data-theme="nerv"] .btn-primary:active{background:rgba(255,102,0,.3)}
+[data-theme="nerv"] .stu-cell{border-color:rgba(255,102,0,.2)}
+[data-theme="nerv"] .stu-cell.ready{border-color:#FFCC00;background:rgba(255,204,0,.08)}
+[data-theme="nerv"] input,[data-theme="nerv"] select,[data-theme="nerv"] textarea{background:#0a0400;border-color:rgba(255,102,0,.3);color:#FF6600}
+[data-theme="nerv"] .class-chip{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.4);color:#FF6600}
+
+/* ══ NEBULA THEME（同 Venus OS Deep Space Edition）══ */
+@keyframes purple-glow-pulse{0%,100%{box-shadow:0 0 6px rgba(160,80,255,.6),0 0 14px rgba(120,60,220,.3)}50%{box-shadow:0 0 14px rgba(180,100,255,.9),0 0 30px rgba(140,70,240,.5)}}
+@keyframes nebula-drift{0%{transform:translate(0,0) scale(1);opacity:.7}50%{transform:translate(-8px,12px) scale(1.08);opacity:1}100%{transform:translate(0,0) scale(1);opacity:.7}}
+@keyframes star-twinkle{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+@keyframes nebula-glow{0%,100%{box-shadow:0 0 20px rgba(120,80,255,.3),0 0 40px rgba(60,120,255,.15)}50%{box-shadow:0 0 35px rgba(150,100,255,.5),0 0 70px rgba(80,140,255,.25)}}
+[data-theme="nebula"]{
+  --bg:#04050f;--bg2:rgba(8,5,24,.85);--bg3:rgba(12,8,32,.7);--bg4:rgba(20,14,50,.6);
+  --accent:#a070ff;--accent2:#8050ee;--accent-light:rgba(140,80,255,.15);
+  --green:#4CD278;--green-light:rgba(76,210,120,.1);
+  --orange:#FB923C;--orange-light:rgba(251,146,60,.1);
+  --red:#F87171;--red-light:rgba(248,113,113,.1);
+  --gold:#FCD34D;--gold-light:rgba(252,211,77,.1);
+  --purple:#C084FC;--purple-light:rgba(192,132,252,.12);
+  --text:#d0e8ff;--text2:#b0c8ef;--text3:#8090b8;--text4:#505878;
+  --border:rgba(120,80,255,.2);--border2:rgba(150,100,255,.4);
+  color:#d0e8ff;position:relative;
+}
+/* 深空星空背景 */
+[data-theme="nebula"]::before{
+  content:'';position:fixed;inset:0;z-index:-1;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 30%,rgba(80,40,180,.28) 0%,transparent 65%),
+    radial-gradient(ellipse 60% 80% at 80% 70%,rgba(20,80,200,.22) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 50% at 50% 10%,rgba(160,60,220,.18) 0%,transparent 55%),
+    radial-gradient(ellipse 90% 40% at 10% 90%,rgba(30,100,180,.20) 0%,transparent 60%),
+    linear-gradient(135deg,#04050f 0%,#070a1a 40%,#060818 70%,#050410 100%);
+  pointer-events:none;
+}
+/* 星點層（用 radial-gradient 點狀，不用文字避免蓋住內容）*/
+[data-theme="nebula"]::after{
+  content:'';position:fixed;inset:0;z-index:-1;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%,rgba(220,200,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 25% 40%,rgba(200,180,255,.5) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 40% 8%,rgba(255,255,255,.8) 0%,transparent 100%),
+    radial-gradient(1px 1px at 55% 60%,rgba(180,160,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 70% 25%,rgba(210,190,255,.5) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 80% 75%,rgba(255,255,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 90% 45%,rgba(190,170,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 15% 80%,rgba(200,180,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 60% 90%,rgba(170,150,255,.5) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 35% 65%,rgba(255,255,255,.6) 0%,transparent 100%),
+    radial-gradient(1px 1px at 85% 10%,rgba(220,200,255,.7) 0%,transparent 100%),
+    radial-gradient(1px 1px at 5% 55%,rgba(180,160,255,.4) 0%,transparent 100%),
+    radial-gradient(1px 1px at 48% 33%,rgba(255,255,255,.5) 0%,transparent 100%),
+    radial-gradient(1px 1px at 72% 88%,rgba(200,180,255,.4) 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 70%,rgba(210,190,255,.6) 0%,transparent 100%);
+  pointer-events:none;
+}
+[data-theme="nebula"] .app{background:transparent}
+[data-theme="nebula"] .app>*{position:relative;z-index:1}
+[data-theme="nebula"] .scroll-area{background:transparent;position:relative}
+[data-theme="nebula"] .tab-bar::after{
+  content:'VENUS CARD SYSTEM';
+  position:absolute;
+  bottom:2px;left:0;right:0;
+  text-align:center;
+  font-size:9px;font-weight:700;letter-spacing:3px;
+  color:rgba(168,128,255,.35);
+  pointer-events:none;
+  font-family:'Share Tech Mono',monospace;
+}
+[data-theme="nebula"] .tab-bar{position:relative}
+/* Header */
+[data-theme="nebula"] .app-header{
+  background:rgba(6,3,20,.88);
+  border-bottom:1px solid rgba(120,80,255,.4);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  animation:nebula-glow 4s ease-in-out infinite;
+}
+/* Tab bar */
+[data-theme="nebula"] .tab-bar{
+  background:rgba(4,3,14,.92);
+  border-top:1px solid rgba(100,60,220,.3);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+[data-theme="nebula"] .tab-btn.active{color:#c8a0ff;text-shadow:0 0 8px rgba(180,120,255,.7)}
+[data-theme="nebula"] .tab-btn.active::before{background:rgba(160,100,255,.8)}
+/* Cards - 毛玻璃 */
+[data-theme="nebula"] .card{
+  background:rgba(8,5,24,.55);
+  border:1px solid rgba(120,80,255,.25);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 4px 24px rgba(80,40,180,.15),inset 0 1px 0 rgba(150,100,255,.1);
+}
+/* Student cells */
+[data-theme="nebula"] .stu-cell{background:rgba(12,8,32,.6);border-color:rgba(100,60,200,.2)}
+[data-theme="nebula"] .stu-cell.ready{border-color:#FCD34D;background:rgba(252,211,77,.06)}
+[data-theme="nebula"] .stu-pts{color:#a070ff}
+[data-theme="nebula"] .progress-bar{background:rgba(140,80,255,.8)}
+/* Buttons */
+[data-theme="nebula"] .btn-primary{background:linear-gradient(135deg,rgba(100,50,220,.9),rgba(60,100,220,.9));border:1px solid rgba(150,100,255,.5);box-shadow:0 4px 16px rgba(80,40,200,.3)}
+[data-theme="nebula"] .btn-ghost{background:rgba(60,40,140,.3);border-color:rgba(120,80,220,.35);color:#b0a0ff}
+[data-theme="nebula"] .theme-btn{background:rgba(100,60,200,.2);border-color:rgba(150,100,255,.5);color:#c8b0ff;box-shadow:0 0 8px rgba(120,80,255,.2)}
+[data-theme="nebula"] .login-btn{background:rgba(100,50,200,.25);border-color:rgba(150,100,255,.4);color:#c8b0ff}
+/* Class chip */
+[data-theme="nebula"] .class-chip{background:rgba(100,50,200,.2);border-color:rgba(150,100,255,.45);color:#c8b0ff}
+[data-theme="nebula"] .class-dropdown{background:rgba(6,3,20,.95);border-color:rgba(120,80,255,.35);backdrop-filter:blur(20px)}
+[data-theme="nebula"] .cd-item:hover{background:rgba(100,60,200,.2)}
+[data-theme="nebula"] .cd-item.active{background:rgba(100,60,200,.25)}
+/* Inputs */
+[data-theme="nebula"] input,[data-theme="nebula"] select,[data-theme="nebula"] textarea{background:rgba(12,8,32,.7);border-color:rgba(120,80,255,.3);color:#d0e8ff}
+/* Table */
+[data-theme="nebula"] th{background:rgba(12,8,36,.7)}
+[data-theme="nebula"] tr:hover td{background:rgba(100,60,200,.12)}
+/* Stats */
+[data-theme="nebula"] .stat{background:rgba(8,5,24,.55);border-color:rgba(100,60,200,.2);backdrop-filter:blur(10px)}
+[data-theme="nebula"] .stat .sn{color:#a070ff}
+/* Settings tabs */
+[data-theme="nebula"] .stab.active{background:rgba(80,40,180,.4);color:#c8b0ff}
+[data-theme="nebula"] .stab-row{background:rgba(8,5,24,.5)}
+
+/* ══ BODY ══ */
+html,body{height:100%;overflow:hidden;width:100%;background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif;font-size:14px;line-height:1.5}
+.app{display:flex;flex-direction:column;height:100%;height:100dvh;position:relative}
+
+/* ══ HEADER ══ */
+.app-header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 12px;
+  /* 52px 按鍵高 + safe-top（iPhone 劉海區）*/
+  height:calc(52px + var(--safe-top));
+  padding-top:var(--safe-top);
+  display:flex;align-items:center;gap:8px;
+  position:relative;z-index:100;flex-shrink:0;
+  overflow:visible;
+}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
+.sync-dot.off{background:var(--text4)}
+.sync-dot.ing{background:var(--gold);animation:pulse-nerv 1s infinite}
+/* 主題選單 */
+.theme-select-bar{
+  background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);
+  padding:0 8px;border-radius:7px;font-size:12px;height:34px;
+  font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;
+  min-width:80px;flex-shrink:0;
+}
+/* 登入按鈕 */
+.login-btn{
+  background:var(--accent);color:#fff;
+  padding:0 12px;border-radius:7px;cursor:pointer;font-size:12px;
+  height:34px;font-family:inherit;font-weight:700;white-space:nowrap;
+  display:inline-flex;align-items:center;border:none;flex-shrink:0;
+  -webkit-appearance:none;
+}
+[data-theme="nebula"] .login-btn{background:rgba(120,60,220,.8);color:#fff}
+[data-theme="nerv"] .login-btn{background:rgba(255,102,0,.9);color:#fff}
+/* 登入後使用者按鈕（小巧，不佔空間）*/
+.user-btn{
+  background:var(--bg3);border:1.5px solid var(--border);color:var(--text2);
+  padding:0 8px;border-radius:7px;cursor:pointer;font-size:12px;
+  height:34px;font-family:inherit;font-weight:600;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;-webkit-appearance:none;
+  flex-shrink:0;
+}
+[data-theme="nebula"] .user-btn{background:rgba(80,40,160,.3);border-color:rgba(150,100,255,.4);color:#c8b0ff}
+[data-theme="nerv"] .user-btn{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.3);color:#FF8844}
+[data-theme="nebula"] .app-header{background:rgba(6,3,20,.95);border-bottom-color:rgba(120,80,255,.35);backdrop-filter:blur(12px)}
+[data-theme="nerv"] .app-header{background:linear-gradient(180deg,#120400,#080200);border-bottom-color:#FF6600}
+
+/* ══ CLASS SWITCHER ══ */
+.class-switcher{position:relative;flex-shrink:0}
+.class-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:0 12px;height:36px;border-radius:8px;
+  border:1.5px solid var(--border2);background:var(--accent-light);
+  color:var(--accent);font-size:13px;font-weight:700;
+  cursor:pointer;white-space:nowrap;-webkit-appearance:none;
+}
+.class-chip .arrow{font-size:10px;opacity:.7;transition:transform .2s}
+.class-chip.open .arrow{transform:rotate(180deg)}
+.class-dropdown{position:fixed;top:58px;left:12px;min-width:220px;max-width:80vw;background:var(--bg2);border:1px solid var(--border2);border-radius:12px;box-shadow:var(--shadow-md),0 8px 32px rgba(0,0,0,.25);z-index:99999;overflow:hidden;animation:drop-in .15s ease}
+@keyframes drop-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.cd-hdr{padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--text4);letter-spacing:2px}
+.cd-item{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.cd-item:last-child{border-bottom:none}
+.cd-item:hover,.cd-item.active{background:var(--accent-light)}
+.cd-name{font-size:13px;font-weight:700;flex:1}
+.cd-sub{font-size:11px;color:var(--text4)}
+.cd-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--green-light);color:var(--green)}
+[data-theme="nebula"] .class-chip{background:rgba(100,50,200,.2);border-color:rgba(150,100,255,.45);color:#c8b0ff}
+[data-theme="nebula"] .class-dropdown{background:rgba(6,3,20,.95);border-color:rgba(120,80,255,.35);backdrop-filter:blur(20px)}
+[data-theme="nebula"] .cd-item:hover,[data-theme="nebula"] .cd-item.active{background:rgba(100,60,200,.2)}
+[data-theme="nerv"] .class-chip{background:rgba(255,102,0,.1);border-color:rgba(255,102,0,.4);color:#FF6600}
+
+/* ══ SCROLL AREA ══ */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll-area::-webkit-scrollbar{width:3px}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.panel{display:none;padding:12px 10px;max-width:900px;margin:0 auto}
+.panel.active{display:block}
+
+/* ══ TAB BAR ══ */
+.tab-bar{
+  background:var(--bg2);border-top:1px solid var(--border);
+  display:flex;align-items:stretch;
+  /* 56px 按鍵區 + safe-bottom（home indicator）*/
+  height:calc(56px + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  flex-shrink:0;
+}
+/* Tab 按鍵：觸控區撐到 56px，icon/文字不變 */
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;border:none;background:transparent;color:var(--text4);
+  cursor:pointer;font-family:inherit;font-size:10px;font-weight:600;
+  /* min-height 44px 符合 Apple HIG 最小觸控標準，實際高 56px */
+  min-height:44px;padding:6px 4px 4px;
+  transition:color .15s;position:relative;-webkit-appearance:none;
+}
+.tab-btn .icon{font-size:24px;line-height:1}
+.tab-btn.active{color:var(--accent)}
+.tab-btn.active::before{content:"";position:absolute;top:0;left:15%;right:15%;height:2.5px;background:var(--accent);border-radius:0 0 3px 3px}
+[data-theme="nebula"] .tab-btn.active{color:#c8a0ff;text-shadow:0 0 8px rgba(192,132,252,.6)}
+[data-theme="nebula"] .tab-btn.active::before{background:rgba(160,100,255,.8)}
+[data-theme="nerv"] .tab-btn.active{color:#FF6600}
+[data-theme="nebula"] .tab-bar{background:rgba(4,3,14,.95);border-top-color:rgba(100,60,220,.3)}
+[data-theme="nebula"] .tab-bar::after{content:'VENUS CARD SYSTEM';position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;letter-spacing:3px;color:rgba(168,128,255,.35);pointer-events:none;font-family:'Share Tech Mono',monospace}
+[data-theme="nebula"] .tab-bar{position:relative}
+[data-theme="nerv"] .tab-bar{background:#080200;border-top-color:rgba(255,102,0,.3)}
+
+/* ══ CARDS ══ */
+.card{background:var(--bg2);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1px solid var(--border)}
+.card-title{font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.card-title .ct-right{margin-left:auto}
+
+/* ══ STAT ROW ══ */
+.stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;align-items:center;gap:10px}
+.stat-icon{font-size:24px;flex-shrink:0}
+.stat .sn{font-size:22px;font-weight:800;color:var(--accent);line-height:1}
+.stat .sl{font-size:11px;color:var(--text4);margin-top:1px}
+.stat.ora .sn{color:var(--orange)}
+.stat.grn .sn{color:var(--green)}
+.stat.red .sn{color:var(--red)}
+.stat.gld .sn{color:var(--gold)}
+
+/* ══ STUDENT GRID（2×2格子，顏色分辨）══ */
+.stu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.overview-tools{display:grid;grid-template-columns:minmax(0,1fr) 124px;gap:8px;margin-bottom:10px}
+.overview-tools input,.overview-tools select{height:40px;background:var(--bg3)}
+.stu-cell{background:var(--bg3);border-radius:12px;padding:10px 12px;border:2px solid transparent;cursor:pointer;transition:all .15s}
+.stu-cell:active{transform:scale(.97)}
+.stu-cell.ready{border-color:var(--orange);background:var(--orange-light)}
+/* 座號圓圈 */
+.stu-no-circle{width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.stu-cell.ready .stu-no-circle{background:var(--orange)}
+.stu-can{font-size:10px;font-weight:700;color:var(--orange)}
+/* 指標列 */
+.stu-metric{display:flex;align-items:center;justify-content:space-between;padding:3px 0}
+.stu-ml{display:flex;flex-direction:column;line-height:1.2}
+.stu-emoji{font-size:16px}
+.stu-lbl{font-size:9px;color:var(--text4);font-weight:600;margin-top:1px}
+/* 各指標顏色 */
+.stu-v-gold{font-size:22px;font-weight:800;color:var(--gold);line-height:1}
+.stu-v-blue{font-size:22px;font-weight:800;color:var(--accent);line-height:1}
+.stu-v-red{font-size:22px;font-weight:800;color:var(--red);line-height:1}
+.stu-v-green{font-size:20px;font-weight:800;color:var(--green);line-height:1}
+.stu-div{border:none;border-top:1px solid var(--border);margin:4px 0}
+[data-theme="nebula"] .stu-cell{background:rgba(12,8,32,.6);border-color:rgba(100,60,200,.2)}
+[data-theme="nebula"] .stu-cell.ready{border-color:#FCD34D;background:rgba(252,211,77,.06)}
+[data-theme="nebula"] .stu-v-blue{color:#a070ff}
+[data-theme="nerv"] .stu-cell{border-color:rgba(255,102,0,.2)}
+[data-theme="nerv"] .stu-cell.ready{border-color:#FFCC00;background:rgba(255,204,0,.08)}
+
+/* ══ FORMS ══ */
+.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;flex:1;min-width:90px}
+.fg label{font-size:11px;font-weight:600;color:var(--text4);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+input,select,textarea{background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);font-family:inherit;outline:none;width:100%;transition:border .15s;-webkit-appearance:none;appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+textarea{resize:none}
+
+/* ══ BUTTONS ══ */
+button{border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s;min-height:44px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:active{opacity:.85}
+.btn-green{background:var(--green);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+.btn-ghost:active{background:var(--bg3)}
+.btn-sm{padding:6px 12px;font-size:12px;min-height:36px}
+.btn-xs{padding:4px 8px;font-size:11px;min-height:28px}
+.btn-block{width:100%}
+
+/* ══ NO-PICKER (座號格子) ══ */
+.no-picker{display:flex;flex-wrap:wrap;gap:6px}
+.no-btn{width:44px;height:44px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;min-height:unset}
+.no-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+.no-btn.leader{background:var(--red);border-color:var(--red);color:#fff}
+.no-btn.sec{background:var(--orange);border-color:var(--orange);color:#fff}
+.no-btn.absent{background:var(--bg4);border-color:var(--border);color:var(--text4);opacity:.4}
+.no-btn.cadre1{background:var(--green);border-color:var(--green);color:#fff}
+.no-btn.cadre2{background:var(--orange);border-color:var(--orange);color:#fff}
+/* 座號管理專用：預設「存在」要明顯，不存在才灰階 */
+.no-btn.exist{background:var(--accent-light);border-color:var(--accent);color:var(--accent);font-weight:700}
+.no-btn.exist.absent{background:var(--bg3);border-color:var(--border);color:var(--text4);opacity:.4;font-weight:500}
+
+/* ══ TABLE ══ */
+.sx{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius2)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg3);color:var(--text3);padding:7px 8px;font-size:11px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2}
+td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:center}
+tr:hover td{background:var(--accent-light)}
+.td-name{font-weight:700;text-align:left!important;color:var(--text)}
+
+/* ══ BADGE ══ */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-blue{background:var(--accent-light);color:var(--accent)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-orange{background:var(--orange-light);color:var(--orange)}
+.badge-red{background:var(--red-light);color:var(--red)}
+.badge-gold{background:var(--gold-light);color:var(--gold)}
+
+/* ══ REDEEM CARDS ══ */
+.rdm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.rdm-card{border:2px solid var(--orange);border-radius:var(--radius);padding:12px;background:var(--orange-light);position:relative}
+.rdm-card.skip{border-color:var(--border);background:var(--bg3);opacity:.5}
+.rdm-skip-btn{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.1);border:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;min-height:unset;padding:0}
+
+/* ══ UPLOAD AREA ══ */
+.upload-area{border:2px dashed var(--border2);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.upload-area:hover,.upload-area.drag{border-color:var(--accent);background:var(--accent-light)}
+.upload-area input[type=file]{display:none}
+.upload-icon{font-size:36px;margin-bottom:8px}
+.upload-hint{font-size:12px;color:var(--text4);margin-top:4px}
+
+/* ══ SHEET SELECT ══ */
+.sheet-list{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.sheet-tag{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s}
+.sheet-tag.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ══ COLUMN CONFIRM TABLE ══ */
+#col-confirm-table table{font-size:11px}
+#col-confirm-table th{cursor:pointer;user-select:none;transition:all .15s;padding:6px 4px;min-width:54px}
+#col-confirm-table th.col-excluded{background:var(--bg4);color:var(--text4);opacity:.45;text-decoration:line-through}
+#col-confirm-table th.col-included{background:var(--accent-light);color:var(--accent)}
+#col-confirm-table th .col-subj{display:block;font-weight:700;font-size:10px}
+#col-confirm-table th .col-label{display:block;font-size:10px;font-weight:400;margin-top:1px}
+#col-confirm-table td{padding:4px;font-size:11px}
+#col-confirm-table .col-nocol{background:var(--bg3);color:var(--text4);font-style:italic}
+
+/* ══ MODAL ══ */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:none;align-items:flex-end;justify-content:center;padding:0}
+.modal-bg.show{display:flex}
+.modal{background:var(--bg2);border-radius:20px 20px 0 0;padding:20px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,.2)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:14px}
+.modal-center{align-items:center}
+.modal.center-modal{border-radius:16px;max-width:440px;margin:auto}
+.modal-bg.center .modal{border-radius:16px;max-width:440px;margin:auto;padding-bottom:20px}
+
+/* ══ MORE SHEET ══ */
+.more-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;font-weight:600;font-size:14px}
+.more-item:last-child{border-bottom:none}
+.more-item .mi-icon{font-size:20px;width:36px;text-align:center}
+.more-item .mi-arr{margin-left:auto;color:var(--text4);font-size:12px}
+
+/* ══ OFFLINE BANNER ══ */
+#offline-banner{display:none;background:var(--gold);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:5px 12px;flex-shrink:0}
+#offline-banner.show{display:block}
+
+/* ══ TOAST ══ */
+#toast{position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg2);padding:9px 18px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;font-weight:600;white-space:nowrap;max-width:85vw;text-align:center}
+#toast.show{opacity:1}
+.undo-fab{position:fixed;right:12px;bottom:calc(68px + var(--safe-bottom));z-index:180;display:none;align-items:center;gap:5px;min-height:40px;padding:8px 13px;border-radius:22px;background:var(--text);color:var(--bg2);box-shadow:0 6px 22px rgba(0,0,0,.25);font-size:12px}
+.undo-fab.show{display:inline-flex}
+[data-theme="nebula"] .undo-fab{background:#6d3bd8;color:#fff;box-shadow:0 0 18px rgba(150,100,255,.45)}
+[data-theme="nerv"] .undo-fab{background:#180500;color:#ff8800;border:1px solid #ff6600;border-radius:3px}
+
+/* ══ SETTINGS TABS ══ */
+.stab-row{display:flex;gap:4px;margin-bottom:14px;background:var(--bg3);padding:3px;border-radius:9px}
+.stab{flex:1;padding:8px;border:none;background:transparent;border-radius:7px;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .15s}
+.stab.active{background:var(--bg2);color:var(--accent);box-shadow:var(--shadow)}
+
+/* ══ MISC ══ */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sep{border:none;border-top:1px solid var(--border);margin:12px 0}
+.tip{background:var(--accent-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.6}
+.tip.orange{background:var(--orange-light);color:var(--orange)}
+.tip.green{background:var(--green-light);color:var(--green)}
+.empty{text-align:center;color:var(--text4);font-size:13px;padding:28px 0}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media(max-width:480px){
+  .stu-grid{grid-template-columns:repeat(2,1fr)}
+  .stat-row{grid-template-columns:repeat(2,1fr)}
+  .overview-tools{grid-template-columns:minmax(0,1fr) 112px}
+  .theme-select-bar{min-width:64px;max-width:76px;padding:0 5px}
+  .class-chip{max-width:42vw;overflow:hidden;text-overflow:ellipsis}
+}
+/* ══ SPLASH SCREEN ══ */
+#splash{
+  position:fixed;inset:0;z-index:99999;
+  background:#08051C;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  transition:opacity .6s ease,visibility .6s ease;
+}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+#splash::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 30% 20%,rgba(100,50,200,.35) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 70% at 75% 75%,rgba(40,90,210,.28) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 95%,rgba(180,70,230,.22) 0%,transparent 55%);
+  animation:splash-glow 4s ease-in-out infinite;
+}
+@keyframes splash-glow{
+  0%,100%{opacity:.7}
+  50%{opacity:1}
+}
+.splash-img-wrap{
+  position:absolute;inset:0;z-index:1;
+  border-radius:0;
+  overflow:hidden;
+  box-shadow:none;
+  animation:splash-rise 1.1s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes splash-rise{
+  from{opacity:0;transform:scale(1.04)}
+  to{opacity:1;transform:scale(1)}
+}
+.splash-img-wrap img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  animation:splash-shimmer 3s ease-in-out infinite;
+}
+@keyframes splash-shimmer{
+  0%,100%{filter:brightness(1) saturate(1)}
+  50%{filter:brightness(1.08) saturate(1.15)}
+}
+.splash-title{
+  position:absolute;bottom:18%;left:0;right:0;
+  text-align:center;z-index:3;
+  animation:splash-title-in 1.2s ease .4s both;
+}
+@keyframes splash-title-in{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.splash-title h1{
+  font-size:22px;font-weight:800;letter-spacing:3px;
+  color:#fff;
+  text-shadow:0 0 30px rgba(180,130,255,.9),0 2px 12px rgba(0,0,0,.6);
+  margin-bottom:4px;
+}
+.splash-title p{
+  font-size:11px;letter-spacing:4px;
+  color:rgba(255,240,255,.8);
+  font-family:'Share Tech Mono',monospace;
+  text-shadow:0 1px 6px rgba(0,0,0,.5);
+}
+.splash-spinner{
+  position:absolute;bottom:8%;left:0;right:0;
+  display:flex;justify-content:center;gap:6px;z-index:3;
+}
+.splash-spinner span{
+  width:6px;height:6px;border-radius:50%;
+  background:#fff;
+  animation:splash-dot 1.2s ease-in-out infinite;
+}
+.splash-spinner span:nth-child(2){animation-delay:.15s}
+.splash-spinner span:nth-child(3){animation-delay:.3s}
+@keyframes splash-dot{
+  0%,80%,100%{opacity:.3;transform:scale(.8)}
+  40%{opacity:1;transform:scale(1.2)}
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <div class="splash-img-wrap">
+    <img src="splash.jpg" alt="Venus Card System">
+  </div>
+  <div class="splash-title">
+    <h1>VENUS CARD SYSTEM</h1>
+    <p>獎卡系統</p>
+  </div>
+  <div class="splash-spinner"><span></span><span></span><span></span></div>
+</div>
+
+<!-- 全螢幕登入頁面（未登入時顯示）-->
+<div id="login-screen" style="display:none;position:fixed;inset:0;z-index:9000;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;padding:32px">
+  <div style="width:100%;max-width:360px;text-align:center">
+    <img src="splash.jpg" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:20px;margin-bottom:20px;box-shadow:0 8px 32px rgba(120,60,220,.3)">
+    <h1 style="font-size:22px;font-weight:800;letter-spacing:2px;margin-bottom:6px">VENUS CARD SYSTEM</h1>
+    <p style="font-size:13px;color:var(--text4);margin-bottom:32px">獎卡兌換管理系統</p>
+    <button onclick="doLogin()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;color:#1e3a5f;border:none;border-radius:50px;padding:16px 24px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.15);font-family:inherit;margin-bottom:16px">
+      <span style="font-weight:900;font-size:18px;color:#4285F4">G</span>
+      使用 Google 帳號登入
+    </button>
+    <p style="font-size:11px;color:var(--text4);line-height:1.6">登入後可同步 Venus OS 的班級資料<br>獎卡紀錄會自動雲端備份</p>
+    <div id="login-error" style="display:none;margin-top:16px;padding:10px 14px;background:var(--red-light);border-radius:8px;font-size:12px;color:var(--red)"></div>
+  </div>
+</div>
+
+<div class="app" id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="class-switcher" id="class-switcher">
+      <button class="class-chip" id="class-chip" onclick="toggleClassDD()">
+        <span id="chip-text">選擇班級</span>
+        <span class="arrow">▾</span>
+      </button>
+      <div class="class-dropdown" id="class-dd" style="display:none"></div>
+    </div>
+    <div class="header-right">
+      <span class="sync-dot off" id="sync-dot"></span>
+      <select id="theme-select" onchange="applyTheme(this.value)" class="theme-select-bar">
+        <option value="default">☀️ 日間</option>
+        <option value="nerv">🔴 NERV</option>
+        <option value="nebula">🌌 星雲</option>
+      </select>
+      <!-- 登入後顯示使用者名稱，可點選登出 -->
+      <button class="user-btn" id="user-btn" onclick="showUserMenu()" style="display:none">
+        <span id="user-name">👤</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner">✈️ 離線模式 — 恢復網路後自動同步</div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- 總覽 -->
+    <div class="panel active" id="tab-overview">
+      <div class="stat-row" id="stat-row"></div>
+      <div class="card">
+        <div class="card-title">👥 全班點數
+          <span style="font-size:11px;font-weight:400;color:var(--text4)">橘色可換卡</span>
+          <button class="btn-ghost btn-sm ct-right" onclick="goTab('more');setTimeout(()=>goMore('settings'),50);setTimeout(()=>switchStab('nos'),100)">✏️ 修改人數</button>
+        </div>
+        <div class="overview-tools">
+          <input id="student-search" type="search" inputmode="numeric" placeholder="搜尋座號" aria-label="搜尋座號" oninput="setOverviewFilter()">
+          <select id="student-filter" aria-label="篩選學生" onchange="setOverviewFilter()">
+            <option value="all">全部學生</option>
+            <option value="ready">可兌換</option>
+            <option value="cards">有持卡</option>
+            <option value="exempt">有折抵</option>
+          </select>
+        </div>
+        <div class="stu-grid" id="stu-grid"></div>
+      </div>
+      <div class="card" id="exempt-summary-card" style="display:none"></div>
+    </div>
+
+    <!-- 成績 -->
+    <div class="panel" id="tab-score">
+      <div class="card">
+        <div class="card-title">🔗 Google Sheets 同步
+          <button class="btn-ghost btn-sm ct-right" onclick="showAddSheetModal()">＋ 新增連結</button>
+        </div>
+        <div class="tip">直接連到你平常編輯的 Google Sheets，免下載免上傳，一鍵讀取最新「獎卡兌換」分頁資料。</div>
+        <div id="gs-list"><div class="empty">尚未新增任何 Google Sheets 連結</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">✏️ 快速貼上成績</div>
+        <div class="tip">從 Excel 複製一整欄分數（不含座號），依目前班級座號順序由小到大對應，缺席留空行。</div>
+        <div class="form-row">
+          <div class="fg" style="max-width:140px">
+            <label>科目</label>
+            <select id="ps-subj">
+              <option value="國習">國習</option>
+              <option value="聽寫">聽寫</option>
+              <option value="考卷">考卷</option>
+              <option value="生測">生測</option>
+              <option value="作文">作文</option>
+              <option value="數習">數習</option>
+              <option value="數綜">數綜</option>
+              <option value="數考">數考</option>
+              <option value="段考">段考</option>
+            </select>
+          </div>
+          <div class="fg" style="max-width:160px">
+            <label>考試名稱</label>
+            <input type="text" id="ps-label" placeholder="例：CH7、6/12聽寫">
+          </div>
+        </div>
+        <div class="score-input-area">
+          <textarea class="paste-ta" id="ps-paste" placeholder="在此貼上分數（每行一個，依座號順序）" oninput="previewPaste()"></textarea>
+        </div>
+        <div id="ps-status" style="font-size:12px;margin-top:8px;min-height:18px"></div>
+        <div id="ps-preview" style="margin-top:8px"></div>
+        <button class="btn-green btn-block" id="ps-submit" style="margin-top:10px;display:none" onclick="submitPaste()">✅ 確認儲存</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📤 整批匯入 Excel（進階）</div>
+        <div class="tip">適合學期初批次匯入。上傳成績 Excel（.xlsx）→ App 自動讀取「<b>獎卡兌換</b>」工作表 → 全部覆蓋更新。</div>
+        <label class="upload-area" id="upload-area">
+          <div class="upload-icon">📊</div>
+          <div style="font-weight:700;font-size:14px">點此選取 Excel 檔案</div>
+          <div class="upload-hint">支援 .xlsx 格式</div>
+          <input type="file" id="xlsx-input" accept=".xlsx" onchange="handleXlsx(this)">
+        </label>
+        <div id="xlsx-preview" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📚 已匯入考試
+          <button class="btn-ghost btn-sm ct-right" onclick="if(confirm('確定清除全部成績？'))clearScores()">清除全部</button>
+        </div>
+        <div id="score-log-area"><div class="empty">尚未匯入任何成績</div></div>
+      </div>
+    </div>
+
+    <!-- 兌換 -->
+    <div class="panel" id="tab-redeem">
+      <div class="card">
+        <div class="card-title">🎴 點數換卡
+          <button class="btn-ghost btn-sm ct-right" onclick="renderRedeem()">重整</button>
+        </div>
+        <div id="btn-redeem-group" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn-primary btn-block" id="btn-redeem-one" onclick="doRedeemOne()" style="flex:1;font-size:13px">🎴 全班各換1張</button>
+          <button class="btn-orange btn-block" id="btn-redeem" onclick="doRedeem()" style="flex:1;font-size:13px">🎴 全部兌換</button>
+        </div>
+        <div id="redeem-summary" style="display:none;margin-bottom:12px;padding:10px 12px;background:var(--accent-light);border-radius:8px;font-size:12px;line-height:1.7"></div>
+        <div id="redeem-area"><div class="empty">載入中...</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 兌換紀錄
+          <button class="btn-red btn-sm ct-right" onclick="revokeAllRedeem()">↩ 撤銷最近一批</button>
+        </div>
+        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>扣點</th><th>獲卡</th><th>操作</th></tr></thead><tbody id="redeem-log"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 給卡 -->
+    <div class="panel" id="tab-give">
+      <div class="card">
+        <div class="card-title">⚡ 每週給卡</div>
+        <div style="font-weight:600;font-size:12px;color:var(--text3);margin-bottom:8px">🏅 幹部（點一下×1綠，再點×2橘，第三下取消）</div>
+        <div class="no-picker" id="cadre-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <span id="cadre-hint" style="font-size:11px;color:var(--text4);flex:1"></span>
+          <button class="btn-green btn-sm" onclick="giveWeekly('cadre')">🏅 幹部週給</button>
+        </div>
+        <hr class="sep">
+        <div style="font-weight:600;font-size:12px;color:var(--text3);margin-bottom:8px">🚽 廁所（最多6人）</div>
+        <div class="no-picker" id="toilet-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <span id="toilet-count" style="font-size:11px;color:var(--text4);flex:1">已選 0/6</span>
+          <button class="btn-primary btn-sm" onclick="giveWeekly('toilet')">🚽 廁所週給</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚡ 快速給卡
+          <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">點座號選取，可複選</span>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="fg" style="max-width:130px">
+            <label>類型</label>
+            <select id="qg-type">
+              <option value="幹部">🏅 幹部</option>
+              <option value="廁所">🚽 廁所</option>
+              <option value="特殊">⭐ 特殊</option>
+              <option value="調整">🔧 調整</option>
+            </select>
+          </div>
+          <div class="fg" style="max-width:80px">
+            <label>張數</label>
+            <input type="number" id="qg-cards" value="1" min="-99" max="99">
+          </div>
+          <div class="fg">
+            <label>備註（選填）</label>
+            <input type="text" id="qg-note" placeholder="例：本週表現優異">
+          </div>
+        </div>
+        <div class="no-picker" id="qg-picker"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+          <span id="qg-count" style="font-size:12px;color:var(--text4);flex:1">已選 0 人</span>
+          <button class="btn-ghost btn-sm" onclick="clearQgSel()">清除選取</button>
+          <button class="btn-orange btn-sm" onclick="submitQuickGive()">送出</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 全班持卡明細</div>
+        <div class="sx"><table><thead><tr>
+          <th>座號</th><th>成績點</th><th>扣點</th><th>午休扣</th><th>剩餘點</th>
+          <th>幹部</th><th>廁所</th><th>特殊</th><th>兌換</th><th>調整</th>
+          <th style="color:var(--gold)">總持有</th>
+        </tr></thead><tbody id="give-detail"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 更多 -->
+    <div class="panel" id="tab-more">
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('noon')">
+          <span class="mi-icon">😴</span>
+          <span>午休記錄</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('table')">
+          <span class="mi-icon">📊</span>
+          <span>成績總表</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('log')">
+          <span class="mi-icon">📝</span>
+          <span>紀錄查詢</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="goMore('settings')">
+          <span class="mi-icon">⚙️</span>
+          <span>設定</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="exportCSV()">
+          <span class="mi-icon">📤</span>
+          <span>匯出 CSV</span>
+          <span class="mi-arr">›</span>
+        </div>
+        <div class="more-item" style="padding:14px 16px" onclick="window.open('https://exquisite-toffee-dd7e78.netlify.app')">
+          <span class="mi-icon">🏫</span>
+          <span>開啟 Venus OS</span>
+          <span class="mi-arr">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 午休 (sub-panel) -->
+    <div class="panel" id="tab-noon">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">😴 午休記錄</div>
+      </div>
+      <div class="card">
+        <div class="tip orange">每筆記錄扣 <b id="noon-thr-label">300</b> 點，可事後補記。</div>
+        <div class="form-row">
+          <div class="fg" style="max-width:100px"><label>座號</label><select id="noon-no"></select></div>
+          <div class="fg" style="max-width:160px"><label>事發時間</label><input type="text" id="noon-time" placeholder="例：5/28 午休"></div>
+          <div class="fg"><label>事由</label><input type="text" id="noon-note" placeholder="說話、玩鬧..."></div>
+          <div style="align-self:flex-end"><button class="btn-red" onclick="addNoon()">記錄扣點</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">記錄列表</div>
+        <div class="sx"><table><thead><tr><th>登記時間</th><th>事發時間</th><th>座號</th><th>事由</th><th>扣點</th><th>刪</th></tr></thead><tbody id="noon-list"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 成績總表 (sub-panel) -->
+    <div class="panel" id="tab-table">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">📊 成績總表</div>
+        <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="copyAIReport()">📋 AI 報告素材</button>
+        <button class="btn-ghost btn-sm" onclick="exportClassReport()">🖨 全班報告</button>
+        <button class="btn-orange btn-sm" onclick="exportCSV()">匯出 CSV</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="sx"><table><thead id="table-thead"></thead><tbody id="table-tbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 紀錄查詢 (sub-panel) -->
+    <div class="panel" id="tab-log">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">📝 紀錄查詢</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <select id="log-type" onchange="renderLog()" style="font-size:12px;padding:5px 8px;min-height:36px;flex:1">
+            <option value="">全部類型</option>
+            <option value="成績">成績匯入</option>
+            <option value="幹部">幹部</option>
+            <option value="廁所">廁所</option>
+            <option value="特殊">特殊</option>
+            <option value="兌換">兌換</option>
+            <option value="午休">午休扣點</option>
+            <option value="調整">人工調整</option>
+          </select>
+          <select id="log-no" onchange="renderLog()" style="font-size:12px;padding:5px 8px;min-height:36px;flex:1">
+            <option value="">全部座號</option>
+          </select>
+          <button class="btn-red btn-sm" onclick="if(confirm('確定清除全部紀錄？'))clearLogs()">清除</button>
+        </div>
+        <div class="sx"><table><thead><tr><th>時間</th><th>座號</th><th>類型</th><th>說明</th><th>點/張</th><th>刪</th></tr></thead><tbody id="log-tbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 設定 (sub-panel) -->
+    <div class="panel" id="tab-settings">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button class="btn-ghost btn-sm" onclick="goTab('more')">‹ 返回</button>
+        <div style="font-weight:700;font-size:15px">⚙️ 設定</div>
+      </div>
+      <div class="stab-row">
+        <button class="stab active" id="stab-basic" onclick="switchStab('basic')">基本設定</button>
+        <button class="stab" id="stab-nos" onclick="switchStab('nos')">座號管理</button>
+        <button class="stab" id="stab-sync" onclick="switchStab('sync')">同步</button>
+      </div>
+      <!-- 基本設定 -->
+      <div id="stab-panel-basic">
+        <div class="card">
+          <div class="card-title">⚙️ 基本設定</div>
+          <div class="form-row">
+            <div class="fg">
+              <label>換卡閾值（點數）</label>
+              <input type="number" id="set-thr" value="300" min="1">
+            </div>
+            <div style="align-self:flex-end">
+              <button class="btn-primary" onclick="saveBasic()">儲存</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📤 資料匯出</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-ghost btn-sm" onclick="exportCSV()">成績 CSV</button>
+            <button class="btn-ghost btn-sm" onclick="exportLogCSV()">紀錄 CSV</button>
+            <button class="btn-primary btn-sm" onclick="exportBackup()">完整備份</button>
+            <label class="btn-ghost btn-sm" style="display:inline-flex;align-items:center;cursor:pointer;min-height:36px">
+              還原備份<input type="file" accept="application/json,.json" onchange="importBackup(this)" style="display:none">
+            </label>
+          </div>
+          <div style="font-size:11px;color:var(--text4);margin-top:9px;line-height:1.6">完整備份包含本班成績、獎卡紀錄、名單與設定，可跨裝置還原。</div>
+        </div>
+      </div>
+      <!-- 座號管理 -->
+      <div id="stab-panel-nos" style="display:none">
+        <div class="card">
+          <div class="card-title">🔢 座號管理
+            <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">灰色＝不存在</span>
+          </div>
+          <div class="tip">先填總人數，系統自動產生所有座號；點選格子切換「存在/不存在」。</div>
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="fg" style="max-width:120px">
+              <label>總人數</label>
+              <input type="number" id="set-total" min="1" max="60" placeholder="例：35">
+            </div>
+            <div style="align-self:flex-end">
+              <button class="btn-primary btn-sm" onclick="genNos()">產生座號</button>
+            </div>
+          </div>
+          <div class="no-picker" id="nos-picker"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn-green btn-sm" onclick="saveNos()">✅ 儲存座號</button>
+            <span id="nos-count" style="font-size:12px;color:var(--text4);align-self:center"></span>
+          </div>
+        </div>
+      </div>
+      <!-- 同步 -->
+      <div id="stab-panel-sync" style="display:none">
+        <div class="card">
+          <div class="card-title">☁️ 雲端同步（Firebase）</div>
+          <div id="sync-status" style="font-size:13px;color:var(--text3);margin-bottom:12px">未登入</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" id="set-login-btn" onclick="doLogin()">Google 登入</button>
+            <button class="btn-ghost btn-sm" id="set-sync-btn" onclick="doSync()" style="display:none">立即同步</button>
+            <button class="btn-ghost btn-sm" id="set-logout-btn" onclick="doLogout()" style="display:none">登出</button>
+          </div>
+          <hr class="sep">
+          <div style="font-size:12px;color:var(--text4);line-height:1.7">
+            班級清單與分組從 Venus OS（作業 App）自動同步。<br>
+            獎卡資料存在此 App 獨立空間，不影響作業 App。<br>
+            <span id="app-version-label">版本載入中</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /scroll-area -->
+
+  <!-- TAB BAR -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" id="tbtn-overview" onclick="goTab('overview',this)">
+      <span class="icon">🏠</span><span>總覽</span>
+    </button>
+    <button class="tab-btn" id="tbtn-score" onclick="goTab('score',this)">
+      <span class="icon">📊</span><span>成績</span>
+    </button>
+    <button class="tab-btn" id="tbtn-redeem" onclick="goTab('redeem',this)">
+      <span class="icon">🎴</span><span>兌換</span>
+    </button>
+    <button class="tab-btn" id="tbtn-give" onclick="goTab('give',this)">
+      <span class="icon">⚡</span><span>給卡</span>
+    </button>
+    <button class="tab-btn" id="tbtn-more" onclick="goTab('more',this)">
+      <span class="icon">☰</span><span>更多</span>
+    </button>
+  </nav>
+
+  <button class="undo-fab" id="undo-fab" onclick="undoLastAction()" aria-label="撤銷最近操作">↶ <span id="undo-label">撤銷</span></button>
+
+</div><!-- /app -->
+
+<!-- MODAL: 新增 Google Sheets 連結 -->
+<div class="modal-bg" id="add-sheet-modal">
+  <div class="modal">
+    <h3>新增 Google Sheets 連結</h3>
+    <div class="tip">前往 Google Sheets → 右上角「共用」→ 設成「知道連結的人均可查看」→ 複製連結貼到下方。</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>名稱（自己取，方便辨識）</label>
+      <input type="text" id="new-sheet-name" placeholder="例：114下成績與獎卡兌換">
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Google Sheets 連結</label>
+      <input type="text" id="new-sheet-url" placeholder="貼上分享連結網址">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="closeModal('add-sheet-modal')">取消</button>
+      <button class="btn-primary" onclick="addSheetLink()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 欄位預覽與確認 -->
+<div class="modal-bg" id="col-confirm-modal">
+  <div class="modal" style="max-width:600px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <h3 style="margin:0">確認要匯入的欄位</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('col-confirm-modal')">✕</button>
+    </div>
+    <div class="tip">以下是實際抓到的欄位內容，點擊欄位可切換「匯入／排除」（例如平均、總分等公式欄請排除）。</div>
+    <div id="col-confirm-info" style="font-size:12px;color:var(--text4);margin-bottom:8px"></div>
+    <div class="sx" style="max-height:50vh;overflow-y:auto" id="col-confirm-table"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-ghost btn-sm" onclick="closeModal('col-confirm-modal')">取消</button>
+      <button class="btn-green" onclick="confirmColImport()">✅ 確認匯入</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: student detail / chart -->
+<div class="modal-bg" id="chart-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 id="chart-title" style="margin:0">成績趨勢</h3>
+      <button class="btn-ghost btn-sm" onclick="exportChartPNG()">📥 匯出</button>
+      <button class="btn-ghost btn-sm" onclick="exportClassReport(_chartCur.no)">🖨 個人報告</button>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('chart-modal')">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
+    <canvas id="chart-canvas" width="500" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
+  </div>
+</div>
+
+<!-- MODAL: score alert -->
+<div class="modal-bg center" id="score-alert-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">⚠️ 成績驟降預警</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('score-alert-modal')">✕</button>
+    </div>
+    <div id="score-alert-list" style="font-size:13px;display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-ghost btn-sm" onclick="closeModal('score-alert-modal')">關閉</button>
+      <button class="btn-primary btn-sm" onclick="copyScoreAlertDraft()">📋 複製輔導草稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SheetJS for Excel reading -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+// Firebase 設定
+// ══════════════════════════════════════════
+const APP_VERSION='2.1.0';
+const FB_CONFIG = {
+  apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
+  authDomain: "attendance-pwa-9fa73.firebaseapp.com",
+  projectId: "attendance-pwa-9fa73",
+  storageBucket: "attendance-pwa-9fa73.firebasestorage.app",
+  messagingSenderId: "231697999145",
+  appId: "1:231697999145:web:b92cba42082eb9cc574338"
+};
+
+// ══ IDB ══
+const IDB_NAME='vc-card';const IDB_VER=1;const IDB_ST='kv';
+let _idb=null;
+function openIDB(){
+  if(_idb)return Promise.resolve(_idb);
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(IDB_NAME,IDB_VER);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_ST);
+    r.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbGet(k){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readonly');const req=tx.objectStore(IDB_ST).get(k);req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}catch{return undefined;}
+}
+async function idbSet(k,v){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readwrite');tx.objectStore(IDB_ST).put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}catch{return false;}
+}
+
+// ══ localStorage wrapper ══
+const _sl={
+  get:k=>{try{return localStorage.getItem(k);}catch{return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,v);}catch{}},
+};
+function safeGet(k){return _sl.get(k);}
+function safeSet(k,v){_sl.set(k,v);}
+
+// ══ Combined store ══
+async function storeGet(k){
+  let v=await idbGet(k);
+  if(v!==undefined&&v!==null)return v;
+  const lv=safeGet('vc2:'+k);
+  if(!lv)return null;
+  try{return JSON.parse(lv);}catch{return null;}
+}
+async function storeSet(k,v){
+  try{safeSet('vc2:'+k,JSON.stringify(v));}catch{}
+  await idbSet(k,v);
+}
+
+// ══ Firebase ══
+let _auth=null,_db=null,_fbReady=false;
+let firebaseUidRef={current:null};
+
+async function initFirebase(){
+  try{
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    _auth=firebase.auth();
+    _db=firebase.firestore();
+    // 明確設定持久登入，必須等待完成才能確保後續判斷登入狀態正確
+    // PWA standalone 模式下 storage 環境較特殊，LOCAL 是最持久的選項
+    try{
+      await _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    }catch(persistErr){
+      console.warn('setPersistence fail',persistErr);
+    }
+    _auth.onAuthStateChanged(user=>{
+      firebaseUidRef.current=user?user.uid:null;
+      updateLoginUI(user);
+      if(user)loadFromFirestore();
+      const authChecking=document.getElementById('auth-checking');
+      if(authChecking)authChecking.style.display='none';
+    });
+    _fbReady=true;
+  }catch(e){
+    console.warn('FB init fail',e);
+    const authChecking=document.getElementById('auth-checking');
+    if(authChecking)authChecking.style.display='none';
+  }
+}
+
+function updateLoginUI(user){
+  const loginScreen=document.getElementById('login-screen');
+  const userBtn=document.getElementById('user-btn');
+  const userName=document.getElementById('user-name');
+  const slb=document.getElementById('set-login-btn');
+  const ssb=document.getElementById('set-sync-btn');
+  const sob=document.getElementById('set-logout-btn');
+  const ss=document.getElementById('sync-status');
+  if(user){
+    // 已登入：隱藏登入頁面，顯示使用者按鈕
+    if(loginScreen)loginScreen.style.display='none';
+    if(userBtn)userBtn.style.display='';
+    if(userName)userName.textContent=user.displayName?user.displayName.slice(0,4):'👤';
+    if(slb)slb.style.display='none';
+    if(ssb)ssb.style.display='';
+    if(sob)sob.style.display='';
+    if(ss)ss.textContent='已登入：'+(user.email||'');
+    setSyncDot('ok');
+  }else{
+    // 未登入：顯示全螢幕登入頁面
+    if(loginScreen)loginScreen.style.display='flex';
+    if(userBtn)userBtn.style.display='none';
+    if(slb)slb.style.display='';
+    if(ssb)ssb.style.display='none';
+    if(sob)sob.style.display='none';
+    if(ss)ss.textContent='未登入';
+    setSyncDot('off');
+  }
+}
+
+function showUserMenu(){
+  const user=_auth?_auth.currentUser:null;
+  if(!user)return;
+  const name=user.displayName||'使用者';
+  const email=user.email||'';
+  if(confirm(`登入：${name}\n${email}\n\n點確定登出`)){
+    doLogout();
+  }
+}
+
+async function doLogin(){
+  if(!_fbReady){toast('Firebase 初始化中，請稍候');return;}
+  const errEl=document.getElementById('login-error');
+  if(errEl)errEl.style.display='none';
+  const provider=new firebase.auth.GoogleAuthProvider();
+  try{
+    await _auth.signInWithPopup(provider);
+  }catch(e){
+    if(e&&['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported'].includes(e.code)){
+      try{await _auth.signInWithRedirect(provider);return;}catch(redirectErr){e=redirectErr;}
+    }
+    if(errEl){errEl.textContent='登入失敗：'+e.message;errEl.style.display='';}
+    else toast('登入失敗：'+e.message);
+  }
+}
+async function doLogout(){
+  await persistLocal();
+  if(_auth&&_auth.currentUser&&navigator.onLine)await doSync(true);
+  if(_auth)await _auth.signOut();
+  toast('已登出');
+}
+
+// ══ App State ══
+// classes/groups 從 Venus OS Firestore 讀取（只讀）
+let _classes=[];      // [{id,year,school,className,createdAt}]
+let _groups=[];       // [{id,label,members,leader,secretary}]
+let _curClassId='';   // 目前選取的班級 id
+let _chartCur=null;   // {no,subj} 目前圖表視窗顯示中的座號/科目
+function curClassName(){
+  const c=_classes.find(x=>x.id===_curClassId);
+  return c?(c.className||c.id):'';
+}
+// 以下資料是此 App 自己的，用 vc:{classId}:key 存
+let _nos=[];          // 存在的座號 [1,2,3,5,...]
+let _scores={};       // {subjLabel:[{label,date,nos:{1:85,2:90,...}}]}
+let _logs=[];         // [{id,t,no,k,v,c,note}]
+let _fixed={cadre:{},toilet:[]};
+let _settings={threshold:300};
+let _exemptMap={};    // {座號: 作業抵免張數} 從 Venus OS 讀取，每份作業=1張
+let _skipMap={};
+let _xlsxData=null;   // 暫存解析中的 xlsx
+let _dirty=false;
+let _saveTimer=null;
+let _syncTimer=null;
+let _dataUpdatedAt=0;
+let _lastSyncedAt=0;
+let _syncInFlight=false;
+let _syncQueued=false;
+let _classLoadToken=0;
+let _exemptLoadToken=0;
+let _overviewQuery='';
+let _overviewFilter='all';
+let _undoStack=[];
+
+function curPfx(){return _curClassId?'vc:'+_curClassId+':':'';}
+function pfxFor(classId){return classId?'vc:'+classId+':':'';}
+function cloneData(v){return JSON.parse(JSON.stringify(v));}
+function parseStored(v,fallback){
+  if(v===undefined||v===null)return fallback;
+  if(typeof v!=='string')return v;
+  try{return JSON.parse(v);}catch{return fallback;}
+}
+function mergeLogs(){
+  const out=[],seen=new Set();
+  Array.from(arguments).forEach(src=>{
+    (Array.isArray(src)?src:[]).forEach(l=>{
+      const key=l&&l.id?String(l.id):JSON.stringify([l&&l.t,l&&l.no,l&&l.k,l&&l.v,l&&l.c,l&&l.note]);
+      if(!seen.has(key)){seen.add(key);out.push(l);}
+    });
+  });
+  return out;
+}
+function mergeScores(){
+  const out={},seen={};
+  Array.from(arguments).forEach(src=>{
+    if(!src||typeof src!=='object')return;
+    Object.keys(src).forEach(subj=>{
+      if(!out[subj]){out[subj]=[];seen[subj]=new Set();}
+      (Array.isArray(src[subj])?src[subj]:[]).forEach(e=>{
+        const key=e&&e.id?String(e.id):JSON.stringify([e&&e.key,e&&e.label,e&&e.date,e&&e.nos]);
+        if(!seen[subj].has(key)){seen[subj].add(key);out[subj].push(e);}
+      });
+    });
+  });
+  return out;
+}
+function currentSnapshot(){
+  return{
+    scores:cloneData(_scores),logs:cloneData(_logs),fixed:cloneData(_fixed),
+    settings:cloneData(_settings),nos:[..._nos],updatedAt:_dataUpdatedAt||Date.now()
+  };
+}
+
+function sched(){
+  _dirty=true;
+  _dataUpdatedAt=Date.now();
+  setSyncDot('ing');
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(persistLocal,250);
+}
+
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persistLocal();});
+window.addEventListener('pagehide',()=>{persistLocal();});
+
+async function writeLocalSnapshot(classId,snap){
+  if(!classId||!snap)return;
+  const pfx=pfxFor(classId);
+  await Promise.all([
+    storeSet(pfx+'scores:all',snap.scores||{}),
+    storeSet(pfx+'logs:all',snap.logs||[]),
+    storeSet(pfx+'fixed',snap.fixed||{cadre:{},toilet:[]}),
+    storeSet(pfx+'settings',snap.settings||{threshold:300}),
+    storeSet(pfx+'nos',snap.nos||[]),
+    storeSet(pfx+'meta',{schema:2,updatedAt:snap.updatedAt||Date.now(),lastSyncedAt:snap.lastSyncedAt||0})
+  ]);
+}
+
+async function persistLocal(force){
+  if((!_dirty&&!force)||!_curClassId)return;
+  const classId=_curClassId;
+  const stamp=_dataUpdatedAt||Date.now();
+  const snap=currentSnapshot();
+  snap.updatedAt=stamp;snap.lastSyncedAt=_lastSyncedAt;
+  await writeLocalSnapshot(classId,snap);
+  if(_curClassId===classId&&_dataUpdatedAt===stamp)_dirty=false;
+}
+
+async function loadClass(classId){
+  if(!classId)return;
+  // 切班前先把原班尚未落盤的內容寫完，避免資料寫進下一班。
+  clearTimeout(_saveTimer);
+  clearTimeout(_syncTimer);
+  const previousNeedsSync=!!_curClassId&&(_dirty||_dataUpdatedAt>_lastSyncedAt);
+  await persistLocal();
+  if(previousNeedsSync&&firebaseUidRef.current&&_db&&navigator.onLine)await doSync(true);
+  const token=++_classLoadToken;
+  _curClassId=classId;
+  const pfx='vc:'+classId+':';
+  const yr=new Date().getFullYear();
+  try{
+    const[scAll,lgAll,scNow,lgNow,scPrev,lgPrev,fx,st,ns,meta]=await Promise.all([
+      storeGet(pfx+'scores:all'),
+      storeGet(pfx+'logs:all'),
+      storeGet(pfx+'scores:'+yr),
+      storeGet(pfx+'logs:'+yr),
+      storeGet(pfx+'scores:'+(yr-1)),
+      storeGet(pfx+'logs:'+(yr-1)),
+      storeGet(pfx+'fixed'),
+      storeGet(pfx+'settings'),
+      storeGet(pfx+'nos'),
+      storeGet(pfx+'meta'),
+    ]);
+    if(token!==_classLoadToken)return;
+    _scores=scAll||mergeScores(scPrev,scNow);
+    _logs=lgAll||mergeLogs(lgPrev,lgNow);
+    _fixed=fx||{cadre:{},toilet:[]};
+    if(Array.isArray(_fixed.cadre)){const o={};_fixed.cadre.forEach(n=>o[n]=1);_fixed.cadre=o;}
+    if(!Array.isArray(_fixed.toilet))_fixed.toilet=[];
+    _settings={...{threshold:300},...(st||{})};
+    _nos=Array.isArray(ns)?ns:[];
+    _groups=[];
+    _dataUpdatedAt=(meta&&Number(meta.updatedAt))||0;
+    _lastSyncedAt=(meta&&Number(meta.lastSyncedAt))||0;
+    _dirty=false;
+    _overviewQuery='';_overviewFilter='all';
+    const searchEl=document.getElementById('student-search');if(searchEl)searchEl.value='';
+    const filterEl=document.getElementById('student-filter');if(filterEl)filterEl.value='all';
+    _skipMap={};_exemptMap={};_qgSel.clear();_undoStack=[];updateUndoButton();
+    safeSet('vc2:lastClass',classId);
+  }catch(e){
+    if(token!==_classLoadToken)return;
+    _scores={};_logs=[];_fixed={cadre:{},toilet:[]};_settings={threshold:300};_nos=[];_dataUpdatedAt=0;_lastSyncedAt=0;_dirty=false;
+  }
+  renderAll();
+}
+
+function cloudSnapshotFromDoc(data,classId){
+  const pfx=pfxFor(classId);
+  const keys=Object.keys(data||{});
+  const stableScores=parseStored(data[pfx+'scores:all'],null);
+  const stableLogs=parseStored(data[pfx+'logs:all'],null);
+  const legacyScores=keys.filter(k=>k.indexOf(pfx+'scores:')===0&&k!==pfx+'scores:all')
+    .sort().map(k=>parseStored(data[k],{}));
+  const legacyLogs=keys.filter(k=>k.indexOf(pfx+'logs:')===0&&k!==pfx+'logs:all')
+    .sort().map(k=>parseStored(data[k],[]));
+  const scores=stableScores||mergeScores.apply(null,legacyScores);
+  const logs=stableLogs||mergeLogs.apply(null,legacyLogs);
+  const fixed=parseStored(data[pfx+'fixed'],{cadre:{},toilet:[]});
+  const settings={threshold:300,...parseStored(data[pfx+'settings'],{})};
+  const nos=parseStored(data[pfx+'nos'],[]);
+  const meta=parseStored(data[pfx+'meta'],null);
+  const hasData=stableScores!==null||stableLogs!==null||legacyScores.length>0||legacyLogs.length>0||data[pfx+'fixed']!==undefined||data[pfx+'settings']!==undefined||data[pfx+'nos']!==undefined;
+  return{scores,logs,fixed,settings,nos:Array.isArray(nos)?nos:[],meta,hasData};
+}
+
+async function loadCardClassFromFirestore(classId){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db||!classId)return false;
+  const token=_classLoadToken;
+  try{
+    setSyncDot('ing');
+    const cardDoc=await _db.collection('vc-card-users').doc(uid).get();
+    if(token!==_classLoadToken||classId!==_curClassId)return false;
+    if(!cardDoc.exists){scheduleSync();return false;}
+    const cloud=cloudSnapshotFromDoc(cardDoc.data()||{},classId);
+    if(!cloud.hasData){scheduleSync();return false;}
+    const cloudTime=cloud.meta&&Number(cloud.meta.updatedAt)||0;
+    const localHas=Object.keys(_scores).length>0||_logs.length>0||_nos.length>0;
+    // 本機有新版時間戳而雲端仍是舊格式或較舊時，本機優先並補同步，避免關閉 App 前的操作被蓋掉。
+    if(localHas&&_dataUpdatedAt>0&&(!cloudTime||_dataUpdatedAt>cloudTime)){
+      scheduleSync();
+      return false;
+    }
+    _scores=cloud.scores||{};
+    _logs=Array.isArray(cloud.logs)?cloud.logs:[];
+    _fixed=cloud.fixed||{cadre:{},toilet:[]};
+    if(Array.isArray(_fixed.cadre)){const o={};_fixed.cadre.forEach(n=>o[n]=1);_fixed.cadre=o;}
+    if(!Array.isArray(_fixed.toilet))_fixed.toilet=[];
+    _settings={threshold:300,...(cloud.settings||{})};
+    _nos=cloud.nos;
+    _dataUpdatedAt=cloudTime||Date.now();
+    _lastSyncedAt=_dataUpdatedAt;
+    _dirty=true;
+    await persistLocal(true);
+    renderAll();
+    setSyncDot('ok');
+    return true;
+  }catch(e){
+    setSyncDot('off');
+    console.warn('Card data read fail',e);
+    return false;
+  }
+}
+
+// ══ 從 Firestore 讀取 Venus OS 的班級/分組（只讀）══
+async function loadFromFirestore(){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db)return;
+  setSyncDot('ing');
+  try{
+    // Venus OS 資料結構：users/{uid}/data/{key} → {value: ..., updatedAt: ...}
+    const dataCol=_db.collection('users').doc(uid).collection('data');
+    // 讀 Venus OS 的 settings:main（含 classes）
+    const settingsDoc=await dataCol.doc('settings:main').get();
+    if(!settingsDoc.exists){
+      toast('⚠️ 找不到 Venus OS 設定資料，請確認已用同一帳號在 Venus OS 登入過');
+      setSyncDot('ok');
+      return;
+    }
+    const raw=settingsDoc.data().value;
+    const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+    if(!parsed||!parsed.classes||!Array.isArray(parsed.classes)||!parsed.classes.length){
+      toast('⚠️ Venus OS 尚未建立任何班級');
+      setSyncDot('ok');
+      return;
+    }
+    _classes=parsed.classes;
+    renderClassDD();
+    toast(`✅ 讀到 ${_classes.length} 個班級`);
+    // 如果已有 _curClassId（離線恢復），確保顯示正確的班級名稱
+    if(_curClassId){
+      const curCls=_classes.find(c=>c.id===_curClassId);
+      if(curCls)document.getElementById('chip-text').textContent=curCls.className||curCls.id;
+      await loadCardClassFromFirestore(_curClassId);
+      // 背景讀取分組與作業抵免，不阻擋畫面
+      loadGroupsForClass(_curClassId);
+      loadExemptFromVenusOS(_curClassId);
+    }
+    // 如果還沒選班級，優先用上次使用的班級，找不到才用第一個
+    if(!_curClassId&&_classes.length){
+      const lastClassId=safeGet('vc2:lastClass');
+      const preferCls=(lastClassId&&_classes.find(c=>c.id===lastClassId))||_classes[0];
+      document.getElementById('chip-text').textContent=preferCls.className||preferCls.id;
+      await loadClass(preferCls.id);
+      await loadCardClassFromFirestore(preferCls.id);
+      await loadGroupsForClass(preferCls.id);
+      loadExemptFromVenusOS(preferCls.id);  // 背景讀取，不 await（180天資料較多）
+      if(!_nos.length){
+        toast(`⚠ 「${preferCls.className||preferCls.id}」尚未設定座號，請先設定`);
+        setTimeout(()=>{
+          goTab('more');
+          setTimeout(()=>goMore('settings'),50);
+          setTimeout(()=>switchStab('nos'),100);
+        },800);
+      }
+    }
+    if(parsed.groups&&Array.isArray(parsed.groups)){
+      _groups=parsed.groups;
+    }
+    // 讀該班級的分組（Venus OS 用 hw5ren:groups:{classId} 當 key）
+    if(_curClassId){
+      try{
+        const grpDoc=await dataCol.doc('hw5ren:groups:'+_curClassId).get();
+        if(grpDoc.exists){
+          const raw2=grpDoc.data().value;
+          const parsed2=typeof raw2==='string'?JSON.parse(raw2):raw2;
+          if(Array.isArray(parsed2))_groups=parsed2;
+        }
+      }catch{}
+    }
+    setSyncDot('ok');
+  }catch(e){setSyncDot('off');toast('❌ 讀取失敗：'+e.message);console.warn('Firestore read fail',e);}
+}
+
+async function doSync(silent){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db||!_curClassId){setSyncDot('off');return;}
+  if(!navigator.onLine){setSyncDot('off');return;}
+  if(_syncInFlight){_syncQueued=true;return;}
+  _syncInFlight=true;
+  const classId=_curClassId;
+  const snap=currentSnapshot();
+  const stamp=snap.updatedAt||Date.now();
+  setSyncDot('ing');
+  try{
+    await persistLocal();
+    const pfx=pfxFor(classId);
+    const payload={};
+    payload[pfx+'scores:all']=JSON.stringify(snap.scores);
+    payload[pfx+'logs:all']=JSON.stringify(snap.logs);
+    payload[pfx+'fixed']=JSON.stringify(snap.fixed);
+    payload[pfx+'settings']=JSON.stringify(snap.settings);
+    payload[pfx+'nos']=JSON.stringify(snap.nos);
+    payload[pfx+'meta']=JSON.stringify({schema:2,updatedAt:stamp,appVersion:APP_VERSION});
+    payload.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+    // 寫到獎卡 App 獨立的 collection，不寫入 Venus OS 的 users collection
+    await _db.collection('vc-card-users').doc(uid).set(payload,{merge:true});
+    if(classId===_curClassId){
+      _lastSyncedAt=stamp;
+      if(!_dataUpdatedAt)_dataUpdatedAt=stamp;
+      // 同步途中若又有新操作，保留目前較新的本機內容，下一輪再上傳。
+      await persistLocal(true);
+    }
+    setSyncDot('ok');
+    if(!silent)toast('\u2601\ufe0f 已同步到雲端');
+  }catch(e){setSyncDot('off');toast('同步失敗：'+e.message);}
+  finally{
+    _syncInFlight=false;
+    if(_syncQueued){_syncQueued=false;setTimeout(()=>doSync(true),100);}
+  }
+}
+
+function scheduleSync(){
+  clearTimeout(_syncTimer);
+  if(!firebaseUidRef.current||!_curClassId||!navigator.onLine)return;
+  _syncTimer=setTimeout(()=>doSync(true),1200);
+}
+
+// ══ 點數計算 ══
+function scorePoints(no){
+  let total=0;
+  for(const subj of Object.keys(_scores)){
+    for(const entry of _scores[subj]||[]){
+      const v=entry.nos&&entry.nos[no];
+      if(v!==null&&v!==undefined&&!isNaN(v))total+=v;
+    }
+  }
+  return total;
+}
+function redeemedPoints(no){
+  return _logs.filter(l=>l.no===no&&l.k==='兌換').reduce((a,l)=>a+(l.v||0),0);
+}
+function noonPoints(no){
+  return _logs.filter(l=>l.no===no&&l.k==='午休').reduce((a,l)=>a+(l.v||0),0);
+}
+function remPoints(no){return scorePoints(no)-redeemedPoints(no)-noonPoints(no);}
+function canRedeem(no){const thr=_settings.threshold||300;return Math.floor(remPoints(no)/thr);}
+function cardCounts(no){
+  const ls=_logs.filter(l=>l.no===no);
+  let cadre=0,toilet=0,special=0,redeemed=0,adjust=0;
+  for(const l of ls){
+    if(l.k==='幹部')cadre+=(l.c||0);
+    if(l.k==='廁所')toilet+=(l.c||0);
+    if(l.k==='特殊')special+=(l.c||0);
+    if(l.k==='兌換')redeemed+=(l.c||0);
+    if(l.k==='調整')adjust+=(l.c||0);
+  }
+  const total=cadre+toilet+special+redeemed+adjust;
+  const exemptUsed=_exemptMap[parseInt(no)]||0;  // 確保用數字 key 查詢
+  const netHold=Math.max(0,total-exemptUsed);  // 淨持有（不可負數）
+  return{cadre,toilet,special,redeemed,adjust,total,exemptUsed,netHold};
+}
+
+// ══ Utils ══
+function nowStr(){return new Date().toLocaleString('zh-TW',{hour12:false});}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function esc(v){return String(v===undefined||v===null?'':v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function uriArg(v){return encodeURIComponent(String(v)).replace(/'/g,'%27');}
+function toast(m,dur){
+  const e=document.getElementById('toast');
+  e.textContent=m;e.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>e.classList.remove('show'),dur||2500);
+}
+function setSyncDot(s){
+  const d=document.getElementById('sync-dot');
+  d.className='sync-dot'+(s==='ing'?' ing':s==='off'?' off':'');
+  d.title=s==='ing'?'尚有資料待同步':s==='off'?'目前離線或未登入':'資料已同步';
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+function pushUndo(label){
+  if(!_curClassId)return;
+  _undoStack.push({label,classId:_curClassId,snapshot:currentSnapshot()});
+  if(_undoStack.length>5)_undoStack.shift();
+  updateUndoButton();
+}
+function updateUndoButton(){
+  const btn=document.getElementById('undo-fab');
+  const lbl=document.getElementById('undo-label');
+  const last=_undoStack[_undoStack.length-1];
+  if(!btn)return;
+  btn.classList.toggle('show',!!last);
+  if(lbl)lbl.textContent=last?`撤銷：${last.label}`:'撤銷';
+}
+function refreshVisiblePanel(){
+  renderAll();
+  const active=document.querySelector('.panel.active');
+  const id=active?active.id.replace('tab-',''):'overview';
+  const fn={
+    redeem:renderRedeem,give:()=>{renderNoPicker();renderQgPicker();renderGiveDetail();},
+    noon:()=>{fillNoSelect('noon-no');renderNoonList();updateNoonLabel();},
+    table:renderScoreTable,log:renderLog,settings:renderSettings
+  };
+  if(fn[id])fn[id]();
+}
+async function undoLastAction(){
+  const item=_undoStack.pop();
+  if(!item){updateUndoButton();return;}
+  if(item.classId!==_curClassId){_undoStack=[];updateUndoButton();toast('切換班級後無法撤銷上一班操作');return;}
+  _scores=cloneData(item.snapshot.scores||{});
+  _logs=cloneData(item.snapshot.logs||[]);
+  _fixed=cloneData(item.snapshot.fixed||{cadre:{},toilet:[]});
+  _settings=cloneData(item.snapshot.settings||{threshold:300});
+  _nos=[...(item.snapshot.nos||[])];
+  _dirty=true;_dataUpdatedAt=Date.now();
+  await persistLocal(true);scheduleSync();refreshVisiblePanel();updateUndoButton();
+  toast(`↶ 已撤銷「${item.label}」`);
+}
+
+// ══ 班級 Dropdown ══
+let _ddOpen=false;
+function toggleClassDD(){
+  const dd=document.getElementById('class-dd');
+  const chip=document.getElementById('class-chip');
+  _ddOpen=!_ddOpen;
+  if(_ddOpen){
+    // 移到 body 最外層，避免任何父層 containing block 影響 fixed 定位
+    if(dd.parentElement!==document.body)document.body.appendChild(dd);
+    dd.style.display='block';
+    renderClassDD();
+  }else{
+    dd.style.display='none';
+  }
+  chip.classList.toggle('open',_ddOpen);
+}
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('class-dd');
+  const switcher=document.getElementById('class-switcher');
+  if(!switcher.contains(e.target)&&!dd.contains(e.target)){
+    dd.style.display='none';
+    document.getElementById('class-chip').classList.remove('open');
+    _ddOpen=false;
+  }
+});
+
+function renderClassDD(){
+  const dd=document.getElementById('class-dd');
+  if(!_classes.length){
+    dd.innerHTML='<div class="cd-hdr">CLASSES</div><div style="padding:12px 14px;font-size:12px;color:var(--text4)">請先登入並在 Venus OS 新增班級</div>';
+    return;
+  }
+  dd.innerHTML='<div class="cd-hdr">CLASSES</div>'+
+    _classes.map(cls=>`
+    <div class="cd-item${cls.id===_curClassId?' active':''}" onclick="switchClass('${cls.id}')">
+      <div>
+        <div class="cd-name">${esc(cls.className||cls.id)}</div>
+        <div class="cd-sub">${esc(cls.year||'')} ${esc(cls.school||'')}</div>
+      </div>
+      ${cls.id===_curClassId?'<span class="cd-badge">✓ 使用中</span>':''}
+    </div>`).join('');
+}
+
+async function switchClass(id){
+  _ddOpen=false;
+  document.getElementById('class-dd').style.display='none';
+  document.getElementById('class-chip').classList.remove('open');
+  const cls=_classes.find(c=>c.id===id);
+  if(cls){
+    document.getElementById('chip-text').textContent=(cls.className||id);
+  }
+  await loadClass(id);
+  await loadCardClassFromFirestore(id);
+  if(id!==_curClassId)return;
+  // 切班後從 Firestore 讀該班分組 + 作業抵免
+  loadGroupsForClass(id);
+  loadExemptFromVenusOS(id);
+  if(!_nos.length){
+    // 這個班還沒設定座號 → 強制導向座號管理，不能略過
+    toast(`⚠ 「${cls?cls.className||id:id}」尚未設定座號，請先設定`);
+    goTab('more');
+    setTimeout(()=>goMore('settings'),50);
+    setTimeout(()=>switchStab('nos'),100);
+  }else{
+    // 已有座號 → 正常跳回總覽
+    goTab('overview');
+    toast(`✅ 已切換到「${cls?cls.className||id:id}」`);
+  }
+}
+
+async function loadGroupsForClass(id){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db)return;
+  try{
+    const dataCol=_db.collection('users').doc(uid).collection('data');
+    const grpDoc=await dataCol.doc('hw5ren:groups:'+id).get();
+    if(id!==_curClassId)return;
+    if(grpDoc.exists){
+      const raw=grpDoc.data().value;
+      const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+      if(Array.isArray(parsed)){_groups=parsed;renderNoPicker();}
+    }
+  }catch{}
+}
+
+// 從 Venus OS Firestore 讀取作業抵免紀錄，統計每人消耗幾張
+// Venus OS key 格式：{classPrefix}day:YYYY-MM-DD
+// value.exempt = { hwName: [no, no, ...] }，每份作業=1張
+const _exemptLoadedSession={};
+function academicRangeForClass(classId){
+  const cls=_classes.find(c=>c.id===classId);
+  const raw=cls&&cls.year!==undefined?parseInt(String(cls.year)):NaN;
+  let startYear;
+  if(!isNaN(raw)&&raw>=100&&raw<200)startYear=raw+1911;
+  else if(!isNaN(raw)&&raw>=2000&&raw<2200)startYear=raw;
+  else{
+    const now=new Date();
+    startYear=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;
+  }
+  return{start:`${startYear}-08-01`,end:`${startYear+1}-07-31`,startYear};
+}
+
+async function loadExemptFromVenusOS(classId){
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db||!classId)return;
+  const token=++_exemptLoadToken;
+  const range=academicRangeForClass(classId);
+  const cacheKey=pfxFor(classId)+'exempt-cache';
+  try{
+    const dataCol=_db.collection('users').doc(uid).collection('data');
+    const cls=_classes.find(c=>c.id===classId);
+    const pfx=cls?`${cls.year}_${cls.className}:day:`:`${classId}:day:`;
+
+    // 先顯示上次結果，切頁時不必重新等待；同一次開啟 App 每班只完整掃描一次。
+    const cached=await storeGet(cacheKey);
+    if(token!==_exemptLoadToken||classId!==_curClassId)return;
+    if(cached&&cached.start===range.start&&cached.end===range.end&&cached.map){
+      _exemptMap=cached.map;
+      renderOverview();renderExemptSummary();
+    }
+    if(_exemptLoadedSession[classId])return;
+    _exemptLoadedSession[classId]=true;
+    setSyncDot('ing');
+    const newExempt={};
+    const ingest=doc=>{
+      if(!doc||!doc.exists)return;
+      const parsed=parseStored(doc.data().value,null);
+      if(!parsed||!parsed.exempt)return;
+      Object.values(parsed.exempt).forEach(val=>{
+        (Array.isArray(val)?val:[]).forEach(no=>{
+          const n=parseInt(no);
+          if(!isNaN(n))newExempt[n]=(newExempt[n]||0)+1;
+        });
+      });
+    };
+
+    // 優先用文件 ID 範圍查詢，一次只取實際存在的日期；若規則不允許 list，再退回逐日讀取。
+    try{
+      const fid=firebase.firestore.FieldPath.documentId();
+      const snap=await dataCol.where(fid,'>=',pfx+range.start).where(fid,'<=',pfx+range.end).get();
+      snap.forEach(ingest);
+    }catch(queryErr){
+      const dates=[];
+      for(let d=new Date(range.start+'T00:00:00');d<=new Date(range.end+'T00:00:00');d.setDate(d.getDate()+1)){
+        dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+      }
+      const BATCH=25;
+      for(let i=0;i<dates.length;i+=BATCH){
+        await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
+          try{ingest(await dataCol.doc(pfx+ds).get());}catch{}
+        }));
+        if(token!==_exemptLoadToken||classId!==_curClassId)return;
+        _exemptMap={...newExempt};renderOverview();renderExemptSummary();
+      }
+    }
+    if(token!==_exemptLoadToken||classId!==_curClassId)return;
+    _exemptMap=newExempt;
+    await storeSet(cacheKey,{start:range.start,end:range.end,map:newExempt,updatedAt:Date.now()});
+    renderOverview();renderExemptSummary();
+    setSyncDot(firebaseUidRef.current?'ok':'off');
+  }catch(e){
+    delete _exemptLoadedSession[classId];
+    setSyncDot('off');
+    console.warn('loadExempt fail',e);
+  }
+}
+
+// 在總覽頁顯示「作業抵免統計」卡片
+function renderExemptSummary(){
+  const area=document.getElementById('exempt-summary-card');
+  if(!area)return;
+  const total=Object.values(_exemptMap).reduce((a,b)=>a+b,0);
+  if(!total){area.style.display='none';return;}
+  area.style.display='';
+  const rows=Object.entries(_exemptMap)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([no,cnt])=>`<tr><td>${no}號</td><td style="color:var(--red);font-weight:700">-${cnt}張</td><td style="color:var(--green);font-weight:700">${Math.max(0,(cardCounts(parseInt(no)).total)-cnt)}張</td></tr>`)
+    .join('');
+  area.innerHTML=`
+    <div class="card-title">📋 作業抵免統計
+      <span style="font-size:11px;font-weight:400;color:var(--text4);margin-left:4px">本學年累計</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--red);font-weight:700">共 ${total} 筆</span>
+    </div>
+    <div class="sx"><table>
+      <thead><tr><th>座號</th><th>已抵免</th><th>淨持有</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+// ══ Tab 切換 ══
+const TAB_IDS=['overview','score','redeem','give','more','noon','table','log','settings'];
+const MAIN_TABS=['overview','score','redeem','give','more'];
+
+function goTab(id,btn){
+  TAB_IDS.forEach(t=>{
+    const p=document.getElementById('tab-'+t);
+    if(p)p.classList.toggle('active',t===id);
+  });
+  // 主 Tab 按鈕
+  MAIN_TABS.forEach(t=>{
+    const b=document.getElementById('tbtn-'+t);
+    if(b)b.classList.toggle('active',t===id);
+  });
+  document.getElementById('scroll-area').scrollTop=0;
+  const fn={
+    overview:renderOverview,
+    score:()=>{renderScoreLog();renderGsList();},
+    redeem:renderRedeem,
+    give:()=>{renderNoPicker();renderQgPicker();renderGiveDetail();},
+    noon:()=>{fillNoSelect('noon-no');renderNoonList();updateNoonLabel();},
+    table:renderScoreTable,
+    log:renderLog,
+    settings:renderSettings,
+  };
+  fn[id]?.();
+}
+
+function goMore(id){goTab(id);}
+
+// ══ 總覽 ══
+function setOverviewFilter(){
+  const q=document.getElementById('student-search');
+  const f=document.getElementById('student-filter');
+  _overviewQuery=q?String(q.value||'').trim():'';
+  _overviewFilter=f?f.value:'all';
+  renderOverview();
+}
+
+function renderOverview(){
+  const thr=_settings.threshold||300;
+  if(!_nos.length){
+    document.getElementById('stat-row').innerHTML='';
+    document.getElementById('stu-grid').innerHTML=`
+      <div style="grid-column:1/-1;text-align:center;padding:36px 16px">
+        <div style="font-size:44px;margin-bottom:10px">🔢</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px">尚未設定座號</div>
+        <div style="font-size:12px;color:var(--text4);margin-bottom:18px;line-height:1.7">
+          請先到「設定 → 座號管理」<br>填入總人數並產生座號
+        </div>
+        <button class="btn-primary" onclick="goTab('more');setTimeout(()=>goMore('settings'),50);setTimeout(()=>switchStab('nos'),100)">前往設定座號</button>
+      </div>`;
+    return;
+  }
+  let totalNetCards=0,totalPts=0,canCnt=0,totalExempt=0;
+  const grid=document.getElementById('stu-grid');
+  grid.innerHTML='';
+  let shown=0;
+  _nos.forEach(no=>{
+    const rem=remPoints(no);
+    const can=canRedeem(no);
+    const cc=cardCounts(no);
+    totalNetCards+=cc.netHold;totalPts+=rem;
+    if(can>0)canCnt++;
+    totalExempt+=cc.exemptUsed;
+    const matchesQuery=!_overviewQuery||String(no).includes(_overviewQuery);
+    const matchesFilter=_overviewFilter==='all'||
+      (_overviewFilter==='ready'&&can>0)||
+      (_overviewFilter==='cards'&&cc.netHold>0)||
+      (_overviewFilter==='exempt'&&cc.exemptUsed>0);
+    if(!matchesQuery||!matchesFilter)return;
+    shown++;
+    const cell=document.createElement('div');
+    cell.className='stu-cell'+(can>0?' ready':'');
+    cell.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="stu-no-circle">${no}</div>
+        ${can>0?`<div style="font-size:10px;font-weight:700;color:var(--orange)">▶可換${can}</div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">🏆</span>
+            <span style="font-size:24px;font-weight:800;color:var(--gold);line-height:1">${cc.total}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">總獎卡</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">✅</span>
+            <span style="font-size:24px;font-weight:800;color:var(--accent);line-height:1">${cc.netHold}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">淨持有</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">📋</span>
+            <span style="font-size:24px;font-weight:800;color:${cc.exemptUsed>0?'var(--red)':'var(--text4)'};line-height:1">${cc.exemptUsed}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">已折抵</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:8px;padding:6px 8px 5px">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-size:14px;line-height:1">⚡</span>
+            <span style="font-size:20px;font-weight:800;color:var(--green);line-height:1">${rem}</span>
+          </div>
+          <div style="font-size:9px;color:var(--text4);margin-top:1px">剩餘點</div>
+        </div>
+      </div>`;
+    cell.onclick=()=>showChart(no);
+    grid.appendChild(cell);
+  });
+  if(!shown){
+    grid.innerHTML='<div class="empty" style="grid-column:1/-1;padding:28px 0">找不到符合條件的學生</div>';
+  }
+  const avg=_nos.length?Math.round(totalPts/_nos.length):0;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat"><span class="stat-icon">👥</span><div><div class="sn">${_nos.length}</div><div class="sl">全班人數</div></div></div>
+    <div class="stat grn"><span class="stat-icon">🏆</span><div><div class="sn">${totalNetCards}</div><div class="sl">淨持有卡</div></div></div>
+    <div class="stat red"><span class="stat-icon">📋</span><div><div class="sn">${totalExempt}</div><div class="sl">累計折抵</div></div></div>
+    <div class="stat ora"><span class="stat-icon">🔔</span><div><div class="sn">${canCnt}</div><div class="sl">可換卡人數</div></div></div>`;
+}
+
+// ══ Excel 匯入 ══
+let _xlsxSheets={};  // {sheetName: [{座號,科目,次數,分數}]}
+let _xlsxSelSheets=[];
+
+// ── Google Sheets 同步（跟著班級走）──
+function extractSheetId(url){
+  // 支援多種網址格式，抓出 /d/{ID}/ 中間那段
+  const m=url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  return m?m[1]:null;
+}
+
+function showAddSheetModal(){
+  document.getElementById('new-sheet-name').value='';
+  document.getElementById('new-sheet-url').value='';
+  document.getElementById('add-sheet-modal').classList.add('show');
+}
+
+function addSheetLink(){
+  const name=document.getElementById('new-sheet-name').value.trim();
+  const url=document.getElementById('new-sheet-url').value.trim();
+  if(!name){toast('請輸入名稱');return;}
+  if(!url){toast('請貼上連結');return;}
+  const sheetId=extractSheetId(url);
+  if(!sheetId){toast('無法解析連結，請確認是 Google Sheets 分享網址');return;}
+  pushUndo('新增試算表連結');
+  if(!_settings.gsheets)_settings.gsheets=[];
+  _settings.gsheets.push({id:genId(),name,sheetId,addedAt:nowStr()});
+  sched();scheduleSync();
+  closeModal('add-sheet-modal');
+  renderGsList();
+  toast(`✅ 已新增「${name}」`);
+}
+
+function delSheetLink(id){
+  if(!confirm('確定刪除這個連結？'))return;
+  pushUndo('刪除試算表連結');
+  _settings.gsheets=(_settings.gsheets||[]).filter(g=>g.id!==id);
+  sched();scheduleSync();
+  renderGsList();
+  toast('已刪除');
+}
+
+function renderGsList(){
+  const area=document.getElementById('gs-list');
+  const list=_settings.gsheets||[];
+  if(!list.length){
+    area.innerHTML='<div class="empty">尚未新增任何 Google Sheets 連結</div>';
+    return;
+  }
+  area.innerHTML=list.map(g=>`
+    <div class="stu-list-item" style="align-items:center">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📊 ${esc(g.name)}</div>
+        <div style="font-size:11px;color:var(--text4)" id="gs-status-${g.id}">尚未同步過</div>
+      </div>
+      <button class="btn-primary btn-sm" onclick="syncFromGSheet('${g.id}')">🔄 同步</button>
+      <button class="btn-red btn-xs" onclick="delSheetLink('${g.id}')">刪</button>
+    </div>`).join('');
+}
+
+async function syncFromGSheet(linkId){
+  const link=(_settings.gsheets||[]).find(g=>g.id===linkId);
+  if(!link){toast('找不到這個連結');return;}
+  if(!_nos.length){toast('請先設定座號（設定→座號管理）');return;}
+  const statusEl=document.getElementById('gs-status-'+linkId);
+  if(statusEl)statusEl.innerHTML='<span style="color:var(--gold)">讀取中...</span>';
+  try{
+    // Google Sheets 公開 CSV 匯出端點，直接抓「獎卡兌換」分頁
+    const csvUrl=`https://docs.google.com/spreadsheets/d/${link.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('獎卡兌換')}`;
+    const res=await fetch(csvUrl);
+    if(!res.ok)throw new Error('無法讀取，請確認 Sheets 是否設成「知道連結的人可檢視」');
+    const csvText=await res.text();
+    if(csvText.includes('<HTML>')||csvText.includes('<!DOCTYPE')){
+      throw new Error('找不到「獎卡兌換」分頁，或權限未開放');
+    }
+    const rows=parseCSV(csvText);
+    if(rows.length<3)throw new Error('資料不足');
+    if(statusEl)statusEl.innerHTML='<span style="color:var(--text4)">請於彈出視窗確認欄位</span>';
+    openColConfirm(rows,link.name,linkId);
+  }catch(e){
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ ${e.message}</span>`;
+    toast('讀取失敗：'+e.message);
+  }
+}
+
+// 簡易 CSV parser（處理引號跳脫）
+function parseCSV(text){
+  const rows=[];
+  let row=[],cur='',inQuote=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i],next=text[i+1];
+    if(inQuote){
+      if(c==='"'&&next==='"'){cur+='"';i++;}
+      else if(c==='"'){inQuote=false;}
+      else cur+=c;
+    }else{
+      if(c==='"')inQuote=true;
+      else if(c===','){row.push(cur);cur='';}
+      else if(c==='\n'||c==='\r'){
+        if(c==='\r'&&next==='\n')i++;
+        row.push(cur);cur='';rows.push(row);row=[];
+      }else cur+=c;
+    }
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+
+// ── 欄位預覽與手動確認（取代自動猜測格式）──
+let _colConfirmState=null;  // {rows, sourceName, linkId, maxCols, excluded:Set}
+
+function openColConfirm(rows,sourceName,linkId){
+  const subjRow=rows[0]||[];
+  const labelRow=rows[1]||[];
+  const dataRows=rows.slice(2);
+  // 欄數用整份資料中最長的一行決定，避免 CSV 尾端空欄被截斷
+  let maxCols=Math.max(subjRow.length,labelRow.length);
+  dataRows.forEach(r=>{if(r&&r.length>maxCols)maxCols=r.length;});
+
+  // 自動帶入「科目名稱」：往前找最近一個非空的 subjRow 值（同 Excel 合併儲存格邏輯）
+  // 但不自動排除任何欄位，全部交給使用者確認
+  const colInfo=[];
+  let curSubj='';
+  for(let c=0;c<maxCols;c++){
+    const s=subjRow[c];
+    if(s!==undefined&&s!==null&&String(s).trim()!=='')curSubj=String(s).trim();
+    const l=labelRow[c];
+    const lbl=(l!==undefined&&l!==null)?String(l).trim():'';
+    colInfo.push({idx:c,subj:c<2?'':curSubj,label:lbl});
+  }
+
+  // 預設排除規則：欄位文字包含「平均」「總分」「總整」的自動打勾排除，其餘預設匯入
+  const excluded=new Set();
+  colInfo.forEach(ci=>{
+    const combo=(ci.subj+ci.label);
+    if(/平均|總分|總整|合計/.test(combo))excluded.add(ci.idx);
+    if(ci.idx<2)excluded.add(ci.idx); // 座號、姓名欄不算分數欄
+  });
+
+  _colConfirmState={rows,sourceName,linkId,maxCols,colInfo,excluded,dataRows};
+  renderColConfirmTable();
+  document.getElementById('col-confirm-modal').classList.add('show');
+}
+
+function renderColConfirmTable(){
+  const st=_colConfirmState;
+  if(!st)return;
+  const{colInfo,excluded,dataRows}=st;
+  const previewRows=dataRows.slice(0,5); // 只預覽前5筆資料列
+
+  document.getElementById('col-confirm-info').textContent=
+    `共偵測到 ${colInfo.length} 欄、${dataRows.length} 筆資料列。點欄位標題切換匯入/排除（灰色＝排除）。`;
+
+  const theadHtml='<table><thead><tr>'+colInfo.map(ci=>{
+    const isExcluded=excluded.has(ci.idx);
+    const isBase=ci.idx<2;
+    return `<th class="${isExcluded?'col-excluded':'col-included'}" ${isBase?'':`onclick="toggleColExclude(${ci.idx})"`} title="${isBase?'座號/姓名欄，固定保留':'點擊切換'}">
+      <span class="col-subj">${esc(ci.subj||(isBase?(ci.idx===0?'座號':'姓名'):'(無科目)'))}</span>
+      <span class="col-label">${esc(ci.label||'—')}</span>
+    </th>`;
+  }).join('')+'</tr></thead><tbody>'+
+  previewRows.map(row=>'<tr>'+colInfo.map(ci=>{
+    const v=row[ci.idx];
+    const isExcluded=excluded.has(ci.idx);
+    return `<td class="${isExcluded?'col-nocol':''}">${esc(v!==undefined&&v!==''?v:'—')}</td>`;
+  }).join('')+'</tr>').join('')
+  +'</tbody></table>';
+
+  document.getElementById('col-confirm-table').innerHTML=theadHtml;
+}
+
+function toggleColExclude(idx){
+  const st=_colConfirmState;
+  if(!st)return;
+  if(st.excluded.has(idx))st.excluded.delete(idx);
+  else st.excluded.add(idx);
+  renderColConfirmTable();
+}
+
+function confirmColImport(){
+  const st=_colConfirmState;
+  if(!st)return;
+  const{colInfo,excluded,dataRows,sourceName,linkId}=st;
+
+  // 只用未排除、且有科目名稱的欄位
+  const validCols=colInfo.filter(ci=>!excluded.has(ci.idx)&&ci.idx>=2&&ci.subj);
+  if(!validCols.length){
+    toast('⚠️ 沒有選取任何要匯入的欄位');
+    return;
+  }
+
+  let imported=0;
+  let sheetNos=[];
+  const newScores={};
+  dataRows.forEach(row=>{
+    if(!row||!row.length)return;
+    const noRaw=row[0];
+    if(noRaw===undefined||String(noRaw).trim()==='')return;
+    const no=parseInt(String(noRaw).trim());
+    if(isNaN(no))return;
+    sheetNos.push(no);
+    if(!_nos.includes(no))return;
+    validCols.forEach(ci=>{
+      const v=row[ci.idx];
+      if(v===undefined||String(v).trim()==='')return;
+      const num=parseFloat(String(v).trim());
+      if(isNaN(num))return;
+      const label=`${ci.subj}-${ci.label||ci.idx}`;
+      if(!newScores[ci.subj])newScores[ci.subj]=[];
+      let entry=newScores[ci.subj].find(e=>e.label===label);
+      if(!entry){entry={key:label,label,date:extractDate(ci.label)||todayISO(),nos:{}};newScores[ci.subj].push(entry);}
+      entry.nos[no]=num;
+      imported++;
+    });
+  });
+
+  closeModal('col-confirm-modal');
+  const statusEl=document.getElementById('gs-status-'+linkId);
+
+  if(imported===0){
+    const matchedCount=sheetNos.filter(n=>_nos.includes(n)).length;
+    if(statusEl)statusEl.innerHTML=`<span style="color:var(--red)">❌ 座號對上 ${matchedCount}/${sheetNos.length} 人，但 0 筆分數</span>`;
+    toast(`⚠️ 座號對上 ${matchedCount}/${sheetNos.length} 人，但選取的欄位中沒有任何有效分數`);
+    return;
+  }
+
+  if(Object.keys(_scores).some(s=>(_scores[s]||[]).length)&&
+     !confirm(`這次同步會以「${sourceName}」的內容取代目前全部成績。\n確定繼續嗎？`)){
+    if(statusEl)statusEl.textContent='已取消，原資料未變更';
+    return;
+  }
+
+  pushUndo('同步 Google Sheets 成績');
+  _scores=newScores;
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+  let _alerts=[];
+  Object.keys(newScores).forEach(s=>{
+    newScores[s].forEach(entry=>{_alerts=_alerts.concat(checkScoreAlert(s,entry));});
+  });
+  if(_alerts.length)showScoreAlertModal(_alerts);
+  const subjCount=Object.keys(newScores).length;
+  const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
+  if(statusEl)statusEl.innerHTML=`<span style="color:var(--green)">✅ ${nowStr()} 已同步</span>`;
+  toast(`✅ 從「${sourceName}」匯入完成：${subjCount}科、${examCount}次考試、${imported}筆分數`);
+  _colConfirmState=null;
+}
+
+// ── 快速貼上成績（依目前班級座號順序動態對應）──
+let _pasteData=null;  // 暫存解析後待儲存的資料
+
+function previewPaste(){
+  const raw=document.getElementById('ps-paste').value;
+  const statusEl=document.getElementById('ps-status');
+  const previewEl=document.getElementById('ps-preview');
+  const submitBtn=document.getElementById('ps-submit');
+
+  if(!raw.trim()){
+    statusEl.textContent='';previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;return;
+  }
+  if(!_nos.length){
+    statusEl.innerHTML='<span style="color:var(--red)">⚠ 請先在「設定→座號管理」設定本班座號</span>';
+    previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;return;
+  }
+
+  // 切行，去除最前最後的空行，但保留中間空行（代表缺席）
+  const rows=raw.split(/\r?\n/);
+  let s=0,e=rows.length-1;
+  while(s<=e&&rows[s].trim()==='')s++;
+  while(e>=s&&rows[e].trim()==='')e--;
+  const trimmed=s<=e?rows.slice(s,e+1):[];
+
+  const needCount=_nos.length;
+  if(trimmed.length!==needCount){
+    statusEl.innerHTML=`<span style="color:var(--red)">⚠ 需要 ${needCount} 行（本班 ${needCount} 人），目前貼了 ${trimmed.length} 行</span>`;
+    previewEl.innerHTML='';submitBtn.style.display='none';_pasteData=null;
+    return;
+  }
+
+  // 動態依照目前座號順序對應
+  const sortedNos=[..._nos].sort((a,b)=>a-b);
+  const result=sortedNos.map((no,i)=>{
+    const v=trimmed[i].trim();
+    const num=v===''?null:parseFloat(v);
+    return{no,val:(num!==null&&!isNaN(num))?num:null,raw:v};
+  });
+  const filled=result.filter(r=>r.val!==null).length;
+  const absent=needCount-filled;
+
+  statusEl.innerHTML=`<span style="color:var(--green)">✅ 行數正確（${needCount}行）｜${filled} 人有分數${absent>0?`，${absent} 人缺席`:''}</span>`;
+
+  // 預覽表格（顯示全部，缺席標記）
+  previewEl.innerHTML=`<div class="sx" style="max-height:280px;overflow-y:auto"><table>
+    <thead><tr><th>座號</th><th>分數</th></tr></thead>
+    <tbody>${result.map(r=>`<tr>
+      <td>${r.no}號</td>
+      <td style="${r.val===null?'color:var(--text4)':r.val>=90?'color:var(--green);font-weight:700':r.val<60?'color:var(--red)':''}">${r.val!==null?r.val:'（缺席）'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+
+  _pasteData=result;
+  submitBtn.style.display='';
+}
+
+function submitPaste(){
+  if(!_pasteData){toast('請先確認預覽無誤');return;}
+  const subj=document.getElementById('ps-subj').value;
+  const label=document.getElementById('ps-label').value.trim();
+  if(!label){toast('請輸入考試名稱');return;}
+
+  const fullLabel=`${subj}-${label}`;
+  if(!_scores[subj])_scores[subj]=[];
+  const nosMap={};
+  _pasteData.forEach(r=>{if(r.val!==null)nosMap[r.no]=r.val;});
+
+  const existIdx=_scores[subj].findIndex(e=>e.label===fullLabel);
+  const rec={key:fullLabel,label:fullLabel,date:extractDate(label)||todayISO(),nos:nosMap};
+  if(existIdx>=0){
+    if(!confirm(`「${fullLabel}」已存在，確定覆蓋嗎？`))return;
+    pushUndo('覆蓋成績');
+    _scores[subj][existIdx]=rec;
+  }else{
+    pushUndo('新增成績');
+    _scores[subj].push(rec);
+  }
+
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+
+  const _alerts=checkScoreAlert(subj,rec);
+  if(_alerts.length)showScoreAlertModal(_alerts);
+
+  // 清空表單
+  document.getElementById('ps-paste').value='';
+  document.getElementById('ps-label').value='';
+  document.getElementById('ps-status').textContent='';
+  document.getElementById('ps-preview').innerHTML='';
+  document.getElementById('ps-submit').style.display='none';
+  _pasteData=null;
+
+  toast(`✅ 已儲存「${fullLabel}」`);
+}
+
+// ── Excel 匯入（專門讀「獎卡兌換」工作表）──
+// 格式：Row0=科目大類，Row1=次數標籤，Row2起=座號+分數
+// 遇到「總分」欄後停止；跳過公式欄、空欄、None欄
+// ══ 日期抽取（手動優先、自動備援）══
+function extractDate(label){
+  const m=String(label).match(/(\d{1,2})[\/\-月](\d{1,2})/);
+  if(!m)return null;
+  const mo=parseInt(m[1]),d=parseInt(m[2]);
+  if(mo<1||mo>12||d<1||d>31)return null;
+  let y=new Date().getFullYear();
+  const cand=new Date(y,mo-1,d);
+  if(cand-Date.now()>30*864e5)y--;
+  return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function todayISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+const TARGET_SHEET_KEYWORDS = ['\u734e\u5361\u5151\u63db', '\u734e\u5361\u5151\u63db2'];
+
+function handleXlsx(input){
+  const file=input.files[0];
+  if(!file)return;
+  const prev=document.getElementById('xlsx-preview');
+  prev.innerHTML='<div style="color:var(--text4);font-size:12px">讀取中...</div>';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellFormula:false,cellHTML:false});
+      // 找「獎卡兌換」工作表（支援多個關鍵字）
+      let targetSheet=null,targetName='';
+      for(const name of wb.SheetNames){
+        if(TARGET_SHEET_KEYWORDS.some(kw=>name.includes(kw))){
+          targetSheet=wb.Sheets[name];targetName=name;break;
+        }
+      }
+      // 如果找不到，列出所有工作表讓用戶選
+      if(!targetSheet){
+        prev.innerHTML=`<div class="tip orange">找不到「獎卡兌換」工作表。<br>此 Excel 包含：${esc(wb.SheetNames.join('、'))}</div>`;
+        return;
+      }
+      parseAndImport(targetSheet,targetName);
+    }catch(err){
+      prev.innerHTML='';
+      toast('讀取失敗：'+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseAndImport(ws,sheetName){
+  if(!_nos.length){
+    toast('請先設定座號（設定 → 座號管理）');
+    document.getElementById('xlsx-preview').innerHTML='';
+    return;
+  }
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  if(rows.length<3){toast('工作表資料不足');return;}
+
+  const subjRow=rows[0]||[];
+  const labelRow=rows[1]||[];
+  const dataRows=rows.slice(2);
+
+  // 建立欄位對應，遇到「總分」停止
+  const colMap={};
+  let curSubj='';
+  let stop=false;
+  for(let c=2;c<Math.max(subjRow.length,labelRow.length);c++){
+    if(stop)break;
+    const s=subjRow[c];
+    if(s&&String(s).trim()){
+      const sStr=String(s).trim();
+      if(sStr==='\u7e3d\u5206'){stop=true;break;}  // 總分
+      curSubj=sStr;
+    }
+    const l=labelRow[c];
+    if(!l||!curSubj)continue;
+    let lbl='';
+    // 日期格式轉換
+    if(l instanceof Date||typeof l==='number'&&l>40000){
+      // XLSX 日期序號
+      try{
+        const d=XLSX.SSF.parse_date_code(l);
+        lbl=`${d.m}/${d.d}`;
+      }catch{lbl=String(l);}
+    }else{
+      lbl=String(l).trim();
+    }
+    if(!lbl||lbl==='null'||lbl==='None')continue;
+    // 跳過：平均、段考以外含「段」「考」「平均」的純統計欄
+    // 保留：CH系列、44-45、甲、乙、日期格式、段考
+    colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`,date:extractDate(lbl)};
+  }
+
+  // 解析資料行
+  let imported=0,noMatch=0;
+  const newScores={};  // 全部重建，這次上傳全覆蓋
+  dataRows.forEach(row=>{
+    if(!row)return;
+    const noRaw=row[0];
+    if(noRaw===null||noRaw===undefined)return;
+    const no=parseInt(noRaw);
+    if(isNaN(no)||!_nos.includes(no)){noMatch++;return;}
+    Object.entries(colMap).forEach(([c,{subj,label,date}])=>{
+      const v=row[parseInt(c)];
+      // 跳過 null、字串公式、字串
+      if(v===null||v===undefined)return;
+      if(typeof v==='string')return;  // 公式結果 XLSX 不計算，直接是字串
+      const num=parseFloat(v);
+      if(isNaN(num))return;
+      if(!newScores[subj])newScores[subj]=[];
+      let entry=newScores[subj].find(e=>e.label===label);
+      if(!entry){entry={key:label,label,date:date||todayISO(),nos:{}};newScores[subj].push(entry);}
+      entry.nos[no]=num;
+      imported++;
+    });
+  });
+
+  if(imported===0){
+    document.getElementById('xlsx-preview').innerHTML='<div class="tip orange">沒有找到可匯入的有效分數，原資料未變更。</div>';
+    toast('⚠️ 匯入內容為空，已保留原資料');
+    return;
+  }
+  if(Object.keys(_scores).some(s=>(_scores[s]||[]).length)&&
+     !confirm(`Excel 匯入會取代目前全部成績。\n本次讀到 ${imported} 筆分數，確定繼續嗎？`)){
+    document.getElementById('xlsx-preview').innerHTML='<div class="tip">已取消，原資料未變更。</div>';
+    return;
+  }
+
+  pushUndo('匯入 Excel 成績');
+  _scores=newScores;
+  sched();scheduleSync();
+  renderScoreLog();renderOverview();
+
+  const subjCount=Object.keys(newScores).length;
+  const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
+  const prev=document.getElementById('xlsx-preview');
+  prev.innerHTML=`<div class="tip green">✅ 匯入完成！共 ${subjCount} 科、${examCount} 次考試、${imported} 筆分數</div>`;
+  document.getElementById('xlsx-input').value='';
+  toast(`✅ 已從「${sheetName}」匯入 ${imported} 筆分數`);
+}
+
+function renderScoreLog(){
+  const area=document.getElementById('score-log-area');
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){area.innerHTML='<div class="empty">尚未匯入任何成績</div>';return;}
+  const rows=[];
+  allSubjs.forEach(subj=>{
+    (_scores[subj]||[]).forEach((e,i)=>{
+      const cnt=Object.keys(e.nos||{}).length;
+      const vals=Object.values(e.nos||{}).filter(v=>!isNaN(v));
+      const avg=vals.length?+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1):'-';
+      rows.push(`<tr>
+        <td style="font-weight:600;text-align:left">${esc(e.label)}</td>
+        <td><span class="badge badge-blue">${esc(subj)}</span></td>
+        <td>${cnt}人</td>
+        <td style="font-weight:600">${avg}</td>
+        <td><button class="btn-red btn-xs" onclick="delEntry(decodeURIComponent('${uriArg(subj)}'),${i})">刪</button></td>
+      </tr>`);
+    });
+  });
+  area.innerHTML=`<div class="sx"><table><thead><tr><th>標籤</th><th>科目</th><th>人數</th><th>平均</th><th>操作</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+
+function delEntry(subj,idx){
+  if(!confirm(`確定刪除「${_scores[subj][idx].label}」？`))return;
+  pushUndo('刪除成績');
+  _scores[subj].splice(idx,1);
+  sched();scheduleSync();renderScoreLog();renderOverview();toast('已刪除');
+}
+
+function clearScores(){pushUndo('清除全部成績');_scores={};sched();scheduleSync();renderScoreLog();renderOverview();toast('已清除');}
+
+// ══ 兌換獎卡 ══
+function renderRedeem(){
+  _skipMap={};
+  const thr=_settings.threshold||300;
+  const area=document.getElementById('redeem-area');
+  const eligible=_nos.filter(no=>canRedeem(no)>0);
+  const btnGrp=document.getElementById('btn-redeem-group');
+  if(!eligible.length){
+    area.innerHTML=`<div class="empty">目前沒有學生累積達 ${thr} 點</div>`;
+    document.getElementById('redeem-summary').style.display='none';
+    if(btnGrp)btnGrp.style.display='none';
+    renderRedeemLog();return;
+  }
+  const grid=document.createElement('div');grid.className='rdm-grid';
+  eligible.forEach(no=>{
+    const rem=remPoints(no);const can=canRedeem(no);
+    const d=document.createElement('div');
+    d.className='rdm-card';d.id='rc_'+no;
+    d.innerHTML=`
+    <button class="rdm-skip-btn" onclick="toggleSkip(${no})" title="本次不換">✕</button>
+    <div style="font-size:11px;color:var(--text4);margin-bottom:2px">${no}號</div>
+    <div style="font-size:22px;font-weight:800;color:var(--orange);line-height:1">${rem}pt</div>
+    <div style="font-size:12px;color:var(--green);font-weight:600;margin:3px 0">可換 ${can} 張</div>
+    <div style="display:flex;gap:4px;align-items:center;margin-top:6px">
+      <input type="number" id="custom-cnt-${no}" min="1" max="${can}" value="1"
+        style="width:52px;height:30px;font-size:13px;font-weight:700;text-align:center;border-radius:6px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);padding:0 4px">
+      <span style="font-size:11px;color:var(--text4)">張</span>
+      <button class="btn-green btn-xs" style="flex:1;height:30px;min-height:unset" onclick="redeemCustom(${no})">換</button>
+    </div>
+    <textarea id="skip-note-${no}" style="display:none;width:100%;margin-top:6px;font-size:11px;padding:4px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text);resize:none" rows="2" placeholder="不換原因（選填）"></textarea>`;
+    grid.appendChild(d);
+  });
+  area.innerHTML='';area.appendChild(grid);
+  updRedeemSummary(eligible);
+  if(btnGrp)btnGrp.style.display='flex';
+  renderRedeemLog();
+}
+
+// 單人自訂張數兌換
+function redeemCustom(no){
+  const thr=_settings.threshold||300;
+  const can=canRedeem(no);
+  if(can<1){toast('目前點數不足，無法兌換');return;}
+  const input=document.getElementById('custom-cnt-'+no);
+  const cnt=Math.max(1,Math.min(can,parseInt(input?input.value:1)||1));
+  const pts=cnt*thr;
+  if(!confirm(`確定為 ${no}號 兌換 ${cnt} 張獎卡（扣 ${pts} 點）？`))return;
+  pushUndo('兌換獎卡');
+  const batchId='redeem:'+genId();
+  _logs.push({id:genId(),batchId,t:nowStr(),no,k:'兌換',v:pts,c:cnt,note:`兌換${cnt}張扣${pts}點`});
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ ${no}號 已兌換 ${cnt} 張`);
+}
+
+// 全班每人各換1張（不管可換幾張，每人只扣1份threshold）
+function doRedeemOne(){
+  const thr=_settings.threshold||300;
+  const el=_nos.filter(n=>canRedeem(n)>0);
+  const wr=el.filter(n=>!_skipMap[n]);
+  if(!wr.length){toast('沒有人要兌換');return;}
+  if(!confirm(`確定為 ${wr.length} 位學生各換 1 張？\n${wr.map(n=>n+'號').join('、')}`))return;
+  pushUndo('全班各兌換一張');
+  const batchId='redeem:'+genId();
+  wr.forEach(no=>{
+    _logs.push({id:genId(),batchId,t:nowStr(),no,k:'兌換',v:thr,c:1,note:`全班各換1張扣${thr}點`});
+  });
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ 全班各換1張完成，共 ${wr.length} 人`);
+}
+
+function toggleSkip(no){
+  const card=document.getElementById('rc_'+no);
+  const nt=document.getElementById('skip-note-'+no);
+  if(_skipMap[no]!==undefined){
+    delete _skipMap[no];card.classList.remove('skip');
+    card.querySelector('.rdm-skip-btn').textContent='✕';
+    if(nt)nt.style.display='none';
+  }else{
+    _skipMap[no]=true;card.classList.add('skip');
+    card.querySelector('.rdm-skip-btn').textContent='↩';
+    if(nt)nt.style.display='';
+  }
+  updRedeemSummary(_nos.filter(n=>canRedeem(n)>0));
+}
+
+function updRedeemSummary(el){
+  const wr=el.filter(n=>!_skipMap[n]);
+  const ws=el.filter(n=>_skipMap[n]);
+  const sum=document.getElementById('redeem-summary');
+  sum.style.display='';
+  sum.innerHTML=`<b>本次兌換：</b>${wr.length} 人（${wr.map(n=>`<b>${n}號</b>`).join('、')||'無'}）`+
+    (ws.length?`<br><span style="color:var(--red)"><b>本次不換：</b>${ws.map(n=>`<b>${n}號</b>`).join('、')}</span>`:'');
+}
+
+function doRedeem(){
+  const thr=_settings.threshold||300;
+  const el=_nos.filter(n=>canRedeem(n)>0);
+  const wr=el.filter(n=>!_skipMap[n]);
+  const ws=el.filter(n=>_skipMap[n]);
+  if(!wr.length){toast('沒有人要兌換');return;}
+  if(!confirm(`確定為 ${wr.length} 位學生兌換？\n${wr.map(n=>n+'號').join('、')}`))return;
+  pushUndo('全班批次兌換');
+  const batchId='redeem:'+genId();
+  wr.forEach(no=>{
+    const c=canRedeem(no);const p=c*thr;
+    _logs.push({id:genId(),batchId,t:nowStr(),no,k:'兌換',v:p,c,note:`兌換${c}張扣${p}點`});
+  });
+  ws.forEach(no=>{
+    const nt=document.getElementById('skip-note-'+no);
+    const r=(nt&&nt.value.trim())||'本次不換';
+    _logs.push({id:genId(),batchId,t:nowStr(),no,k:'不兌換',v:0,c:0,note:r});
+  });
+  sched();scheduleSync();renderRedeem();renderOverview();
+  toast(`✅ 兌換完成，${wr.length} 人確認`);
+}
+
+function renderRedeemLog(){
+  const logs=[..._logs].filter(l=>l.k==='兌換').reverse();
+  document.getElementById('redeem-log').innerHTML=!logs.length?
+    '<tr><td colspan="5" style="color:var(--text4);padding:14px">尚無兌換紀錄</td></tr>':
+    logs.map(l=>`<tr>
+    <td style="font-size:11px;white-space:nowrap">${esc(l.t)}</td>
+    <td>${l.no}號</td>
+    <td style="color:var(--red)">-${l.v}pt</td>
+    <td style="color:var(--green);font-weight:600">+${l.c}張</td>
+    <td><button class="btn-ghost btn-xs" onclick="revokeRedeem('${l.id}')">↩ 撤銷</button></td></tr>`).join('');
+}
+
+// 撤銷一筆兌換紀錄（刪除該筆 log，點數與卡片自動恢復）
+function revokeRedeem(logId){
+  const log=_logs.find(l=>String(l.id)===String(logId));
+  if(!log){toast('找不到這筆紀錄');return;}
+  if(!confirm(`確定撤銷 ${log.no}號 這筆兌換？\n將恢復 ${log.v}pt，扣回 ${log.c}張`))return;
+  pushUndo('撤銷單筆兌換');
+  _logs=_logs.filter(l=>String(l.id)!==String(logId));
+  sched();scheduleSync();
+  renderRedeem();renderOverview();
+  toast(`✅ 已撤銷 ${log.no}號 的兌換`);
+}
+
+function revokeAllRedeem(){
+  const redeemLogs=_logs.filter(l=>l.k==='兌換');
+  if(!redeemLogs.length){toast('沒有兌換紀錄可撤銷');return;}
+  const latest=redeemLogs[redeemLogs.length-1];
+  const recent=latest.batchId?
+    _logs.filter(l=>l.batchId===latest.batchId):
+    _logs.filter(l=>l.t===latest.t&&(l.k==='兌換'||l.k==='不兌換'));
+  const recentRedeem=recent.filter(l=>l.k==='兌換');
+  if(!confirm(`確定撤銷最近一批 ${recentRedeem.length} 筆兌換？\n只會還原最近一次批次，不影響較早紀錄。`))return;
+  pushUndo('撤銷最近一批兌換');
+  const ids=new Set(recent.map(l=>String(l.id)));
+  _logs=_logs.filter(l=>!ids.has(String(l.id)));
+  sched();scheduleSync();
+  renderRedeem();renderOverview();
+  toast(`✅ 已撤銷最近一批 ${recentRedeem.length} 筆兌換`);
+}
+
+// ══ 給卡 ══
+function ensureFixed(){
+  if(!_fixed.cadre||Array.isArray(_fixed.cadre))_fixed.cadre={};
+  if(!Array.isArray(_fixed.toilet))_fixed.toilet=[];
+}
+
+function renderNoPicker(){
+  ensureFixed();
+  // 優先從 Venus OS groups 讀 leader/secretary
+  const leaderNos=new Set(_groups.map(g=>g.leader).filter(Boolean));
+  const secNos=new Set(_groups.map(g=>g.secretary).filter(Boolean));
+  const cadreEl=document.getElementById('cadre-picker');
+  cadreEl.innerHTML=_nos.map(no=>{
+    const cnt=_fixed.cadre[no]||0;
+    const isL=leaderNos.has(no);const isS=secNos.has(no);
+    const baseCls=cnt===1?'cadre1':cnt===2?'cadre2':'';
+    const hint=isL?'<br><span style="font-size:8px">組長</span>':isS?'<br><span style="font-size:8px">副</span>':'';
+    return `<button class="no-btn${baseCls?' '+baseCls:''}" onclick="toggleCadre(${no},this)" title="${no}號">${no}${hint}</button>`;
+  }).join('');
+  const toiletEl=document.getElementById('toilet-picker');
+  toiletEl.innerHTML=_nos.map(no=>{
+    const sel=_fixed.toilet.includes(no);
+    return `<button class="no-btn${sel?' sel':''}" onclick="toggleToilet(${no},this)">${no}</button>`;
+  }).join('');
+  updToiletCount();updCadreHint();
+}
+
+function toggleCadre(no,btn){
+  ensureFixed();
+  const cur=_fixed.cadre[no]||0;
+  const next=(cur+1)%3;
+  if(next===0)delete _fixed.cadre[no];else _fixed.cadre[no]=next;
+  sched();
+  btn.className='no-btn'+(next===1?' cadre1':next===2?' cadre2':'');
+  const isL=_groups.some(g=>g.leader===no);const isS=_groups.some(g=>g.secretary===no);
+  const hint=isL?'<br><span style="font-size:8px">組長</span>':isS?'<br><span style="font-size:8px">副</span>':'';
+  btn.innerHTML=no+(next>0?`<br><span style="font-size:9px">×${next}</span>`:'')+hint;
+  scheduleSync();updCadreHint();
+}
+
+function toggleToilet(no,btn){
+  ensureFixed();
+  if(_fixed.toilet.includes(no)){
+    _fixed.toilet=_fixed.toilet.filter(n=>n!==no);btn.className='no-btn';
+  }else{
+    if(_fixed.toilet.length>=6){toast('廁所名單最多6人');return;}
+    _fixed.toilet.push(no);btn.className='no-btn sel';
+  }
+  sched();scheduleSync();updToiletCount();
+}
+
+function updToiletCount(){
+  const el=document.getElementById('toilet-count');
+  if(el)el.textContent=`已選 ${(_fixed.toilet||[]).length}/6`;
+}
+function updCadreHint(){
+  const entries=Object.entries(_fixed.cadre||{});
+  const el=document.getElementById('cadre-hint');
+  if(!el)return;
+  if(!entries.length){el.textContent='尚未設定幹部名單';return;}
+  const total=entries.reduce((a,[,v])=>a+v,0);
+  el.textContent=`${entries.length} 人，本週共給 ${total} 張`;
+}
+
+function isoWeekKey(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const day=d.getUTCDay()||7;
+  d.setUTCDate(d.getUTCDate()+4-day);
+  const y0=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return `${d.getUTCFullYear()}-W${String(Math.ceil((((d-y0)/86400000)+1)/7)).padStart(2,'0')}`;
+}
+
+function giveWeekly(type){
+  ensureFixed();
+  const d=new Date();const wk=`${d.getMonth()+1}/${d.getDate()}`;const weekKey=isoWeekKey(d);
+  const kind=type==='cadre'?'幹部':'廁所';
+  if(_logs.some(l=>l.k===kind&&l.weekKey===weekKey)){
+    if(!confirm(`⚠️ ${weekKey} 已經發過「${kind}週給」。\n確定要再發一次嗎？`))return;
+  }
+  const batchId=`weekly:${type}:${weekKey}:${genId()}`;
+  if(type==='cadre'){
+    const entries=Object.entries(_fixed.cadre||{});
+    if(!entries.length){toast('幹部名單是空的');return;}
+    const total=entries.reduce((a,[,v])=>a+v,0);
+    if(!confirm(`確定給幹部週給？共 ${entries.length} 人，發出 ${total} 張`))return;
+    pushUndo('幹部週給');
+    entries.forEach(([no,cnt])=>{
+      _logs.push({id:genId(),batchId,weekKey,t:nowStr(),w:wk,no:parseInt(no),k:'幹部',v:0,c:cnt,note:`幹部週給×${cnt}`});
+    });
+    toast(`✅ 幹部週給完成，共 ${total} 張`);
+  }else{
+    const nos=_fixed.toilet||[];
+    if(!nos.length){toast('廁所名單是空的');return;}
+    if(!confirm(`確定給 ${nos.length} 位廁所學生各 1 張？`))return;
+    pushUndo('廁所週給');
+    nos.forEach(no=>{
+      _logs.push({id:genId(),batchId,weekKey,t:nowStr(),w:wk,no,k:'廁所',v:0,c:1,note:'廁所週給'});
+    });
+    toast(`✅ ${nos.length} 位廁所學生各獲 1 張`);
+  }
+  sched();scheduleSync();renderGiveDetail();renderOverview();
+}
+
+function fillNoSelect(id){
+  const el=document.getElementById(id);
+  el.innerHTML=_nos.map(n=>`<option value="${n}">${n}號</option>`).join('');
+}
+
+// ── 快速給卡：點座號多選，一次送出 ──
+let _qgSel=new Set();
+
+function renderQgPicker(){
+  const picker=document.getElementById('qg-picker');
+  if(!picker)return;
+  picker.innerHTML=_nos.map(no=>
+    `<button class="no-btn${_qgSel.has(no)?' sel':''}" onclick="toggleQgSel(${no},this)">${no}</button>`
+  ).join('');
+  updQgCount();
+}
+
+function toggleQgSel(no,btn){
+  if(_qgSel.has(no)){_qgSel.delete(no);btn.className='no-btn';}
+  else{_qgSel.add(no);btn.className='no-btn sel';}
+  updQgCount();
+}
+
+function updQgCount(){
+  const el=document.getElementById('qg-count');
+  if(el)el.textContent=`已選 ${_qgSel.size} 人`;
+}
+
+function clearQgSel(){
+  _qgSel.clear();
+  renderQgPicker();
+}
+
+function submitQuickGive(){
+  if(!_qgSel.size){toast('請先點選座號');return;}
+  const type=document.getElementById('qg-type').value;
+  let c=parseInt(document.getElementById('qg-cards').value);
+  if(!Number.isFinite(c)||c===0){toast('張數不可為 0');return;}
+  c=Math.max(-99,Math.min(99,c));
+  document.getElementById('qg-cards').value=c;
+  if(c<0&&type!=='調整'){toast('扣卡請將類型改為「調整」');return;}
+  const note=document.getElementById('qg-note').value.trim();
+  const nos=[..._qgSel].sort((a,b)=>a-b);
+  if(!confirm(`確定給 ${nos.length} 人「${type}」${c>0?'+':''}${c} 張？\n${nos.map(n=>n+'號').join('、')}`))return;
+  pushUndo(c>0?'快速給卡':'快速扣卡');
+  const batchId='quick:'+genId();
+  nos.forEach(no=>{
+    _logs.push({id:genId(),batchId,t:nowStr(),no,k:type,v:0,c,note:note||type});
+  });
+  sched();scheduleSync();
+  toast(`✅ ${nos.length} 人各${c>0?'獲得':'扣除'} ${Math.abs(c)} 張`);
+  document.getElementById('qg-note').value='';
+  clearQgSel();
+  renderGiveDetail();renderOverview();
+}
+
+function renderGiveDetail(){
+  document.getElementById('give-detail').innerHTML=_nos.map(no=>{
+    const rem=remPoints(no);const cc=cardCounts(no);const np=noonPoints(no);const can=canRedeem(no);
+    return `<tr>
+    <td>${no}</td>
+    <td>${scorePoints(no)}</td>
+    <td>${redeemedPoints(no)}</td>
+    <td style="color:var(--red)">${np?'-'+np:'0'}</td>
+    <td style="${can>0?'color:var(--orange);font-weight:700':''}">${rem}${can>0?` (可換${can}張)`:''}</td>
+    <td>${cc.cadre}</td><td>${cc.toilet}</td><td>${cc.special}</td><td>${cc.redeemed}</td><td>${cc.adjust}</td>
+    <td style="font-size:15px;font-weight:800;color:var(--green)">${cc.total}</td></tr>`;
+  }).join('');
+}
+
+// ══ 午休 ══
+function updateNoonLabel(){
+  const el=document.getElementById('noon-thr-label');
+  if(el)el.textContent=_settings.threshold||300;
+}
+function addNoon(){
+  const no=parseInt(document.getElementById('noon-no').value);
+  if(!_nos.includes(no)){toast('無效座號');return;}
+  const nt=document.getElementById('noon-time').value.trim()||nowStr();
+  const nn=document.getElementById('noon-note').value.trim();
+  const thr=_settings.threshold||300;
+  pushUndo('新增午休扣點');
+  _logs.push({id:genId(),t:nowStr(),no,k:'午休',v:thr,c:0,note:`${nt}${nn?' — '+nn:''}`,noonTime:nt});
+  sched();scheduleSync();
+  document.getElementById('noon-time').value='';
+  document.getElementById('noon-note').value='';
+  toast(`已記錄 ${no}號 午休，扣 ${thr} 點`);
+  renderNoonList();renderOverview();
+}
+function renderNoonList(){
+  const logs=[..._logs].filter(l=>l.k==='午休').reverse();
+  document.getElementById('noon-list').innerHTML=!logs.length?
+    '<tr><td colspan="6" style="color:var(--text4);padding:14px">尚無記錄</td></tr>':
+    logs.map(l=>`<tr>
+    <td style="font-size:11px;white-space:nowrap">${esc(l.t)}</td>
+    <td>${esc(l.noonTime||'—')}</td><td>${l.no}號</td>
+    <td style="text-align:left;font-size:11px">${esc(l.note||'')}</td>
+    <td style="color:var(--red)">-${l.v}pt</td>
+    <td><button class="btn-red btn-xs" onclick="delLog('${l.id}')">刪</button></td></tr>`).join('');
+}
+
+// ══ 成績統計 ══
+function calcStats(arr){
+  const v=arr.filter(x=>x!==null&&x!==undefined&&!isNaN(x));
+  if(!v.length)return null;
+  const n=v.length, avg=v.reduce((a,b)=>a+b,0)/n;
+  const sd=Math.sqrt(v.reduce((a,b)=>a+(b-avg)**2,0)/n);
+  const s=[...v].sort((a,b)=>a-b);
+  const med=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+  return {n, avg:+avg.toFixed(1), sd:+sd.toFixed(1), med:+med.toFixed(1), pass:+(v.filter(x=>x>=60).length/n*100).toFixed(0)};
+}
+
+// ══ 段考期別工具 ══
+function normDate(s){
+  if(!s)return '';
+  const m=String(s).match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if(!m)return String(s);
+  return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+// ══ 學科歸戶與期別判斷 ══
+function subjGroup(s){
+  if(/國|聽寫|作文|生測/.test(s))return '國語';
+  if(/數/.test(s))return '數學';
+  if(/英/.test(s))return '英語';
+  return '其他';
+}
+function semOf(date){
+  const m=parseInt(normDate(date).split('-')[1]);
+  return (m>=8||m===1)?'上學期':'下學期';
+}
+function isExamSubj(s){return /第[一二三]次段考/.test(s)||/[國數英]段/.test(s);}
+function examBoundaries(sem){
+  const b={};
+  for(const s of Object.keys(_scores)){
+    const m=s.match(/第([一二三])次段考/);
+    if(!m)continue;
+    for(const e of _scores[s]||[]){
+      if(semOf(e.date)!==sem)continue;
+      const k=m[1],dt=normDate(e.date);
+      if(!b[k]||dt>b[k])b[k]=dt;
+    }
+  }
+  return b;
+}
+function entryPeriod(subj,date){
+  const sem=semOf(date);
+  const m=subj.match(/第([一二三])次段考/);
+  if(m)return `${sem}第${m[1]}次段考`;
+  const b=examBoundaries(sem),dt=normDate(date);
+  if(!b['一'])return sem;
+  if(dt<=b['一'])return `${sem}第一次段考`;
+  if(!b['二']||dt<=b['二'])return `${sem}第二次段考`;
+  return `${sem}第三次段考`;
+}
+// 範圍過濾：sem=null 代表不分學期；periodKind=null 代表不限段考期別（一/二/三）
+function inScope(subj,date,sem,periodKind){
+  const s=semOf(date);
+  if(sem!==null&&s!==sem)return false;
+  if(periodKind===null)return true;
+  const m=subj.match(/第([一二三])次段考/);
+  if(m)return m[1]===periodKind;
+  const b=examBoundaries(s),dt=normDate(date);
+  if(!b['一'])return false;
+  if(periodKind==='一')return dt<=b['一'];
+  if(periodKind==='二')return (!b['二']||dt<=b['二'])&&dt>b['一'];
+  if(periodKind==='三')return !!b['二']&&dt>b['二'];
+  return false;
+}
+
+// ══ 成績驟降預警 ══
+let _scoreAlerts=[];
+function checkScoreAlert(subj,newEntry){
+  const alerts=[];
+  if(!newEntry||!newEntry.nos)return alerts;
+  const history=(_scores[subj]||[]).filter(e=>e!==newEntry);
+  Object.keys(newEntry.nos).forEach(noStr=>{
+    const no=parseInt(noStr);
+    const val=newEntry.nos[noStr];
+    if(val===null||val===undefined||isNaN(val))return;
+    const histVals=history.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+    if(histVals.length<3)return;
+    const st=calcStats(histVals);
+    if(!st)return;
+    if(val<st.avg-st.sd){
+      alerts.push({no,subj,val,avg:st.avg,sd:st.sd});
+    }
+  });
+  return alerts;
+}
+function showScoreAlertModal(alerts){
+  if(!alerts||!alerts.length)return;
+  _scoreAlerts=alerts;
+  const list=document.getElementById('score-alert-list');
+  list.innerHTML=alerts.map(a=>
+    `<div style="padding:8px 10px;background:rgba(220,38,38,.08);border-radius:8px">${a.no}號 ${a.subj} 本次${a.val}（個人平均${a.avg}）</div>`
+  ).join('');
+  document.getElementById('score-alert-modal').classList.add('show');
+}
+function copyScoreAlertDraft(){
+  if(!_scoreAlerts.length){toast('無資料可複製');return;}
+  const today=new Date().toISOString().slice(0,10);
+  const text=_scoreAlerts.map(a=>
+    `${today}｜${a.no}號｜學習輔導｜${a.subj}成績驟降：本次${a.val}分，低於個人平均${a.avg}分（標準差${a.sd}），已關注並了解原因。`
+  ).join('\n');
+  copyToClipboard(text,'已複製，可貼到 Venus OS 輔導紀錄');
+}
+
+// ══ 成績總表 ══
+function renderScoreTable(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  const thead=document.getElementById('table-thead');
+  const tbody=document.getElementById('table-tbody');
+  if(!allSubjs.length){
+    thead.innerHTML='';tbody.innerHTML='<tr><td colspan="3" style="color:var(--text4);padding:16px">尚未匯入成績</td></tr>';return;
+  }
+  const allE=allSubjs.flatMap(s=>(_scores[s]||[]).map(e=>({subj:s,e})));
+  thead.innerHTML=`<tr><th>座號</th>${allE.map(({e})=>`<th>${e.label}</th>`).join('')}<th style="color:var(--gold)">成績點</th><th>持有卡</th></tr>`;
+  tbody.innerHTML=_nos.map(no=>{
+    const cells=allE.map(({e})=>{
+      const v=e.nos&&e.nos[no];
+      const style=v===null||v===undefined?'color:var(--text4)':v>=90?'color:var(--green);font-weight:700':v<60?'color:var(--red)':'';
+      return `<td style="${style}">${v!==null&&v!==undefined?v:'—'}</td>`;
+    }).join('');
+    const cc=cardCounts(no);
+    return `<tr><td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="showChart(${no})">${no}</td>
+    ${cells}
+    <td style="font-weight:700;color:var(--orange)">${scorePoints(no)}</td>
+    <td style="font-weight:700;color:var(--green)">${cc.total}</td></tr>`;
+  }).join('');
+  const statRows=[
+    {label:'平均',key:'avg'},
+    {label:'標準差',key:'sd'},
+    {label:'中位數',key:'med'},
+    {label:'及格率%',key:'pass'}
+  ].map(({label,key})=>{
+    const cells=allE.map(({e})=>{
+      const st=calcStats(Object.values(e.nos||{}));
+      if(!st)return `<td style="font-size:11px;color:var(--text4)">—</td>`;
+      const val=st[key];
+      const color=key==='pass'&&val<60?'color:var(--red)':'color:var(--text4)';
+      return `<td style="font-size:11px;${color}">${val}${key==='pass'?'%':''}</td>`;
+    }).join('');
+    return `<tr style="font-size:11px;color:var(--text4)"><td style="font-size:11px;color:var(--text4)">${label}</td>${cells}<td>—</td><td>—</td></tr>`;
+  }).join('');
+  tbody.innerHTML+=statRows;
+}
+
+// ══ 折線圖 ══
+function showChart(no){
+  const subjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  document.getElementById('chart-title').textContent=`${no}號 成績趨勢`;
+  document.getElementById('chart-subj-btns').innerHTML=subjs.map(s=>
+    `<button class="btn-ghost btn-sm" onclick="drawChart(${no},'${s}')" style="font-size:11px">${s}</button>`
+  ).join('');
+  if(subjs[0])drawChart(no,subjs[0]);
+  document.getElementById('chart-modal').classList.add('show');
+}
+
+const CHART_COLORS={'國習':'#2563EB','聽寫':'#7C3AED','考卷':'#DC2626','生測':'#16A34A','作文':'#0891B2','數習':'#EA580C','數綜':'#0D9488','數考':'#DB2777','段考':'#9333EA'};
+
+function drawChart(no,subj){
+  _chartCur={no,subj};
+  const canvas=document.getElementById('chart-canvas');
+  const ctx=canvas.getContext('2d');
+  const bg=getComputedStyle(document.body).getPropertyValue('--bg2')||'#fff';
+  renderChartTo(ctx,canvas.width,canvas.height,no,subj,bg);
+}
+
+// 依日期尋找期別分界線在圖表上的 x 座標（於資料點之間依日期比例內插）
+function dateBoundaryX(entries,boundaryDateStr,toX){
+  const withTs=entries.map((e,i)=>({i,ts:new Date(normDate(e.date)).getTime()})).filter(o=>!isNaN(o.ts));
+  if(!withTs.length)return null;
+  const sorted=[...withTs].sort((a,b)=>a.ts-b.ts);
+  const bts=new Date(boundaryDateStr).getTime();
+  if(isNaN(bts))return null;
+  const minTs=sorted[0].ts,maxTs=sorted[sorted.length-1].ts;
+  if(bts<minTs||bts>maxTs)return null;
+  for(let k=0;k<sorted.length-1;k++){
+    const a=sorted[k],b=sorted[k+1];
+    if(bts>=a.ts&&bts<=b.ts){
+      const frac=(b.ts===a.ts)?0:(bts-a.ts)/(b.ts-a.ts);
+      const xa=toX(a.i),xb=toX(b.i);
+      return xa+(xb-xa)*frac;
+    }
+  }
+  const exact=sorted.find(o=>o.ts===bts);
+  return exact?toX(exact.i):null;
+}
+
+// 圖表繪製核心（螢幕畫面與離屏匯出共用）。座標系固定 500x240，依實際尺寸等比縮放。
+function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor,scopeSem){
+  const baseW=500,baseH=240;
+  const scale=Math.min(canvasW/baseW,canvasH/baseH);
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,0,0);
+  const W=baseW,H=baseH;
+  const pad={l:40,r:16,t:32,b:72};
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=bgColor||'#fff';ctx.fillRect(0,0,W,H);
+  const color=CHART_COLORS[subj]||'#2563EB';
+  // 科目標題
+  ctx.font='bold 13px sans-serif';ctx.fillStyle=color;ctx.textAlign='left';
+  ctx.fillText(subj,pad.l,14);
+  const allEntries=_scores[subj]||[];
+  const entries=scopeSem?allEntries.filter(e=>semOf(e.date)===scopeSem):allEntries;
+  const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
+  const classAvgs=entries.map(e=>{const st=calcStats(Object.values(e.nos||{}));return st?st.avg:null;});
+  const vals=data.map(d=>d.val).filter(v=>v!==null&&!isNaN(v));
+  if(!vals.length){ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('無資料',W/2,H/2);ctx.restore();return;}
+  const rangeVals=[...vals,...classAvgs.filter(v=>v!==null&&!isNaN(v))];
+  const mn=Math.max(0,Math.min(...rangeVals)-10),mx=Math.min(100,Math.max(...rangeVals)+10);
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const toX=i=>pad.l+(i/(data.length-1||1))*cW;
+  const toY=v=>pad.t+cH-((v-mn)/(mx-mn||1))*cH;
+  // grid
+  ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=1;
+  for(let y=Math.ceil(mn/10)*10;y<=mx;y+=10){
+    const yy=toY(y);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
+    ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(y,pad.l-3,yy+3);
+  }
+  // x 軸標籤（過長只取末 4 字）
+  ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
+  data.forEach((d,i)=>{
+    let short=d.label.replace(/^[^-]+-/,'');
+    if(short.length>4)short=short.slice(-4);
+    ctx.fillText(short,toX(i),H-pad.b+12);
+  });
+  // 期別分界虛線（單一學期範圍：一段/二段/三段；全學年範圍：上一段/上二段/下一段/下二段）
+  const drawBoundary=(lab,dt)=>{
+    if(!dt)return;
+    const bx=dateBoundaryX(entries,dt,toX);
+    if(bx===null)return;
+    ctx.strokeStyle='rgba(0,0,0,.25)';ctx.setLineDash([3,3]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(bx,pad.t);ctx.lineTo(bx,H-pad.b);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(lab,Math.min(Math.max(bx,pad.l+8),W-pad.r-8),pad.t-4);
+  };
+  if(scopeSem){
+    const bnds=examBoundaries(scopeSem);
+    drawBoundary('一段',bnds['一']);
+    drawBoundary('二段',bnds['二']);
+    drawBoundary('三段',bnds['三']);
+  }else{
+    const bU=examBoundaries('上學期'),bD=examBoundaries('下學期');
+    drawBoundary('上一段',bU['一']);
+    drawBoundary('上二段',bU['二']);
+    drawBoundary('下一段',bD['一']);
+    drawBoundary('下二段',bD['二']);
+  }
+  // 個人平均水平線（自己跨次成績的平均）
+  const avg=+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1);
+  const ay=toY(avg);
+  ctx.strokeStyle='rgba(234,88,12,.35)';ctx.setLineDash([4,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,ay);ctx.lineTo(W-pad.r,ay);ctx.stroke();
+  ctx.setLineDash([]);
+  // 全班平均對照線（每次考試的全班平均連線）
+  ctx.strokeStyle='rgba(107,114,128,.5)';ctx.setLineDash([2,3]);ctx.lineWidth=1.5;
+  ctx.beginPath();let firstA=true;
+  classAvgs.forEach((v,i)=>{
+    if(v===null||isNaN(v))return;
+    if(firstA){ctx.moveTo(toX(i),toY(v));firstA=false;}else ctx.lineTo(toX(i),toY(v));
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // 個人折線
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
+  ctx.beginPath();let first=true;
+  data.forEach((d,i)=>{
+    if(d.val===null||isNaN(d.val))return;
+    if(first){ctx.moveTo(toX(i),toY(d.val));first=false;}else ctx.lineTo(toX(i),toY(d.val));
+  });
+  ctx.stroke();
+  // 防重疊：相鄰點間距 <24px 時數值標籤隔點顯示；靠近頂端時標籤改畫下方
+  const spacing=cW/(data.length-1||1);
+  data.forEach((d,i)=>{
+    if(d.val===null||isNaN(d.val))return;
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(toX(i),toY(d.val),5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(toX(i),toY(d.val),2.5,0,Math.PI*2);ctx.fill();
+    if(spacing<24&&i%2!==0)return;
+    const py=toY(d.val);
+    const labelY=py<pad.t+12?py+14:py-8;
+    ctx.fillStyle=color;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(d.val,toX(i),labelY);
+  });
+  // 統計文字（我的 / 全班），與 x 軸標籤間至少留 8px
+  const myStats=calcStats(vals);
+  const classAll=entries.flatMap(e=>Object.values(e.nos||{}));
+  const clsStats=calcStats(classAll);
+  ctx.font='11px sans-serif';ctx.textAlign='left';
+  if(myStats){
+    ctx.fillStyle='#666';
+    ctx.fillText(`我的：平均 ${myStats.avg}｜標準差 ${myStats.sd}｜中位數 ${myStats.med}`,pad.l,H-pad.b+30);
+  }
+  if(clsStats){
+    ctx.fillStyle='#999';
+    ctx.fillText(`全班：平均 ${clsStats.avg}｜標準差 ${clsStats.sd}｜中位數 ${clsStats.med}`,pad.l,H-pad.b+46);
+  }
+  ctx.restore();
+}
+
+// ══ 折線圖 PNG 匯出 ══
+function exportChartPNG(){
+  if(!_chartCur){toast('尚未選取圖表');return;}
+  const {no,subj}=_chartCur;
+  const off=document.createElement('canvas');
+  off.width=1000;off.height=480;
+  const ctx=off.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,off.width,off.height);
+  // 標題
+  ctx.save();
+  ctx.font='bold 22px sans-serif';ctx.fillStyle='#222';ctx.textAlign='left';
+  const today=new Date().toLocaleDateString('zh-TW');
+  ctx.fillText(`${curClassName()} ${no}號 ${subj} 成績趨勢 ${today}`,20,34);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(0,40);
+  renderChartTo(ctx,off.width,off.height-40,no,subj,'#fff');
+  ctx.restore();
+  off.toBlob(blob=>{
+    if(!blob){toast('匯出失敗');return;}
+    const isIOS=/iPad|iPhone/.test(navigator.userAgent);
+    if(isIOS){
+      window.open(URL.createObjectURL(blob));
+      toast('長按圖片即可儲存');
+    }else{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=`成績_${no}號_${subj}.png`;a.click();
+      URL.revokeObjectURL(url);
+    }
+  },'image/png');
+}
+
+// ══ 紀錄查詢 ══
+function renderLog(){
+  const noSel=document.getElementById('log-no');
+  const prevNo=noSel.value;
+  noSel.innerHTML='<option value="">全部座號</option>';
+  _nos.forEach(n=>noSel.add(new Option(n+'號',n)));
+  if(_nos.includes(parseInt(prevNo)))noSel.value=prevNo;
+  let logs=[..._logs];
+  const ft=document.getElementById('log-type').value;
+  const fn=document.getElementById('log-no').value;
+  if(ft)logs=logs.filter(l=>l.k===ft);
+  if(fn)logs=logs.filter(l=>l.no===parseInt(fn));
+  logs.reverse();
+  const bmap={'成績':'badge-blue','幹部':'badge-green','廁所':'badge-green','特殊':'badge-orange','兌換':'badge-red','不兌換':'badge-red','午休':'badge-red','調整':'badge-orange'};
+  document.getElementById('log-tbody').innerHTML=!logs.length?
+    '<tr><td colspan="6" style="color:var(--text4);padding:16px">尚無紀錄</td></tr>':
+    logs.map(l=>{
+      const vc=l.k==='兌換'?`<span style="color:var(--red)">-${l.v}pt/+${l.c}張</span>`:l.k==='午休'?`<span style="color:var(--red)">-${l.v}pt</span>`:l.c?`${l.c>0?'+':''}${l.c}張`:'—';
+      return `<tr>
+      <td style="font-size:11px;white-space:nowrap">${esc(l.t)}</td>
+      <td>${l.no}號</td>
+      <td><span class="badge ${bmap[l.k]||'badge-blue'}">${esc(l.k)}</span></td>
+      <td style="font-size:11px;text-align:left">${esc(l.note||'')}</td>
+      <td style="font-weight:600">${vc}</td>
+      <td><button class="btn-red btn-xs" onclick="delLog('${l.id}')">刪</button></td></tr>`;
+    }).join('');
+}
+
+function delLog(id){
+  if(!confirm('確定刪除這筆紀錄？'))return;
+  pushUndo('刪除紀錄');
+  _logs=_logs.filter(l=>String(l.id)!==String(id));
+  sched();scheduleSync();renderLog();renderNoonList();renderOverview();renderGiveDetail();toast('已刪除');
+}
+function clearLogs(){pushUndo('清除全部紀錄');_logs=[];sched();scheduleSync();renderLog();renderOverview();renderGiveDetail();toast('已清除');}
+
+// ══ 設定 ══
+function renderSettings(){
+  document.getElementById('set-thr').value=_settings.threshold||300;
+  renderNosPicker();
+}
+
+function saveBasic(){
+  const thr=parseInt(document.getElementById('set-thr').value);
+  if(!Number.isFinite(thr)||thr<1||thr>100000){toast('換卡點數請輸入 1～100000');return;}
+  pushUndo('修改換卡點數');
+  _settings.threshold=thr;
+  sched();scheduleSync();
+  toast('✅ 設定已儲存');
+  updateNoonLabel();
+}
+
+function switchStab(id){
+  ['basic','nos','sync'].forEach(t=>{
+    document.getElementById('stab-'+t).classList.toggle('active',t===id);
+    document.getElementById('stab-panel-'+t).style.display=t===id?'':'none';
+  });
+  if(id==='nos')renderNosPicker();
+}
+
+// ── 座號管理 ──
+let _draftNos=[..._nos];
+let _draftTotal=0;
+
+function renderNosPicker(){
+  _draftNos=[..._nos];
+  const total=_draftNos.length?Math.max(..._draftNos):0;
+  document.getElementById('set-total').value=total||'';
+  _draftTotal=total;
+  drawNosPicker();
+}
+
+function genNos(){
+  const total=parseInt(document.getElementById('set-total').value)||0;
+  if(!total||total<1){toast('請填入有效人數');return;}
+  if(total>60){toast('人數請勿超過60');return;}
+  // 產生 1~total 全部，全部預設存在（全選）
+  _draftNos=Array.from({length:total},(_,i)=>i+1);
+  _draftTotal=total;
+  drawNosPicker();
+  toast(`✅ 已產生 1~${total} 號，全部預設存在，請點掉缺號學生`);
+}
+
+function drawNosPicker(){
+  // 只顯示 1~_draftTotal 範圍內的格子，不額外多顯示
+  const maxNo=_draftTotal||(_draftNos.length?Math.max(..._draftNos):0);
+  const picker=document.getElementById('nos-picker');
+  if(!maxNo){
+    picker.innerHTML='<div class="empty" style="padding:16px">請先在上方填入總人數並產生座號</div>';
+    document.getElementById('nos-count').textContent='';
+    return;
+  }
+  picker.innerHTML=Array.from({length:maxNo},(_,i)=>{
+    const no=i+1;
+    const exists=_draftNos.includes(no);
+    return `<button class="no-btn exist${exists?'':' absent'}" onclick="toggleNo(${no},this)">${no}</button>`;
+  }).join('');
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位（範圍 1~${maxNo}）`;
+}
+
+function toggleNo(no,btn){
+  const idx=_draftNos.indexOf(no);
+  if(idx>=0){_draftNos.splice(idx,1);btn.className='no-btn exist absent';}
+  else{_draftNos.push(no);_draftNos.sort((a,b)=>a-b);btn.className='no-btn exist';}
+  const maxNo=_draftTotal||(_draftNos.length?Math.max(..._draftNos):0);
+  document.getElementById('nos-count').textContent=`目前 ${_draftNos.length} 位（範圍 1~${maxNo}）`;
+}
+
+function saveNos(){
+  const wasEmpty=!_nos.length;
+  if(!_draftNos.length&&!confirm('目前沒有選取任何座號，確定要儲存空名單嗎？'))return;
+  pushUndo('修改座號名單');
+  _nos=[..._draftNos].sort((a,b)=>a-b);
+  ensureFixed();
+  _fixed.toilet=_fixed.toilet.filter(n=>_nos.includes(n));
+  Object.keys(_fixed.cadre).forEach(n=>{if(!_nos.includes(parseInt(n)))delete _fixed.cadre[n];});
+  _qgSel.clear();
+  sched();scheduleSync();
+  toast(`✅ 已儲存 ${_nos.length} 個座號`);
+  renderOverview();
+  if(wasEmpty&&_nos.length){
+    // 第一次設定座號完成 → 自動跳回總覽
+    setTimeout(()=>{
+      goTab('overview');
+      document.getElementById('tbtn-overview').classList.add('active');
+      ['score','redeem','give','more'].forEach(t=>{
+        const b=document.getElementById('tbtn-'+t);
+        if(b)b.classList.remove('active');
+      });
+    },600);
+  }
+}
+
+// ══ CSV 匯出 ══
+function exportCSV(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  const allE=allSubjs.flatMap(s=>(_scores[s]||[]).map(e=>({subj:s,e})));
+  const hdr=['座號',...allE.map(({e})=>e.label),'成績點','兌換點','午休扣','剩餘點','持有卡'];
+  const rows=_nos.map(no=>{
+    const cc=cardCounts(no);
+    return [no,...allE.map(({e})=>{const v=e.nos&&e.nos[no];return v!==undefined&&v!==null?v:'';}),scorePoints(no),redeemedPoints(no),noonPoints(no),remPoints(no),cc.total];
+  });
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlText(csv,`獎卡成績_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`,'text/csv;charset=utf-8');
+}
+
+function exportLogCSV(){
+  const hdr=['時間','座號','類型','說明','點數','張數'];
+  const rows=[..._logs].reverse().map(l=>[l.t,l.no+'號',l.k,l.note||'',l.v||0,l.c||0]);
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  dlText(csv,`獎卡紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`,'text/csv;charset=utf-8');
+}
+
+function exportBackup(){
+  if(!_curClassId){toast('請先選擇班級');return;}
+  const backup={
+    type:'venus-card-backup',schema:2,appVersion:APP_VERSION,
+    exportedAt:new Date().toISOString(),classId:_curClassId,className:curClassName(),
+    data:currentSnapshot()
+  };
+  const safeName=(curClassName()||_curClassId||'班級').replace(/[\\/:*?"<>|]/g,'_');
+  dlText(JSON.stringify(backup,null,2),`獎卡完整備份_${safeName}_${todayISO()}.json`,'application/json;charset=utf-8');
+  toast('✅ 完整備份已下載');
+}
+
+function importBackup(input){
+  const file=input&&input.files&&input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const backup=JSON.parse(e.target.result);
+      if(!backup||backup.type!=='venus-card-backup'||!backup.data)throw new Error('不是有效的 Venus Card 備份檔');
+      const d=backup.data;
+      if(!d.scores||typeof d.scores!=='object'||!Array.isArray(d.logs)||!Array.isArray(d.nos))throw new Error('備份內容不完整');
+      if(backup.classId&&backup.classId!==_curClassId){
+        const ok=confirm(`此備份來自「${backup.className||backup.classId}」，目前是「${curClassName()||_curClassId}」。\n確定要還原到目前班級嗎？`);
+        if(!ok)return;
+      }else if(!confirm(`確定還原「${backup.className||curClassName()||'目前班級'}」的完整備份？\n目前資料會被替換，但可用畫面上的撤銷按鈕復原。`))return;
+      pushUndo('還原完整備份');
+      _scores=cloneData(d.scores);
+      _logs=cloneData(d.logs);
+      _fixed=cloneData(d.fixed||{cadre:{},toilet:[]});
+      _settings={threshold:300,...cloneData(d.settings||{})};
+      _nos=[...d.nos].map(Number).filter(n=>Number.isInteger(n)&&n>0).sort((a,b)=>a-b);
+      _dataUpdatedAt=Date.now();_dirty=true;
+      await persistLocal(true);scheduleSync();refreshVisiblePanel();
+      toast('✅ 完整備份已還原');
+    }catch(err){toast('還原失敗：'+err.message,4000);}
+    finally{input.value='';}
+  };
+  reader.onerror=()=>{input.value='';toast('無法讀取備份檔');};
+  reader.readAsText(file);
+}
+
+function dlText(text,filename,type){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ══ 全班報告列印 ══
+const ALL_GROUPS=['國語','數學','英語','其他'];
+const GROUP_COLORS={'國語':'#2563EB','數學':'#EA580C','英語':'#16A34A','其他':'#9333EA'};
+
+function totalVals(no,sem,periodKind){
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    (_scores[s]||[]).forEach(e=>{
+      if(!inScope(s,e.date,sem,periodKind))return;
+      if(no===null){
+        vals=vals.concat(Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v)));
+      }else{
+        const v=e.nos&&e.nos[no];
+        if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      }
+    });
+  });
+  return vals;
+}
+
+function classSummaryHTML(scope){
+  const isYear=scope.mode==='year';
+  const sem=isYear?null:scope.sem;
+  const groups=ALL_GROUPS.filter(g=>groupVals(null,g,sem,null).length>0);
+  const items=[];
+  if(isYear){
+    groups.forEach(g=>{
+      const pu=calcStats(groupVals(null,g,'上學期',null));
+      if(pu)items.push({label:`${g}上學期`,val:pu.avg,color:GROUP_COLORS[g]||'#555'});
+      const pd=calcStats(groupVals(null,g,'下學期',null));
+      if(pd)items.push({label:`${g}下學期`,val:pd.avg,color:GROUP_COLORS[g]||'#555'});
+    });
+    const totalUp=calcStats(totalVals(null,'上學期',null));
+    if(totalUp)items.push({label:'總成績(上)',val:totalUp.avg,color:'#111827'});
+    const totalDown=calcStats(totalVals(null,'下學期',null));
+    if(totalDown)items.push({label:'總成績(下)',val:totalDown.avg,color:'#111827'});
+  }else{
+    groups.forEach(g=>{
+      const p1=calcStats(groupVals(null,g,sem,'一'));
+      if(p1)items.push({label:`${g}一期`,val:p1.avg,color:GROUP_COLORS[g]||'#555'});
+      const p2=calcStats(groupVals(null,g,sem,'二'));
+      if(p2)items.push({label:`${g}二期`,val:p2.avg,color:GROUP_COLORS[g]||'#555'});
+    });
+    const totalSt=calcStats(totalVals(null,sem,null));
+    if(totalSt)items.push({label:'總成績',val:totalSt.avg,color:'#111827'});
+  }
+
+  let chartImg='';
+  if(items.length){
+    const barH=26,gap=8,padT=16,padL=76,padR=50;
+    const chH=items.length*(barH+gap)+padT;
+    const chW=560;
+    const off=document.createElement('canvas');off.width=chW;off.height=chH;
+    const ctx=off.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,chW,chH);
+    const maxBarW=chW-padL-padR;
+    items.forEach((it,i)=>{
+      const y=padT+i*(barH+gap);
+      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='right';
+      ctx.fillText(it.label,padL-8,y+barH/2+4);
+      ctx.fillStyle=it.color;
+      ctx.fillRect(padL,y,maxBarW*Math.max(0,Math.min(it.val,100))/100,barH);
+      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(it.val,padL+maxBarW*Math.max(0,Math.min(it.val,100))/100+6,y+barH/2+4);
+    });
+    chartImg=off.toDataURL('image/png');
+  }
+
+  const rankList=_nos.map(no=>{
+    const p1=isYear?calcStats(totalVals(no,'上學期',null)):calcStats(totalVals(no,sem,'一'));
+    const p2=isYear?calcStats(totalVals(no,'下學期',null)):calcStats(totalVals(no,sem,'二'));
+    if(!p1||!p2)return {no,ok:false};
+    return {no,ok:true,diff:+(p2.avg-p1.avg).toFixed(1)};
+  });
+  rankList.sort((a,b)=>{
+    if(a.ok&&b.ok)return b.diff-a.diff;
+    if(a.ok&&!b.ok)return -1;
+    if(!a.ok&&b.ok)return 1;
+    return a.no-b.no;
+  });
+  const markerHtml=r=>{
+    if(!r.ok)return `<span style="color:#999">資料不足</span>`;
+    if(Math.abs(r.diff)<1)return `<span style="color:#999">持平</span>`;
+    if(r.diff>0)return `<span style="color:#16A34A">▲+${r.diff}</span>`;
+    return `<span style="color:#DC2626">▼${r.diff}</span>`;
+  };
+  const rankTitle=isYear?'上學期 → 下學期 進退步排行':'一期 → 二期 進退步排行';
+  const rankColTitle=isYear?'上→下學期變化':'一期→二期變化';
+  const rankTableHtml=list=>`<table><tr><th>座號</th><th>${rankColTitle}</th></tr>${list.map(r=>`<tr><td>${r.no}號</td><td>${markerHtml(r)}</td></tr>`).join('')}</table>`;
+  const half=Math.ceil(rankList.length/2);
+  const left=rankList.slice(0,half),right=rankList.slice(half);
+
+  let html=`<h3 class="sec">學科群 ${isYear?'× 學期':'× 期別'} 全班平均</h3>`;
+  html+=chartImg?`<img src="${chartImg}" style="max-width:100%;border:1px solid #eee;border-radius:8px">`:`<div style="color:#999;font-size:12px">尚無資料</div>`;
+  html+=`<h3 class="sec">${rankTitle}</h3>`;
+  html+=`<div style="display:flex;gap:16px;flex-wrap:wrap">${rankTableHtml(left)}${right.length?rankTableHtml(right):''}</div>`;
+  html+=`<div style="page-break-after:always"></div>`;
+  return html;
+}
+
+function groupVals(no,group,sem,periodKind){
+  // no===null 時彙整全班（不分座號）
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    if(subjGroup(s)!==group)return;
+    (_scores[s]||[]).forEach(e=>{
+      if(!inScope(s,e.date,sem,periodKind))return;
+      if(no===null){
+        vals=vals.concat(Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v)));
+      }else{
+        const v=e.nos&&e.nos[no];
+        if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      }
+    });
+  });
+  return vals;
+}
+function groupValsClassify(no,group,sem,periodKind,exam){
+  let vals=[];
+  Object.keys(_scores).forEach(s=>{
+    if(subjGroup(s)!==group)return;
+    if(isExamSubj(s)!==exam)return;
+    (_scores[s]||[]).forEach(e=>{
+      if(!inScope(s,e.date,sem,periodKind))return;
+      const v=e.nos&&e.nos[no];
+      if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+    });
+  });
+  return vals;
+}
+
+// 雷達／長條圖共用繪製核心：seriesA、seriesB 為兩層對比資料，styleA/styleB={fill,stroke,lw}
+function drawRadarCore(ctx,W,H,axes,seriesA,seriesB,styleA,styleB,legendA,legendB){
+  if(!axes.length){
+    ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('尚無資料',W/2,H/2);
+    return;
+  }
+  if(axes.length<3){
+    const padL=64,padR=16,padT=16,barH=18,gap=10;
+    let y=padT;
+    axes.forEach((g,i)=>{
+      const maxW=W-padL-padR;
+      const av=seriesA[i]||0,bv=seriesB[i]||0;
+      ctx.font='11px sans-serif';ctx.fillStyle='#333';ctx.textAlign='right';
+      ctx.fillText(g,padL-6,y+barH/2+4);
+      ctx.fillStyle=styleA.stroke;
+      ctx.fillRect(padL,y,maxW*Math.min(Math.max(av,0),100)/100,barH/2-1);
+      ctx.fillStyle=styleB.stroke;
+      ctx.fillRect(padL,y+barH/2+1,maxW*Math.min(Math.max(bv,0),100)/100,barH/2-1);
+      ctx.fillStyle='#666';ctx.textAlign='left';ctx.font='9px sans-serif';
+      ctx.fillText(`${legendA}${seriesA[i]!==null&&seriesA[i]!==undefined?seriesA[i]:'—'}`,padL+maxW+4,y+barH/2-2);
+      ctx.fillText(`${legendB}${seriesB[i]!==null&&seriesB[i]!==undefined?seriesB[i]:'—'}`,padL+maxW+4,y+barH-2);
+      y+=barH+gap;
+    });
+    return;
+  }
+  const cx=W/2,cy=H/2-6,R=Math.min(W,H)/2-56;
+  const n=axes.length;
+  const angleFor=i=>-Math.PI/2+i*(2*Math.PI/n);
+  ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=1;
+  [0.6,0.8,1].forEach(f=>{
+    ctx.beginPath();
+    for(let i=0;i<=n;i++){
+      const a=angleFor(i%n),r=R*f;
+      const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+  for(let i=0;i<n;i++){
+    const a=angleFor(i);
+    ctx.strokeStyle='rgba(0,0,0,.12)';
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();
+    ctx.fillStyle='#555';ctx.font='11px sans-serif';
+    const lx=cx+Math.cos(a)*(R+14),ly=cy+Math.sin(a)*(R+14);
+    ctx.textAlign=Math.cos(a)>0.3?'left':Math.cos(a)<-0.3?'right':'center';
+    ctx.fillText(axes[i],lx,ly+4);
+  }
+  const toPt=(vals,i)=>{
+    const v=Math.max(0,Math.min(100,vals[i]||0));
+    const a=angleFor(i),r=R*(v/100);
+    return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];
+  };
+  const drawPoly=(vals,fill,stroke,lw)=>{
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const[x,y]=toPt(vals,i);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+  };
+  drawPoly(seriesA,styleA.fill,styleA.stroke,styleA.lw);
+  drawPoly(seriesB,styleB.fill,styleB.stroke,styleB.lw);
+  ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.strokeStyle=styleA.stroke;ctx.lineWidth=styleA.lw;ctx.beginPath();ctx.moveTo(W-70,H-18);ctx.lineTo(W-56,H-18);ctx.stroke();
+  ctx.fillStyle='#333';ctx.fillText(legendA,W-54,H-15);
+  ctx.strokeStyle=styleB.stroke;ctx.lineWidth=styleB.lw;ctx.beginPath();ctx.moveTo(W-70,H-6);ctx.lineTo(W-56,H-6);ctx.stroke();
+  ctx.fillStyle='#333';ctx.fillText(legendB,W-54,H-3);
+}
+
+// 單一範圍雷達圖：個人 vs 全班（sem=null 代表不分學期；periodKind 為期別內部分期）
+function renderRadarTo(ctx,canvasW,canvasH,no,sem,periodKind){
+  const baseW=360,baseH=300;
+  const scale=Math.min(canvasW/baseW,canvasH/baseH);
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,0,0);
+  const W=baseW,H=baseH;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const axes=ALL_GROUPS.filter(g=>groupVals(null,g,sem,periodKind).length>0);
+  const myAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,sem,periodKind));return st?st.avg:null;});
+  const clsAvgs=axes.map(g=>{const st=calcStats(groupVals(null,g,sem,periodKind));return st?st.avg:null;});
+  drawRadarCore(ctx,W,H,axes,myAvgs,clsAvgs,
+    {fill:'rgba(37,99,235,.2)',stroke:'#2563EB',lw:2},
+    {fill:'rgba(107,114,128,.15)',stroke:'rgba(107,114,128,.5)',lw:1.5},
+    '個人','全班');
+  ctx.restore();
+}
+
+// 全學年跨學期雷達圖：上學期 vs 下學期（省略全班層）
+function renderRadarYearTo(ctx,canvasW,canvasH,no){
+  const baseW=360,baseH=300;
+  const scale=Math.min(canvasW/baseW,canvasH/baseH);
+  ctx.save();
+  ctx.setTransform(scale,0,0,scale,0,0);
+  const W=baseW,H=baseH;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  const axes=ALL_GROUPS.filter(g=>groupVals(no,g,'上學期',null).length>0||groupVals(no,g,'下學期',null).length>0);
+  const upAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,'上學期',null));return st?st.avg:null;});
+  const downAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,'下學期',null));return st?st.avg:null;});
+  drawRadarCore(ctx,W,H,axes,upAvgs,downAvgs,
+    {fill:'rgba(245,158,11,.15)',stroke:'#F59E0B',lw:2},
+    {fill:'rgba(37,99,235,.2)',stroke:'#2563EB',lw:2},
+    '上學期','下學期');
+  ctx.restore();
+}
+
+function fmtDiff(examAvg,normAvg){
+  if(examAvg===null||examAvg===undefined||normAvg===null||normAvg===undefined)return '—';
+  const diff=+(examAvg-normAvg).toFixed(1);
+  if(Math.abs(diff)<1)return `<span style="color:#999">≈持平</span>`;
+  if(diff>0)return `<span style="color:#16A34A">▲+${diff}</span>`;
+  return `<span style="color:#DC2626">▼${diff}</span>`;
+}
+
+function studentReportHTML(no,allSubjs,scope){
+  const isYear=scope.mode==='year';
+  const sem=isYear?null:scope.sem;
+  const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>(sem===null||semOf(e.date)===sem)&&e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
+  if(!subjs.length)return '';
+  let html=`<div class="stu"><h2>${no}號</h2>`;
+
+  // 雷達圖
+  html+=`<div class="radars">`;
+  if(isYear){
+    const off=document.createElement('canvas');off.width=360;off.height=300;
+    const ctx=off.getContext('2d');
+    renderRadarYearTo(ctx,360,300,no);
+    html+=`<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:2px">上下學期對照</div><img src="${off.toDataURL('image/png')}" style="width:100%;max-width:280px;border:1px solid #eee;border-radius:8px"></div>`;
+  }else{
+    [['第一次段考期','一'],['第二次段考期','二'],['學習總成績',null]].forEach(([title,pk])=>{
+      const off=document.createElement('canvas');off.width=360;off.height=300;
+      const ctx=off.getContext('2d');
+      renderRadarTo(ctx,360,300,no,sem,pk);
+      html+=`<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:2px">${title}</div><img src="${off.toDataURL('image/png')}" style="width:100%;max-width:280px;border:1px solid #eee;border-radius:8px"></div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // 折線圖 / 精簡卡片
+  html+=`<div class="charts">`;
+  const rows=[];
+  subjs.forEach(s=>{
+    const entries=(_scores[s]||[]).filter(e=>sem===null||semOf(e.date)===sem);
+    const color=CHART_COLORS[s]||'#2563EB';
+    if(entries.length===1){
+      const e=entries[0];
+      const val=e.nos&&e.nos[no];
+      const classVals=Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const clsAvg=classVals.length?(classVals.reduce((a,b)=>a+b,0)/classVals.length).toFixed(1):'—';
+      html+=`<div style="border:1px solid #ddd;border-radius:6px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px">
+        <div style="font-weight:700;color:${color}">${s}</div>
+        <div style="font-size:28px;font-weight:700;margin:6px 0">${val!==undefined&&val!==null?val:'—'}</div>
+        <div style="font-size:11px;color:#999">僅 1 筆・全班平均 ${clsAvg}</div>
+      </div>`;
+    }else if(entries.length>1){
+      const off=document.createElement('canvas');off.width=400;off.height=220;
+      const ctx=off.getContext('2d');
+      renderChartTo(ctx,400,220,no,s,'#fff',sem);
+      html+=`<img src="${off.toDataURL('image/png')}" alt="${s}">`;
+    }
+    const vals=entries.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+    const st=calcStats(vals);
+    if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
+  });
+  html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table>`;
+
+  if(isYear){
+    // 學期對照表
+    const groups=ALL_GROUPS.filter(g=>groupVals(null,g,'上學期',null).length>0||groupVals(null,g,'下學期',null).length>0);
+    if(groups.length){
+      let sHtml=`<h3 class="sec">學期對照</h3><table><tr><th>學科群</th><th>上學期平均</th><th>下學期平均</th><th>差距</th></tr>`;
+      groups.forEach(g=>{
+        const upSt=calcStats(groupVals(no,g,'上學期',null));
+        const downSt=calcStats(groupVals(no,g,'下學期',null));
+        const uAvg=upSt?upSt.avg:null,dAvg=downSt?downSt.avg:null;
+        sHtml+=`<tr><td>${g}</td><td>${uAvg!==null?uAvg:'—'}</td><td>${dAvg!==null?dAvg:'—'}</td><td>${fmtDiff(dAvg,uAvg)}</td></tr>`;
+      });
+      sHtml+='</table>';
+      html+=sHtml;
+    }
+  }else{
+    // 三期統計表
+    const groups=ALL_GROUPS.filter(g=>groupVals(null,g,sem,null).length>0);
+    if(groups.length){
+      let pHtml=`<h3 class="sec">三期統計</h3><table><tr><th>期別</th>${groups.map(g=>`<th>${g}</th>`).join('')}</tr>`;
+      [['第一次段考期','一'],['第二次段考期','二'],['學習總成績',null]].forEach(([title,pk])=>{
+        const cells=groups.map(g=>{
+          const st=calcStats(groupVals(no,g,sem,pk));
+          return `<td>${st?st.avg:'—'}</td>`;
+        }).join('');
+        pHtml+=`<tr><td>${title}</td>${cells}</tr>`;
+      });
+      pHtml+='</table>';
+      html+=pHtml;
+    }
+
+    // 平時 vs 段考對照表
+    let cRows='';
+    groups.forEach(g=>{
+      [['第一期','一'],['第二期','二']].forEach(([label,pk])=>{
+        const clsNormal=groupValsClassify(null,g,sem,pk,false);
+        const clsExam=groupValsClassify(null,g,sem,pk,true);
+        if(!clsNormal.length&&!clsExam.length)return;
+        const myNormalSt=calcStats(groupValsClassify(no,g,sem,pk,false));
+        const myExamSt=calcStats(groupValsClassify(no,g,sem,pk,true));
+        const nAvg=myNormalSt?myNormalSt.avg:null,eAvg=myExamSt?myExamSt.avg:null;
+        cRows+=`<tr><td>${g} ${label}</td><td>${nAvg!==null?nAvg:'—'}</td><td>${eAvg!==null?eAvg:'—'}</td><td>${fmtDiff(eAvg,nAvg)}</td></tr>`;
+      });
+    });
+    if(cRows){
+      html+=`<h3 class="sec">平時 vs 段考對照</h3><table><tr><th>學科期別</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>${cRows}</table>`;
+    }
+  }
+  html+='</div>';
+  return html;
+}
+
+function pickReportScope(){
+  const ans=prompt('報告範圍：輸入 1=上學期　2=下學期　3=全學年（預設）','3');
+  if(ans===null)return null;
+  const v=ans.trim();
+  if(v==='1')return {mode:'single',sem:'上學期'};
+  if(v==='2')return {mode:'single',sem:'下學期'};
+  return {mode:'year'};
+}
+
+function exportClassReport(targetNo){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  const scope=pickReportScope();
+  if(!scope){toast('已取消');return;}
+  const scopeLabel=scope.mode==='year'?'全學年':scope.sem;
+  const single=targetNo!==undefined&&targetNo!==null&&targetNo!=='';
+  const no=single?parseInt(targetNo):null;
+  const titleText=single?`${curClassName()} ${no}號 個人成績報告（${scopeLabel}） — ${new Date().toLocaleDateString('zh-TW')}`:`${curClassName()} 全班成績報告（${scopeLabel}） — ${new Date().toLocaleDateString('zh-TW')}`;
+  let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
+    body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
+    .stu{margin-bottom:28px;page-break-inside:avoid}
+    .stu h2{font-size:16px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px}
+    .radars{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:10px}
+    .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+    .charts img{width:100%;border:1px solid #ddd;border-radius:6px}
+    table{border-collapse:collapse;margin-top:6px;font-size:12px;max-width:520px}
+    td,th{border:1px solid #ccc;padding:6px;text-align:center}
+    h3.sec{font-size:14px;margin:8px 0 3px;color:#555}
+    @media print{.stu{page-break-inside:avoid}button{display:none}}
+  </style></head><body>
+  <button onclick="window.close();setTimeout(()=>history.back(),300)" style="position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;z-index:99;padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px">← 關閉報告</button>
+  <h1 style="font-size:20px">${titleText}</h1>`;
+  if(!single)html+=classSummaryHTML(scope);
+  if(single){
+    html+=studentReportHTML(no,allSubjs,scope);
+  }else{
+    _nos.forEach(n=>{html+=studentReportHTML(n,allSubjs,scope);});
+  }
+  html+=`<script>window.print()<\/script></body></html>`;
+  const w=window.open('');
+  if(!w){toast('請允許彈出視窗');return;}
+  w.document.write(html);
+  w.document.close();
+}
+
+// ══ 複製 AI 報告素材 ══
+function fmtDiffText(examAvg,normAvg){
+  if(examAvg===null||examAvg===undefined||normAvg===null||normAvg===undefined)return '—';
+  const diff=+(examAvg-normAvg).toFixed(1);
+  if(Math.abs(diff)<1)return '≈持平';
+  return diff>0?`▲+${diff}`:`▼${diff}`;
+}
+
+function copyAIReport(){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  const today=new Date().toLocaleDateString('zh-TW');
+  const groups=ALL_GROUPS.filter(g=>groupVals(null,g,null,null).length>0);
+  let text=`【班級成績分析素材】${curClassName()} 產生日期:${today}\n\n`;
+  text+=`— 全班統計 —\n`;
+  allSubjs.forEach(s=>{
+    (_scores[s]||[]).forEach(e=>{
+      const vals=Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+      const st=calcStats(vals);
+      if(!st)return;
+      const mx=Math.max(...vals),mn=Math.min(...vals);
+      text+=`${e.label}: 平均${st.avg} 標準差${st.sd} 中位數${st.med} 及格率${st.pass}% 最高${mx} 最低${mn}\n`;
+    });
+  });
+  if(groups.length){
+    const fmtG=(sem,pk)=>groups.map(g=>{const st=calcStats(groupVals(null,g,sem,pk));return `${g}${st?st.avg:'—'}`;}).join(' ');
+    text+=`四期全班平均：上一期 ${fmtG('上學期','一')}｜上二期 ${fmtG('上學期','二')}｜下一期 ${fmtG('下學期','一')}｜下二期 ${fmtG('下學期','二')}｜全年 ${fmtG(null,null)}\n`;
+    const diffCls=groups.map(g=>{
+      const upAvg=calcStats(groupVals(null,g,'上學期',null))?.avg;
+      const downAvg=calcStats(groupVals(null,g,'下學期',null))?.avg;
+      return `${g}${fmtDiffText(downAvg,upAvg)}`;
+    }).join(' ');
+    text+=`全班學期比較：${diffCls}\n`;
+  }
+  text+=`\n— 個人資料 —\n`;
+  _nos.forEach(no=>{
+    const cc=cardCounts(no);
+    const fmtStu=(sem,pk)=>groups.map(g=>{const st=calcStats(groupVals(no,g,sem,pk));return `${g}${st?st.avg:'—'}`;}).join(' ');
+    const examVsNormal=groups.map(g=>{
+      const examAvg=calcStats(groupValsClassify(no,g,null,null,true))?.avg;
+      const normAvg=calcStats(groupValsClassify(no,g,null,null,false))?.avg;
+      return `${g}${fmtDiffText(examAvg,normAvg)}`;
+    }).join(' ');
+    const semDiff=groups.map(g=>{
+      const upAvg=calcStats(groupVals(no,g,'上學期',null))?.avg;
+      const downAvg=calcStats(groupVals(no,g,'下學期',null))?.avg;
+      return `${g}${fmtDiffText(downAvg,upAvg)}`;
+    }).join(' ');
+    const line=`${no}號｜成績點:${scorePoints(no)}｜持卡:${cc.total}｜上一期:${fmtStu('上學期','一')}｜上二期:${fmtStu('上學期','二')}｜下一期:${fmtStu('下學期','一')}｜下二期:${fmtStu('下學期','二')}｜段考vs平時差:${examVsNormal}｜學期比較:${semDiff}`;
+    text+=line+'\n';
+  });
+  text+=`\n請根據以上資料，為每位學生撰寫一段成績評語（繁體中文，正向鼓勵為主，指出進步或需加強科目）。`;
+  copyToClipboard(text);
+}
+function copyToClipboard(text,successMsg){
+  const msg=successMsg||'已複製，可貼給 AI 使用';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      toast(msg);
+    }).catch(()=>{fallbackCopy(text,msg);});
+  }else{
+    fallbackCopy(text,msg);
+  }
+}
+function fallbackCopy(text,successMsg){
+  const msg=successMsg||'已複製，可貼給 AI 使用';
+  const ta=document.createElement('textarea');
+  ta.value=text;
+  ta.style.position='fixed';ta.style.left='-9999px';
+  document.body.appendChild(ta);
+  ta.focus();ta.select();
+  try{document.execCommand('copy');toast(msg);}
+  catch(e){toast('複製失敗，請手動選取');}
+  document.body.removeChild(ta);
+}
+
+// ══ 主題切換 ══
+const THEMES=['default','nerv','nebula'];
+const THEME_LABELS={default:'☀️ 日間',nerv:'🔴 NERV',nebula:'🌌 星雲'};
+let _theme=safeGet('vc2:theme')||'default';
+
+function applyTheme(t){
+  _theme=t;
+  document.documentElement.setAttribute('data-theme',t==='default'?'':t);
+  const sel=document.getElementById('theme-select');
+  if(sel)sel.value=t;
+  safeSet('vc2:theme',t);
+}
+
+function cycleTheme(){
+  const idx=THEMES.indexOf(_theme);
+  applyTheme(THEMES[(idx+1)%THEMES.length]);
+}
+
+// ══ 離線偵測 ══
+function updOffline(){
+  const banner=document.getElementById('offline-banner');
+  if(!navigator.onLine){banner.classList.add('show');setSyncDot('off');}
+  else{banner.classList.remove('show');if(firebaseUidRef.current){setSyncDot('ok');scheduleSync();}}
+}
+window.addEventListener('online',()=>{updOffline();toast('📡 網路已恢復，同步中...');});
+window.addEventListener('offline',updOffline);
+
+// ══ renderAll ══
+function renderAll(){
+  renderOverview();
+  renderScoreLog();
+  renderGsList();
+}
+
+// ══ 初始化 ══
+const _splashStartTime=Date.now();
+let _waitingWorker=null;
+let _swRefreshing=false;
+function showUpdateBar(worker){
+  _waitingWorker=worker||_waitingWorker;
+  if(document.getElementById('app-update-bar'))return;
+  const bar=document.createElement('div');
+  bar.id='app-update-bar';
+  bar.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1e3a5f;color:#fff;padding:12px 20px calc(12px + env(safe-area-inset-bottom));font-size:13px;font-weight:700;z-index:99999;display:flex;gap:12px;align-items:center;justify-content:space-between;font-family:sans-serif';
+  bar.innerHTML='<span>📦 獎卡系統有新版本</span><button onclick="activateUpdate()" style="background:#4fc3f7;border:none;border-radius:8px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;color:#0d2137;min-height:36px">立即更新</button>';
+  document.body.appendChild(bar);
+}
+function activateUpdate(){
+  if(_waitingWorker)_waitingWorker.postMessage({type:'SKIP_WAITING'});
+  else window.location.reload();
+}
+(async()=>{
+  // 主題
+  applyTheme(_theme);
+  const versionEl=document.getElementById('app-version-label');
+  if(versionEl)versionEl.textContent='Venus Card System v'+APP_VERSION;
+  // Service Worker
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      if(reg.waiting)showUpdateBar(reg.waiting);
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            showUpdateBar(nw);
+          }
+        });
+      });
+      reg.update().catch(()=>{});
+    }).catch(()=>{});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(_swRefreshing)return;
+      _swRefreshing=true;
+      window.location.reload();
+    });
+  }
+  // 嘗試讀上次使用的班級（本機暫存，僅供離線快速恢復）
+  const lastClass=safeGet('vc2:lastClass');
+  if(lastClass){
+    await loadClass(lastClass);
+    // chip-text 稍後會在 loadFromFirestore 讀到 _classes 後正確顯示班級名稱
+    // 這裡先顯示 ID 避免空白
+    const chipEl=document.getElementById('chip-text');
+    if(chipEl&&chipEl.textContent==='選擇班級')chipEl.textContent=lastClass;
+  }else{
+    renderAll();
+  }
+  // Firebase（登入後會自動從 Firestore 讀取 Venus OS 的班級清單與分組）
+  initFirebase();
+  // 離線
+  updOffline();
+  // 隱藏啟動畫面（至少顯示 1.1 秒，避免一閃而過）
+  const minDisplay=1100;
+  const elapsed=Date.now()-_splashStartTime;
+  setTimeout(()=>{
+    const splash=document.getElementById('splash');
+    if(splash)splash.classList.add('hide');
+    setTimeout(()=>{if(splash)splash.remove();},700);
+  },Math.max(0,minDisplay-elapsed));
+})();
+</script>
+</body>
+</html>
