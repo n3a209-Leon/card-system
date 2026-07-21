@@ -1,57 +1,85 @@
-// Moko OS Service Worker v2
-// 重點修正：
-// 1) 容錯式預快取——逐一快取，單一檔案缺失不會導致整批安裝失敗。
-// 2) 只處理「同源」的 GET 靜態檔案，Firebase / Google 登入 / API 一律不快取，
-//    避免個人化或授權回應被錯誤快取造成資料錯亂。
-const CACHE = 'moko-ledger-v2';
-const ASSETS = ['./', './index.html', './manifest.json',
-  './icon-192.png', './icon-512.png', './apple-touch-icon.png', './splash.jpeg'];
+/* Venus Card System Service Worker
+   每次改版：把下面 CACHE_VERSION 升號（例 v2.1.2 → v2.1.3），
+   瀏覽器才會偵測到 sw.js 有變、觸發更新。
+   策略：
+   - install 立即 skipWaiting（新版不必等舊分頁關閉就接管）
+   - activate 清掉所有舊快取 + clients.claim（立刻控制頁面）
+   - HTML/導覽走「網路優先」→ 線上永遠拿到最新 index.html，離線才回快取
+   - 其他同源資源走「快取優先、背景更新」
+   - 跨來源請求（Firebase / gstatic 等）完全不攔截
+*/
+const CACHE_VERSION = 'vcard-v2.1.2';
+const CACHE_NAME = CACHE_VERSION;
+const CORE = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) =>
-      // 逐一加入，任何一個失敗只記 log，不讓整個 install reject。
-      Promise.all(ASSETS.map((url) =>
-        c.add(url).catch((err) => console.warn('SW precache skip:', url, err))
-      ))
-    )
-  );
+  // 立即接管，避免「要開兩次才更新」
   self.skipWaiting();
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE_NAME);
+    // 逐一加入，單一檔案缺失不會讓整批失敗
+    for (const u of CORE) {
+      try { await c.add(new Request(u, { cache: 'reload' })); } catch (_) {}
+    }
+  })());
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
+
+// index.html 的「立即更新」按鈕會送這個訊息
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  const url = new URL(req.url);
-  // 只處理跟本站同源的請求；跨源（Firebase、gstatic、googleapis 等）直接放行，不快取。
+  let url;
+  try { url = new URL(req.url); } catch (_) { return; }
+
+  // 跨來源（Firebase、gstatic、CDN 等）一律不攔截，交給瀏覽器原生處理
   if (url.origin !== self.location.origin) return;
 
-  // 只快取靜態檔案類型；其餘（動態、查詢字串）走網路優先、不寫入快取。
-  const isStatic = /\.(html|js|css|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(url.pathname)
-    || url.pathname === '/' || url.pathname.endsWith('/');
+  const isNav =
+    req.mode === 'navigate' ||
+    req.destination === 'document' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('.html');
 
-  if (!isStatic) return;
-
-  e.respondWith(
-    fetch(req)
-      .then((res) => {
-        // 只快取正常的、同源的、基本型別回應。
-        if (res && res.status === 200 && res.type === 'basic') {
-          const clone = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, clone));
-        }
+  if (isNav) {
+    // 網路優先：線上永遠拿最新 index.html；離線才回快取
+    e.respondWith((async () => {
+      try {
+        const res = await fetch(req);
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
         return res;
-      })
-      .catch(() => caches.match(req))
-  );
+      } catch (_) {
+        const cached = await caches.match(req);
+        return cached || (await caches.match('./index.html')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // 其他同源資源：快取優先，背景補抓更新
+  e.respondWith((async () => {
+    const cached = await caches.match(req);
+    const net = fetch(req).then((res) => {
+      if (res && res.status === 200 && res.type === 'basic') {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => cached);
+    return cached || net;
+  })());
 });
