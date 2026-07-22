@@ -1088,7 +1088,7 @@ tr:hover td{background:var(--accent-light)}
         <span><b>家長精簡版</b><br><small style="color:var(--text4)">每位學生一頁，重點數字與說明更容易閱讀</small></span>
       </label>
     </div>
-    <div class="tip" style="margin-bottom:14px">完整分析版使用 2 倍解析度圖表；家長精簡版每位學生固定一頁。全班產生時會顯示進度，列印視窗也可選擇「另存為 PDF」。</div>
+    <div class="tip" style="margin-bottom:14px">完整分析版使用 1.5 倍解析度圖表；家長精簡版每位學生固定一頁。全班產生時會顯示進度，列印視窗也可選擇「另存為 PDF」。</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn-ghost btn-sm" onclick="closeModal('report-scope-modal')">取消</button>
       <button class="btn-primary" onclick="confirmReportExport()">產生報告</button>
@@ -1138,7 +1138,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.1';
+const APP_VERSION='2.4.3';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -4298,7 +4298,7 @@ function totalVals(no,sem,periodKind){
   return vals;
 }
 
-const REPORT_PIXEL_SCALE=2;
+const REPORT_PIXEL_SCALE=1.5;  // 1.5 倍：清晰度足夠列印，較 2 倍省約一半編碼與記憶體，全班產生更快
 function reportScopeSem(scope){return scope&&scope.mode==='year'?null:scope.sem;}
 function reportAssessmentCount(scope){
   const sem=reportScopeSem(scope);
@@ -4876,7 +4876,7 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   if(!w){toast('請允許彈出視窗');return;}
   _reportBuildPopup=w;
   try{
-    w.document.write('<!doctype html><meta charset="utf-8"><title>建立報告中</title><div style="font-family:-apple-system,sans-serif;max-width:520px;margin:18vh auto;padding:32px;color:#334155"><h2>正在整理圖表與 A4 版面…</h2><div style="height:12px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i id="popup-progress" style="display:block;width:0;height:100%;background:#2563eb;transition:width .2s"></i></div><p id="popup-progress-text" style="text-align:center;color:#64748b">0%</p></div>');
+    w.document.write('<!doctype html><meta charset="utf-8"><title>建立報告中</title><div style="font-family:-apple-system,sans-serif;max-width:520px;margin:18vh auto;padding:32px;color:#334155"><h2>正在整理圖表與 A4 版面…</h2><div style="height:12px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i id="popup-progress" style="display:block;width:0;height:100%;background:#2563eb;transition:width .2s"></i></div><p id="popup-progress-text" style="text-align:center;color:#64748b">0%</p><div style="text-align:center;margin-top:20px"><button onclick="try{window.opener&&window.opener.cancelReportBuild()}catch(e){}window.close()" style="padding:11px 22px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:15px;font-weight:700;min-height:44px">取消並關閉</button></div><p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:10px">產生較久時可隨時點此返回，成績資料不會變更</p></div>');
     w.document.close();
   }catch(e){}
   const scopeLabel=scope.mode==='year'?'全學年':scope.sem;
@@ -4970,6 +4970,12 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   if(!single&&reportType==='full')html+=classSummaryHTML(scope);
   for(let i=0;i<targets.length;i++){
     if(runId!==_reportBuildRun){try{w.close();}catch(e){}return;}
+    if(w.closed){
+      closeModal('report-progress-modal');
+      if(_reportBuildPopup===w)_reportBuildPopup=null;
+      toast('已關閉報告視窗，成績資料沒有變更');
+      return;
+    }
     if(_reportBuildCancel){
       closeModal('report-progress-modal');
       try{w.close();}catch(e){}
