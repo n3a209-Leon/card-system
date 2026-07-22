@@ -1071,25 +1071,25 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label style="font-weight:800;margin-bottom:7px;display:block">列印模式</label>
-      <label class="ropt ropt-on" style="display:flex;align-items:flex-start;gap:8px;padding:10px;margin-bottom:7px">
-        <input type="radio" name="report-color" value="color" checked onchange="markRadio(this)" style="margin-top:2px">
-        <span><b>彩色高對比（建議）</b><br><small style="color:var(--text4)">保留學科色彩，並加粗線條與標記</small></span>
-      </label>
-      <label class="ropt" style="display:flex;align-items:flex-start;gap:8px;padding:10px">
-        <input type="radio" name="report-color" value="bw" onchange="markRadio(this)" style="margin-top:2px">
-        <span><b>黑白省墨</b><br><small style="color:var(--text4)">改用灰階、高對比與實線／虛線區分</small></span>
-      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label class="ropt ropt-on" style="padding:9px 10px">
+          <input type="radio" name="report-color" value="color" checked onchange="markRadio(this)" style="margin-right:6px"><b>彩色高對比</b><br><small style="color:var(--text4)">保留學科色彩</small>
+        </label>
+        <label class="ropt" style="padding:9px 10px">
+          <input type="radio" name="report-color" value="bw" onchange="markRadio(this)" style="margin-right:6px"><b>黑白省墨</b><br><small style="color:var(--text4)">灰階／虛線區分</small>
+        </label>
+      </div>
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label style="font-weight:800;margin-bottom:7px;display:block">報告內容</label>
-      <label class="ropt ropt-on" style="display:flex;align-items:flex-start;gap:8px;padding:10px;margin-bottom:7px">
-        <input type="radio" name="report-type" value="full" checked onchange="markRadio(this)" style="margin-top:2px">
-        <span><b>完整分析版</b><br><small style="color:var(--text4)">雷達圖、折線圖、班級比較與完整統計</small></span>
-      </label>
-      <label class="ropt" style="display:flex;align-items:flex-start;gap:8px;padding:10px">
-        <input type="radio" name="report-type" value="parent" onchange="markRadio(this)" style="margin-top:2px">
-        <span><b>家長精簡版</b><br><small style="color:var(--text4)">每位學生一頁，重點數字與說明更容易閱讀</small></span>
-      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label class="ropt ropt-on" style="padding:9px 10px">
+          <input type="radio" name="report-type" value="full" checked onchange="markRadio(this)" style="margin-right:6px"><b>完整分析版</b><br><small style="color:var(--text4)">雷達圖、折線圖、完整統計</small>
+        </label>
+        <label class="ropt" style="padding:9px 10px">
+          <input type="radio" name="report-type" value="parent" onchange="markRadio(this)" style="margin-right:6px"><b>家長精簡版</b><br><small style="color:var(--text4)">每人一頁、重點易讀</small>
+        </label>
+      </div>
     </div>
     <div class="tip" style="margin-bottom:14px">完整分析版使用 1.5 倍解析度圖表；家長精簡版每位學生固定一頁。全班產生時會顯示進度，列印視窗也可選擇「另存為 PDF」。</div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -1141,7 +1141,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.4';
+const APP_VERSION='2.4.5';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -4365,7 +4365,12 @@ function dlText(text,filename,type){
 const ALL_GROUPS=['國語','數學','英語','其他'];
 const GROUP_COLORS={'國語':'#2563EB','數學':'#EA580C','英語':'#16A34A','其他':'#9333EA'};
 
+// 報告產生期間的暫存快取：全班共通統計只算一次，結束後由 generateReportWindow 的 finally 清為 null。
+// 只在報告產生時啟用；平時 _rptCache=null，畫面其他地方完全不受影響。
+let _rptCache=null;
 function totalVals(no,sem,periodKind){
+  const _ck=_rptCache?('t|'+no+'|'+sem+'|'+periodKind):null;
+  if(_ck&&_rptCache[_ck])return _rptCache[_ck];
   let vals=[];
   Object.keys(_scores).forEach(s=>{
     (_scores[s]||[]).forEach(e=>{
@@ -4378,6 +4383,7 @@ function totalVals(no,sem,periodKind){
       }
     });
   });
+  if(_ck)_rptCache[_ck]=vals;
   return vals;
 }
 
@@ -4519,6 +4525,8 @@ function classSummaryHTML(scope){
 
 function groupVals(no,group,sem,periodKind){
   // no===null 時彙整全班（不分座號）
+  const _ck=_rptCache?('g|'+no+'|'+group+'|'+sem+'|'+periodKind):null;
+  if(_ck&&_rptCache[_ck])return _rptCache[_ck];
   let vals=[];
   Object.keys(_scores).forEach(s=>{
     if(subjGroup(s)!==group)return;
@@ -4532,9 +4540,12 @@ function groupVals(no,group,sem,periodKind){
       }
     });
   });
+  if(_ck)_rptCache[_ck]=vals;
   return vals;
 }
 function groupValsClassify(no,group,sem,periodKind,exam){
+  const _ck=_rptCache?('c|'+no+'|'+group+'|'+sem+'|'+periodKind+'|'+exam):null;
+  if(_ck&&_rptCache[_ck])return _rptCache[_ck];
   let vals=[];
   Object.keys(_scores).forEach(s=>{
     if(subjGroup(s)!==group)return;
@@ -4549,6 +4560,7 @@ function groupValsClassify(no,group,sem,periodKind,exam){
       }
     });
   });
+  if(_ck)_rptCache[_ck]=vals;
   return vals;
 }
 
@@ -4972,6 +4984,8 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
     return;
   }
   showReportProgress(targets.length,reportType);
+  _rptCache={};
+  try{
   const bodyClass=(single?'single-report':'full-class')+(reportType==='parent'?' parent-report':'')+(!single&&reportType==='parent'?' parent-batch':'')+(colorMode==='bw'?' report-bw':'');
   let html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
     @page{size:A4 portrait;margin:10mm 9mm 11mm}
@@ -5084,6 +5098,7 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   if(_reportBuildPopup===w)_reportBuildPopup=null;
   const modeText=reportType==='parent'?'家長精簡報告':colorMode==='bw'?'黑白高對比報告':'彩色高對比報告';
   toast(`✅ ${modeText}已建立，共 ${targets.length} 份`,3200);
+  }finally{_rptCache=null;}
 }
 
 // ══ 複製 AI 報告素材 ══
