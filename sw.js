@@ -1,85 +1,96 @@
-/* Venus Card System Service Worker
-   每次改版：把下面 CACHE_VERSION 升號（例 v2.1.2 → v2.1.3），
-   瀏覽器才會偵測到 sw.js 有變、觸發更新。
-   策略：
-   - install 立即 skipWaiting（新版不必等舊分頁關閉就接管）
-   - activate 清掉所有舊快取 + clients.claim（立刻控制頁面）
-   - HTML/導覽走「網路優先」→ 線上永遠拿到最新 index.html，離線才回快取
-   - 其他同源資源走「快取優先、背景更新」
-   - 跨來源請求（Firebase / gstatic 等）完全不攔截
-*/
-const CACHE_VERSION = 'vcard-v2.1.2';
+// ═══════════════════════════════════════════════════════
+// sw.js — 作業記錄 PWA Service Worker
+// 策略：Cache First（離線優先）
+// 每次 App 更新時修改 CACHE_VERSION 讓舊快取失效
+// ═══════════════════════════════════════════════════════
+
+const CACHE_VERSION = 'hw-tracker-v6';
 const CACHE_NAME = CACHE_VERSION;
-const CORE = ['./', './index.html', './manifest.json'];
 
-self.addEventListener('install', (e) => {
-  // 立即接管，避免「要開兩次才更新」
-  self.skipWaiting();
-  e.waitUntil((async () => {
-    const c = await caches.open(CACHE_NAME);
-    // 逐一加入，單一檔案缺失不會讓整批失敗
-    for (const u of CORE) {
-      try { await c.add(new Request(u, { cache: 'reload' })); } catch (_) {}
-    }
-  })());
+// 需要快取的資源（App 本體）
+const PRECACHE_URLS = [
+  './',
+  './index.html',
+];
+
+// ── Install：預快取 App 本體 ──
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(PRECACHE_URLS);
+    }).then(function() {
+      // 強制跳過等待，立即生效
+      return self.skipWaiting();
+    })
+  );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
-    await self.clients.claim();
-  })());
+// ── Activate：清除舊版快取 ──
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(key) {
+          return key !== CACHE_NAME;
+        }).map(function(key) {
+          return caches.delete(key);
+        })
+      );
+    }).then(function() {
+      // 立即接管所有頁面
+      return self.clients.claim();
+    })
+  );
 });
 
-// index.html 的「立即更新」按鈕會送這個訊息
-self.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
-});
+// ── Fetch：攔截請求 ──
+self.addEventListener('fetch', function(event) {
+  var url = new URL(event.request.url);
 
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-
-  let url;
-  try { url = new URL(req.url); } catch (_) { return; }
-
-  // 跨來源（Firebase、gstatic、CDN 等）一律不攔截，交給瀏覽器原生處理
-  if (url.origin !== self.location.origin) return;
-
-  const isNav =
-    req.mode === 'navigate' ||
-    req.destination === 'document' ||
-    url.pathname === '/' ||
-    url.pathname.endsWith('/') ||
-    url.pathname.endsWith('.html');
-
-  if (isNav) {
-    // 網路優先：線上永遠拿最新 index.html；離線才回快取
-    e.respondWith((async () => {
-      try {
-        const res = await fetch(req);
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
-        return res;
-      } catch (_) {
-        const cached = await caches.match(req);
-        return cached || (await caches.match('./index.html')) || Response.error();
-      }
-    })());
+  // Firebase / Google API 請求：永遠走網路，不快取
+  if (
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('google.com') ||
+    url.hostname.includes('gstatic.com') ||
+    url.hostname.includes('cdnjs.cloudflare.com')
+  ) {
+    // 網路優先，失敗就讓它失敗（Firebase 自己有離線處理）
+    event.respondWith(fetch(event.request).catch(function() {
+      return new Response('', { status: 503 });
+    }));
     return;
   }
 
-  // 其他同源資源：快取優先，背景補抓更新
-  e.respondWith((async () => {
-    const cached = await caches.match(req);
-    const net = fetch(req).then((res) => {
-      if (res && res.status === 200 && res.type === 'basic') {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+  // App 本體：Cache First → 有快取直接用，沒有再去網路抓
+  event.respondWith(
+    caches.match(event.request).then(function(cached) {
+      if (cached) {
+        // 背景更新：有快取直接回傳，同時偷偷去網路更新快取
+        var fetchPromise = fetch(event.request).then(function(response) {
+          if (response && response.status === 200 && response.type === 'basic') {
+            var responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
+        }).catch(function() {});
+        // 回傳快取版本（不等背景更新）
+        return cached;
       }
-      return res;
-    }).catch(() => cached);
-    return cached || net;
-  })());
+      // 沒有快取 → 去網路抓，並存入快取
+      return fetch(event.request).then(function(response) {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+        var responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      });
+    })
+  );
 });
