@@ -8,12 +8,15 @@
    - 其他同源資源走「快取優先、背景更新」
    - 跨來源請求（Firebase / gstatic 等）完全不攔截
 */
-const CACHE_VERSION = 'vcard-v2.2.1';
+const CACHE_VERSION = 'vcard-v2.4.1';
 const CACHE_NAME = CACHE_VERSION;
 const OWNED_CACHE_PREFIXES = ['vcard-', 'venus-card-'];
 const CORE = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
+  // 立即接管，新版不必等舊分頁全部關閉；配合頁面 controllerchange→reload，
+  // 部署後開一次就會自動刷新到新版，不必手動重開兩次。
+  self.skipWaiting();
   e.waitUntil((async () => {
     const c = await caches.open(CACHE_NAME);
     // 逐一加入，單一檔案缺失不會讓整批失敗

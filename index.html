@@ -449,6 +449,22 @@ tr:hover td{background:var(--accent-light)}
 .tip{background:var(--accent-light);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.6}
 .tip.orange{background:var(--orange-light);color:var(--orange)}
 .tip.green{background:var(--green-light);color:var(--green)}
+.quality-report{border:1px solid var(--border);border-radius:10px;padding:10px;margin:10px 0;background:var(--bg3)}
+.quality-report.ok{border-color:rgba(22,163,74,.45);background:var(--green-light)}
+.quality-report.warn{border-color:rgba(234,88,12,.45);background:var(--orange-light)}
+.quality-report.block{border-color:rgba(220,38,38,.5);background:var(--red-light)}
+.quality-title{font-size:13px;font-weight:800;margin-bottom:7px}
+.quality-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:7px}
+.quality-kpi{padding:7px 5px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);text-align:center}
+.quality-kpi b{display:block;font-size:16px;line-height:1.2}.quality-kpi span{font-size:9px;color:var(--text3)}
+.quality-list{font-size:11px;line-height:1.6;padding-left:18px;margin:0}
+.quality-list .fatal{color:var(--red);font-weight:700}.quality-list .warning{color:var(--orange)}
+.quality-samples{font-size:10px;color:var(--text3);margin-top:5px;word-break:break-word}
+.report-progress-track{height:12px;background:var(--bg4);border-radius:999px;overflow:hidden;margin:12px 0 8px}
+.report-progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:999px;transition:width .2s ease}
+.report-progress-label{font-size:24px;font-weight:900;color:var(--accent);text-align:center}
+.report-progress-detail{font-size:12px;color:var(--text3);text-align:center;min-height:20px}
+@media(max-width:420px){.quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .empty{text-align:center;color:var(--text4);font-size:13px;padding:28px 0}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -630,7 +646,7 @@ tr:hover td{background:var(--accent-light)}
       </div>
       <div class="card">
         <div class="card-title">✏️ 快速貼上成績</div>
-        <div class="tip">從 Excel 複製一整欄分數（不含座號），依目前班級座號順序由小到大對應，缺席留空行。</div>
+        <div class="tip">從 Excel 複製一整欄分數（不含座號），依目前班級座號順序由小到大對應，缺席留空行。儲存前會檢查非數字與超出 0–100 分。</div>
         <div class="form-row">
           <div class="fg" style="max-width:140px">
             <label>科目</label>
@@ -660,7 +676,7 @@ tr:hover td{background:var(--accent-light)}
       </div>
       <div class="card">
         <div class="card-title">📤 整批匯入 Excel（進階）</div>
-        <div class="tip">適合學期初批次匯入。上傳成績 Excel（.xlsx）→ App 自動讀取「<b>獎卡兌換</b>」工作表 → 全部覆蓋更新。</div>
+        <div class="tip">適合學期初批次匯入。上傳 Excel 後會先檢查座號、重複欄位與分數範圍，顯示預覽；只有再次確認才會覆蓋目前成績。</div>
         <label class="upload-area" id="upload-area">
           <div class="upload-icon">📊</div>
           <div style="font-weight:700;font-size:14px">點此選取 Excel 檔案</div>
@@ -1006,9 +1022,10 @@ tr:hover td{background:var(--accent-light)}
     <div class="tip">以下是實際抓到的欄位內容，點擊欄位可切換「匯入／排除」（例如平均、總分等公式欄請排除）。</div>
     <div id="col-confirm-info" style="font-size:12px;color:var(--text4);margin-bottom:8px"></div>
     <div class="sx" style="max-height:50vh;overflow-y:auto" id="col-confirm-table"></div>
+    <div id="col-quality-report"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button class="btn-ghost btn-sm" onclick="closeModal('col-confirm-modal')">取消</button>
-      <button class="btn-green" onclick="confirmColImport()">✅ 確認匯入</button>
+      <button class="btn-green" id="col-import-confirm-btn" onclick="confirmColImport()">✅ 確認匯入</button>
     </div>
   </div>
 </div>
@@ -1024,6 +1041,71 @@ tr:hover td{background:var(--accent-light)}
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="chart-subj-btns"></div>
     <canvas id="chart-canvas" width="500" height="240" style="width:100%;border-radius:8px;border:1px solid var(--border)"></canvas>
+  </div>
+</div>
+
+<!-- MODAL: report scope / print mode -->
+<div class="modal-bg center" id="report-scope-modal">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 style="margin:0">🖨 產生成績報告</h3>
+      <button class="btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('report-scope-modal')">✕</button>
+    </div>
+    <div id="report-target-label" class="tip" style="margin-bottom:12px">全班成績報告</div>
+    <div class="fg" style="margin-bottom:14px">
+      <label style="font-weight:800;margin-bottom:7px;display:block">報告範圍</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <label style="border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer">
+          <input type="radio" name="report-scope" value="up"> 上學期
+        </label>
+        <label style="border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer">
+          <input type="radio" name="report-scope" value="down"> 下學期
+        </label>
+        <label style="border:1px solid var(--accent);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;background:var(--accent-light)">
+          <input type="radio" name="report-scope" value="year" checked> 全學年
+        </label>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label style="font-weight:800;margin-bottom:7px;display:block">列印模式</label>
+      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer">
+        <input type="radio" name="report-color" value="color" checked style="margin-top:2px">
+        <span><b>彩色高對比（建議）</b><br><small style="color:var(--text4)">保留學科色彩，並加粗線條與標記</small></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer">
+        <input type="radio" name="report-color" value="bw" style="margin-top:2px">
+        <span><b>黑白省墨</b><br><small style="color:var(--text4)">改用灰階、高對比與實線／虛線區分</small></span>
+      </label>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label style="font-weight:800;margin-bottom:7px;display:block">報告內容</label>
+      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer">
+        <input type="radio" name="report-type" value="full" checked style="margin-top:2px">
+        <span><b>完整分析版</b><br><small style="color:var(--text4)">雷達圖、折線圖、班級比較與完整統計</small></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer">
+        <input type="radio" name="report-type" value="parent" style="margin-top:2px">
+        <span><b>家長精簡版</b><br><small style="color:var(--text4)">每位學生一頁，重點數字與說明更容易閱讀</small></span>
+      </label>
+    </div>
+    <div class="tip" style="margin-bottom:14px">完整分析版使用 2 倍解析度圖表；家長精簡版每位學生固定一頁。全班產生時會顯示進度，列印視窗也可選擇「另存為 PDF」。</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="closeModal('report-scope-modal')">取消</button>
+      <button class="btn-primary" onclick="confirmReportExport()">產生報告</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: batch report progress -->
+<div class="modal-bg center" id="report-progress-modal">
+  <div class="modal" style="max-width:420px">
+    <h3 style="text-align:center;margin-bottom:4px">正在產生成績報告</h3>
+    <div class="report-progress-label" id="report-progress-label">0%</div>
+    <div class="report-progress-track"><div class="report-progress-fill" id="report-progress-fill"></div></div>
+    <div class="report-progress-detail" id="report-progress-detail">正在準備資料…</div>
+    <div style="display:flex;justify-content:center;margin-top:14px">
+      <button class="btn-ghost btn-sm" id="report-cancel-btn" onclick="cancelReportBuild()">取消產生</button>
+    </div>
   </div>
 </div>
 
@@ -1056,7 +1138,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.2.1';
+const APP_VERSION='2.4.1';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -2531,6 +2613,95 @@ function parseCSV(text){
 // ── 欄位預覽與手動確認（取代自動猜測格式）──
 let _colConfirmState=null;  // {rows, sourceName, linkId, maxCols, excluded:Set}
 
+// 匯入資料品質檢查：所有成績入口共用同一套 0–100、座號與重複資料規則。
+function parseSeatNo(raw){
+  if(raw===null||raw===undefined||String(raw).trim()==='')return null;
+  const m=String(raw).trim().match(/^(\d+)(?:號)?$/);
+  if(!m)return null;
+  const no=parseInt(m[1],10);
+  return Number.isFinite(no)?no:null;
+}
+function parseScoreValue(raw){
+  if(raw===null||raw===undefined||String(raw).trim()==='')return{kind:'blank',value:null};
+  let num;
+  if(typeof raw==='number')num=raw;
+  else{
+    const s=String(raw).trim();
+    if(!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(s))return{kind:'invalid',value:null,raw:s};
+    num=Number(s);
+  }
+  if(!Number.isFinite(num))return{kind:'invalid',value:null,raw:String(raw)};
+  if(num<0||num>100)return{kind:'range',value:num,raw:String(raw)};
+  return{kind:'valid',value:num};
+}
+function analyzeScoreImport(dataRows,selectedCols){
+  const classNos=[..._nos].sort((a,b)=>a-b);
+  const seen=new Map(),matched=new Set(),unknown=new Set();
+  const invalidSeatRows=[],invalidScores=[],rangeScores=[];
+  let validScores=0,blankScores=0;
+  const colLabels=new Map(),duplicateColumns=[];
+  (selectedCols||[]).forEach(ci=>{
+    const key=`${ci.subj||''}|${ci.label||ci.idx}`;
+    if(colLabels.has(key))duplicateColumns.push(`${ci.subj||'未命名'}-${ci.label||'未命名'}`);
+    else colLabels.set(key,true);
+  });
+  (dataRows||[]).forEach((row,rowIdx)=>{
+    if(!row)return;
+    const hasScore=(selectedCols||[]).some(ci=>row[ci.idx]!==null&&row[ci.idx]!==undefined&&String(row[ci.idx]).trim()!=='');
+    const no=parseSeatNo(row[0]);
+    if(no===null){if(hasScore)invalidSeatRows.push(rowIdx+3);return;}
+    seen.set(no,(seen.get(no)||0)+1);
+    if(classNos.includes(no))matched.add(no);else unknown.add(no);
+    if(!classNos.includes(no))return;
+    (selectedCols||[]).forEach(ci=>{
+      const parsed=parseScoreValue(row[ci.idx]);
+      if(parsed.kind==='blank'){blankScores++;return;}
+      const where=`${no}號 ${ci.subj||''}-${ci.label||ci.idx}`;
+      if(parsed.kind==='invalid'){invalidScores.push(`${where}「${String(row[ci.idx]).trim()}」`);return;}
+      if(parsed.kind==='range'){rangeScores.push(`${where}=${parsed.value}`);return;}
+      validScores++;
+    });
+  });
+  const duplicateNos=[...seen.entries()].filter(([,count])=>count>1).map(([no])=>no).sort((a,b)=>a-b);
+  const missingNos=classNos.filter(no=>!matched.has(no));
+  const fatal=[];
+  if(!(selectedCols||[]).length)fatal.push('沒有選取任何有效成績欄位');
+  if(!matched.size)fatal.push('檔案座號與目前班級完全沒有對上');
+  if(!validScores)fatal.push('沒有找到任何可安全匯入的有效分數');
+  if(duplicateNos.length)fatal.push(`座號重複：${duplicateNos.join('、')}號`);
+  if(duplicateColumns.length)fatal.push(`考試欄位名稱重複：${[...new Set(duplicateColumns)].join('、')}`);
+  if(invalidScores.length)fatal.push(`有 ${invalidScores.length} 格不是有效數字`);
+  if(rangeScores.length)fatal.push(`有 ${rangeScores.length} 格超出 0–100 分`);
+  const warnings=[];
+  if(unknown.size)warnings.push(`檔案內有非本班座號：${[...unknown].sort((a,b)=>a-b).join('、')}號（不會匯入）`);
+  if(missingNos.length)warnings.push(`本班 ${missingNos.length} 人在檔案中沒有資料：${missingNos.join('、')}號`);
+  if(invalidSeatRows.length)warnings.push(`第 ${invalidSeatRows.slice(0,8).join('、')}${invalidSeatRows.length>8?'…':''} 列座號格式無法辨識（已略過）`);
+  if(blankScores)warnings.push(`有 ${blankScores} 格空白，會保留為缺席／無資料`);
+  return{
+    rowCount:(dataRows||[]).length,columnCount:(selectedCols||[]).length,
+    matchedCount:matched.size,classCount:classNos.length,validScores,blankScores,
+    missingNos,unknownNos:[...unknown],duplicateNos,invalidScores,rangeScores,duplicateColumns,
+    fatal,warnings,blocked:fatal.length>0,
+    samples:[...invalidScores.slice(0,4),...rangeScores.slice(0,4)]
+  };
+}
+function qualityReportHTML(q){
+  const state=q.blocked?'block':q.warnings.length?'warn':'ok';
+  const title=q.blocked?'⛔ 發現問題，尚未變更原資料':q.warnings.length?'⚠️ 可以匯入，但請先確認提醒':'✅ 資料檢查通過';
+  const issues=[...q.fatal.map(x=>`<li class="fatal">${esc(x)}</li>`),...q.warnings.map(x=>`<li class="warning">${esc(x)}</li>`)].join('');
+  return `<div class="quality-report ${state}">
+    <div class="quality-title">${title}</div>
+    <div class="quality-grid">
+      <div class="quality-kpi"><b>${q.matchedCount}/${q.classCount}</b><span>座號對上</span></div>
+      <div class="quality-kpi"><b>${q.columnCount}</b><span>成績欄位</span></div>
+      <div class="quality-kpi"><b>${q.validScores}</b><span>有效分數</span></div>
+      <div class="quality-kpi"><b>${q.blankScores}</b><span>空白／缺席</span></div>
+    </div>
+    ${issues?`<ul class="quality-list">${issues}</ul>`:'<div style="font-size:11px;color:var(--green)">座號、欄位與分數範圍均正常。</div>'}
+    ${q.samples.length?`<div class="quality-samples">問題範例：${esc(q.samples.join('；'))}</div>`:''}
+  </div>`;
+}
+
 function openColConfirm(rows,sourceName,linkId){
   const subjRow=rows[0]||[];
   const labelRow=rows[1]||[];
@@ -2589,6 +2760,13 @@ function renderColConfirmTable(){
   +'</tbody></table>';
 
   document.getElementById('col-confirm-table').innerHTML=theadHtml;
+  const validCols=colInfo.filter(ci=>!excluded.has(ci.idx)&&ci.idx>=2&&ci.subj);
+  const quality=analyzeScoreImport(dataRows,validCols);
+  st.quality=quality;
+  const qualityEl=document.getElementById('col-quality-report');
+  if(qualityEl)qualityEl.innerHTML=qualityReportHTML(quality);
+  const confirmBtn=document.getElementById('col-import-confirm-btn');
+  if(confirmBtn){confirmBtn.disabled=quality.blocked;confirmBtn.style.opacity=quality.blocked?'.45':'1';}
 }
 
 function toggleColExclude(idx){
@@ -2610,6 +2788,13 @@ function confirmColImport(){
     toast('⚠️ 沒有選取任何要匯入的欄位');
     return;
   }
+  const quality=analyzeScoreImport(dataRows,validCols);
+  if(quality.blocked){
+    const qualityEl=document.getElementById('col-quality-report');
+    if(qualityEl)qualityEl.innerHTML=qualityReportHTML(quality);
+    toast('⚠️ 請先修正匯入資料中的紅色問題');
+    return;
+  }
 
   let imported=0;
   let sheetNos=[];
@@ -2618,15 +2803,16 @@ function confirmColImport(){
     if(!row||!row.length)return;
     const noRaw=row[0];
     if(noRaw===undefined||String(noRaw).trim()==='')return;
-    const no=parseInt(String(noRaw).trim());
-    if(isNaN(no))return;
+    const no=parseSeatNo(noRaw);
+    if(no===null)return;
     sheetNos.push(no);
     if(!_nos.includes(no))return;
     validCols.forEach(ci=>{
       const v=row[ci.idx];
       if(v===undefined||String(v).trim()==='')return;
-      const num=parseFloat(String(v).trim());
-      if(isNaN(num))return;
+      const parsed=parseScoreValue(v);
+      if(parsed.kind!=='valid')return;
+      const num=parsed.value;
       const label=`${ci.subj}-${ci.label||ci.idx}`;
       if(!newScores[ci.subj])newScores[ci.subj]=[];
       let entry=newScores[ci.subj].find(e=>e.label===label);
@@ -2703,25 +2889,34 @@ function previewPaste(){
   const sortedNos=[..._nos].sort((a,b)=>a-b);
   const result=sortedNos.map((no,i)=>{
     const v=trimmed[i].trim();
-    const num=v===''?null:parseFloat(v);
-    return{no,val:(num!==null&&!isNaN(num))?num:null,raw:v};
+    const parsed=parseScoreValue(v);
+    return{no,val:parsed.kind==='valid'?parsed.value:null,raw:v,kind:parsed.kind};
   });
   const filled=result.filter(r=>r.val!==null).length;
-  const absent=needCount-filled;
+  const absent=result.filter(r=>r.kind==='blank').length;
+  const invalid=result.filter(r=>r.kind==='invalid');
+  const outOfRange=result.filter(r=>r.kind==='range');
 
-  statusEl.innerHTML=`<span style="color:var(--green)">✅ 行數正確（${needCount}行）｜${filled} 人有分數${absent>0?`，${absent} 人缺席`:''}</span>`;
+  if(invalid.length||outOfRange.length){
+    const problems=[];
+    if(invalid.length)problems.push(`${invalid.map(r=>r.no+'號').join('、')}不是有效數字`);
+    if(outOfRange.length)problems.push(`${outOfRange.map(r=>r.no+'號').join('、')}超出 0–100 分`);
+    statusEl.innerHTML=`<span style="color:var(--red)">⛔ ${problems.join('；')}，原資料不會變更</span>`;
+  }else{
+    statusEl.innerHTML=`<span style="color:var(--green)">✅ 品質檢查通過（${needCount}行）｜${filled} 人有分數${absent>0?`，${absent} 人缺席`:''}</span>`;
+  }
 
   // 預覽表格（顯示全部，缺席標記）
   previewEl.innerHTML=`<div class="sx" style="max-height:280px;overflow-y:auto"><table>
     <thead><tr><th>座號</th><th>分數</th></tr></thead>
     <tbody>${result.map(r=>`<tr>
       <td>${r.no}號</td>
-      <td style="${r.val===null?'color:var(--text4)':r.val>=90?'color:var(--green);font-weight:700':r.val<60?'color:var(--red)':''}">${r.val!==null?r.val:'（缺席）'}</td>
+      <td style="${r.kind==='invalid'||r.kind==='range'?'color:var(--red);font-weight:800':r.val===null?'color:var(--text4)':r.val>=90?'color:var(--green);font-weight:700':r.val<60?'color:var(--red)':''}">${r.kind==='blank'?'（缺席）':r.kind==='valid'?r.val:`⚠ ${esc(r.raw)}`}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 
-  _pasteData=result;
-  submitBtn.style.display='';
+  _pasteData=(invalid.length||outOfRange.length)?null:result;
+  submitBtn.style.display=(invalid.length||outOfRange.length)?'none':'';
 }
 
 function submitPaste(){
@@ -2786,10 +2981,12 @@ function todayISO(){
 }
 
 const TARGET_SHEET_KEYWORDS = ['\u734e\u5361\u5151\u63db', '\u734e\u5361\u5151\u63db2'];
+let _pendingXlsxImport=null;
 
 function handleXlsx(input){
   const file=input.files[0];
   if(!file)return;
+  _pendingXlsxImport=null;
   const prev=document.getElementById('xlsx-preview');
   prev.innerHTML='<div style="color:var(--text4);font-size:12px">讀取中...</div>';
   const reader=new FileReader();
@@ -2861,52 +3058,61 @@ function parseAndImport(ws,sheetName){
     colMap[c]={subj:curSubj,label:`${curSubj}-${lbl}`,date:extractDate(lbl)};
   }
 
-  // 解析資料行
-  let imported=0,noMatch=0;
-  const newScores={};  // 全部重建，這次上傳全覆蓋
+  const selectedCols=Object.entries(colMap).map(([idx,info])=>({idx:parseInt(idx),subj:info.subj,label:info.label,date:info.date}));
+  const quality=analyzeScoreImport(dataRows,selectedCols);
+  let imported=0;
+  const newScores={};  // 暫存在記憶體，使用者確認前絕不改動原資料
   dataRows.forEach(row=>{
     if(!row)return;
-    const noRaw=row[0];
-    if(noRaw===null||noRaw===undefined)return;
-    const no=parseInt(noRaw);
-    if(isNaN(no)||!_nos.includes(no)){noMatch++;return;}
-    Object.entries(colMap).forEach(([c,{subj,label,date}])=>{
-      const v=row[parseInt(c)];
-      // 跳過 null、字串公式、字串
-      if(v===null||v===undefined)return;
-      if(typeof v==='string')return;  // 公式結果 XLSX 不計算，直接是字串
-      const num=parseFloat(v);
-      if(isNaN(num))return;
+    const no=parseSeatNo(row[0]);
+    if(no===null||!_nos.includes(no))return;
+    selectedCols.forEach(({idx,subj,label,date})=>{
+      const parsed=parseScoreValue(row[idx]);
+      if(parsed.kind!=='valid')return;
       if(!newScores[subj])newScores[subj]=[];
       let entry=newScores[subj].find(e=>e.label===label);
       if(!entry){entry={key:label,label,date:date||todayISO(),nos:{}};newScores[subj].push(entry);}
-      entry.nos[no]=num;
+      entry.nos[no]=parsed.value;
       imported++;
     });
   });
 
-  if(imported===0){
-    document.getElementById('xlsx-preview').innerHTML='<div class="tip orange">沒有找到可匯入的有效分數，原資料未變更。</div>';
-    toast('⚠️ 匯入內容為空，已保留原資料');
-    return;
-  }
-  if(Object.keys(_scores).some(s=>(_scores[s]||[]).length)&&
-     !confirm(`Excel 匯入會取代目前全部成績。\n本次讀到 ${imported} 筆分數，確定繼續嗎？`)){
-    document.getElementById('xlsx-preview').innerHTML='<div class="tip">已取消，原資料未變更。</div>';
-    return;
-  }
-
-  pushUndo('匯入 Excel 成績');
-  replaceAllScores(newScores);
-  sched('scores');scheduleSync();
-  renderScoreLog();renderOverview();
-
   const subjCount=Object.keys(newScores).length;
   const examCount=Object.values(newScores).reduce((a,arr)=>a+arr.length,0);
+  _pendingXlsxImport={sheetName,newScores,imported,subjCount,examCount,quality};
   const prev=document.getElementById('xlsx-preview');
-  prev.innerHTML=`<div class="tip green">✅ 匯入完成！共 ${subjCount} 科、${examCount} 次考試、${imported} 筆分數</div>`;
-  document.getElementById('xlsx-input').value='';
-  toast(`✅ 已從「${sheetName}」匯入 ${imported} 筆分數`);
+  prev.innerHTML=`${qualityReportHTML(quality)}
+    <div class="tip" style="margin-bottom:8px">預計匯入：<b>${subjCount}</b> 科、<b>${examCount}</b> 次考試、<b>${imported}</b> 筆分數。確認前不會改動目前資料。</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-ghost btn-sm" onclick="cancelXlsxImport()">取消</button>
+      <button class="btn-green" ${quality.blocked?'disabled style="opacity:.45"':''} onclick="commitXlsxImport()">✅ 確認覆蓋匯入</button>
+    </div>`;
+  if(quality.blocked)toast('⚠️ 匯入已暫停，請修正紅色問題後重新選檔');
+  else toast('✅ 檢查完成，確認後才會覆蓋原成績');
+}
+
+function cancelXlsxImport(){
+  _pendingXlsxImport=null;
+  const prev=document.getElementById('xlsx-preview');
+  if(prev)prev.innerHTML='<div class="tip">已取消，原成績完全沒有變更。</div>';
+  const input=document.getElementById('xlsx-input');if(input)input.value='';
+}
+
+function commitXlsxImport(){
+  const p=_pendingXlsxImport;
+  if(!p){toast('請重新選取 Excel 檔案');return;}
+  if(p.quality.blocked){toast('⚠️ 資料仍有紅色問題，不能覆蓋');return;}
+  if(Object.keys(_scores).some(s=>(_scores[s]||[]).length)&&
+     !confirm(`Excel 匯入會取代目前全部成績。\n已通過品質檢查：${p.imported} 筆分數。\n確定繼續嗎？`))return;
+  pushUndo('匯入 Excel 成績');
+  replaceAllScores(p.newScores);
+  sched('scores');scheduleSync();
+  renderScoreLog();renderOverview();
+  const prev=document.getElementById('xlsx-preview');
+  if(prev)prev.innerHTML=`<div class="tip green">✅ 匯入完成！共 ${p.subjCount} 科、${p.examCount} 次考試、${p.imported} 筆分數</div>`;
+  const input=document.getElementById('xlsx-input');if(input)input.value='';
+  toast(`✅ 已從「${p.sheetName}」匯入 ${p.imported} 筆分數`);
+  _pendingXlsxImport=null;
 }
 
 function renderScoreLog(){
@@ -3511,6 +3717,12 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor,scopeSem){
   // 科目標題
   ctx.font='bold 13px sans-serif';ctx.fillStyle=color;ctx.textAlign='left';
   ctx.fillText(subj,pad.l,14);
+  // 圖例同時使用實線／虛線，黑白列印仍可辨識。
+  ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(W-160,11);ctx.lineTo(W-143,11);ctx.stroke();
+  ctx.fillStyle='#475569';ctx.fillText('個人',W-139,14);
+  ctx.strokeStyle='#64748B';ctx.setLineDash([3,3]);ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(W-94,11);ctx.lineTo(W-77,11);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#64748B';ctx.fillText('全班平均',W-73,14);
   const allEntries=_scores[subj]||[];
   const entries=scopeSem?allEntries.filter(e=>semOf(e.date)===scopeSem):allEntries;
   const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
@@ -3527,6 +3739,12 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor,scopeSem){
   for(let y=Math.ceil(mn/10)*10;y<=mx;y+=10){
     const yy=toY(y);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
     ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText(y,pad.l-3,yy+3);
+  }
+  if(mn<=60&&mx>=60){
+    const passY=toY(60);
+    ctx.strokeStyle='rgba(220,38,38,.38)';ctx.setLineDash([6,4]);ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(pad.l,passY);ctx.lineTo(W-pad.r,passY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#B91C1C';ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText('及格線',pad.l+4,passY-4);
   }
   // x 軸標籤（過長只取末 4 字）
   ctx.fillStyle='#999';ctx.font='10px sans-serif';ctx.textAlign='center';
@@ -3568,16 +3786,20 @@ function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor,scopeSem){
   ctx.strokeStyle='rgba(107,114,128,.5)';ctx.setLineDash([2,3]);ctx.lineWidth=1.5;
   ctx.beginPath();let firstA=true;
   classAvgs.forEach((v,i)=>{
-    if(v===null||isNaN(v))return;
+    if(v===null||isNaN(v)){firstA=true;return;}
     if(firstA){ctx.moveTo(toX(i),toY(v));firstA=false;}else ctx.lineTo(toX(i),toY(v));
   });
   ctx.stroke();
   ctx.setLineDash([]);
+  classAvgs.forEach((v,i)=>{
+    if(v===null||isNaN(v))return;
+    ctx.fillStyle='#fff';ctx.strokeStyle='#64748B';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(toX(i),toY(v),3,0,Math.PI*2);ctx.fill();ctx.stroke();
+  });
   // 個人折線
   ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.lineJoin='round';
   ctx.beginPath();let first=true;
   data.forEach((d,i)=>{
-    if(d.val===null||isNaN(d.val))return;
+    if(d.val===null||isNaN(d.val)){first=true;return;}
     if(first){ctx.moveTo(toX(i),toY(d.val));first=false;}else ctx.lineTo(toX(i),toY(d.val));
   });
   ctx.stroke();
@@ -4076,9 +4298,29 @@ function totalVals(no,sem,periodKind){
   return vals;
 }
 
+const REPORT_PIXEL_SCALE=2;
+function reportScopeSem(scope){return scope&&scope.mode==='year'?null:scope.sem;}
+function reportAssessmentCount(scope){
+  const sem=reportScopeSem(scope);
+  return Object.keys(_scores).reduce((sum,s)=>sum+(_scores[s]||[]).filter(e=>sem===null||semOf(e.date)===sem).length,0);
+}
+function reportStudentAverages(scope){
+  const sem=reportScopeSem(scope);
+  return _nos.map(no=>{
+    const st=calcStats(totalVals(no,sem,null));
+    return st?{no,avg:st.avg,n:st.n}:null;
+  }).filter(Boolean);
+}
+
 function classSummaryHTML(scope){
   const isYear=scope.mode==='year';
   const sem=isYear?null:scope.sem;
+  const studentAvgs=reportStudentAverages(scope);
+  const studentAvgVals=studentAvgs.map(x=>x.avg);
+  const overall=calcStats(studentAvgVals);
+  const assessmentCount=reportAssessmentCount(scope);
+  const scoreCount=totalVals(null,sem,null).length;
+  const coverage=_nos.length?Math.round(studentAvgs.length/_nos.length*100):0;
   const groups=ALL_GROUPS.filter(g=>groupVals(null,g,sem,null).length>0);
   const items=[];
   if(isYear){
@@ -4105,24 +4347,46 @@ function classSummaryHTML(scope){
 
   let chartImg='';
   if(items.length){
-    const barH=26,gap=8,padT=16,padL=76,padR=50;
-    const chH=items.length*(barH+gap)+padT;
-    const chW=560;
-    const off=document.createElement('canvas');off.width=chW;off.height=chH;
+    const barH=24,gap=9,padT=28,padB=18,padL=94,padR=54;
+    const chH=items.length*(barH+gap)+padT+padB;
+    const chW=640;
+    const off=document.createElement('canvas');off.width=chW*REPORT_PIXEL_SCALE;off.height=chH*REPORT_PIXEL_SCALE;
     const ctx=off.getContext('2d');
+    ctx.setTransform(REPORT_PIXEL_SCALE,0,0,REPORT_PIXEL_SCALE,0,0);
     ctx.fillStyle='#fff';ctx.fillRect(0,0,chW,chH);
     const maxBarW=chW-padL-padR;
+    [0,20,40,60,80,100].forEach(v=>{
+      const x=padL+maxBarW*v/100;
+      ctx.strokeStyle=v===60?'rgba(220,38,38,.35)':'rgba(15,23,42,.08)';
+      ctx.setLineDash(v===60?[4,3]:[]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,padT-10);ctx.lineTo(x,chH-padB+2);ctx.stroke();
+      ctx.setLineDash([]);ctx.fillStyle='#64748B';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(v,x,12);
+    });
     items.forEach((it,i)=>{
       const y=padT+i*(barH+gap);
-      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='right';
+      ctx.fillStyle='#1F2937';ctx.font='600 12px sans-serif';ctx.textAlign='right';
       ctx.fillText(it.label,padL-8,y+barH/2+4);
+      ctx.fillStyle='#F1F5F9';ctx.fillRect(padL,y,maxBarW,barH);
       ctx.fillStyle=it.color;
       ctx.fillRect(padL,y,maxBarW*Math.max(0,Math.min(it.val,100))/100,barH);
-      ctx.fillStyle='#333';ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillStyle='#111827';ctx.font='700 12px sans-serif';ctx.textAlign='left';
       ctx.fillText(it.val,padL+maxBarW*Math.max(0,Math.min(it.val,100))/100+6,y+barH/2+4);
     });
     chartImg=off.toDataURL('image/png');
   }
+
+  const distDefs=[
+    {label:'90–100',test:v=>v>=90,color:'#16A34A'},
+    {label:'80–89',test:v=>v>=80&&v<90,color:'#22C55E'},
+    {label:'70–79',test:v=>v>=70&&v<80,color:'#2563EB'},
+    {label:'60–69',test:v=>v>=60&&v<70,color:'#F59E0B'},
+    {label:'未滿60',test:v=>v<60,color:'#DC2626'}
+  ];
+  const distHtml=studentAvgVals.length?distDefs.map(d=>{
+    const count=studentAvgVals.filter(d.test).length;
+    const pct=Math.round(count/studentAvgVals.length*100);
+    return `<div class="dist-row"><span>${d.label}</span><div class="dist-track"><i style="width:${pct}%;background:${d.color}"></i></div><b>${count}人・${pct}%</b></div>`;
+  }).join(''):'<div class="empty-note">尚無足夠資料</div>';
 
   const rankList=_nos.map(no=>{
     const p1=isYear?calcStats(totalVals(no,'上學期',null)):calcStats(totalVals(no,sem,'一'));
@@ -4144,15 +4408,29 @@ function classSummaryHTML(scope){
   };
   const rankTitle=isYear?'上學期 → 下學期 進退步排行':'一期 → 二期 進退步排行';
   const rankColTitle=isYear?'上→下學期變化':'一期→二期變化';
-  const rankTableHtml=list=>`<table><tr><th>座號</th><th>${rankColTitle}</th></tr>${list.map(r=>`<tr><td>${r.no}號</td><td>${markerHtml(r)}</td></tr>`).join('')}</table>`;
+  const rankTableHtml=(list,offset)=>`<table class="rank-table"><tr><th>序</th><th>座號</th><th>${rankColTitle}</th></tr>${list.map((r,i)=>`<tr><td>${offset+i+1}</td><td>${r.no}號</td><td>${markerHtml(r)}</td></tr>`).join('')}</table>`;
   const half=Math.ceil(rankList.length/2);
   const left=rankList.slice(0,half),right=rankList.slice(half);
 
-  let html=`<h3 class="sec">學科群 ${isYear?'× 學期':'× 期別'} 全班平均</h3>`;
-  html+=chartImg?`<img src="${chartImg}" style="max-width:100%;border:1px solid #eee;border-radius:8px">`:`<div style="color:#999;font-size:12px">尚無資料</div>`;
-  html+=`<h3 class="sec">${rankTitle}</h3>`;
-  html+=`<div style="display:flex;gap:16px;flex-wrap:wrap">${rankTableHtml(left)}${right.length?rankTableHtml(right):''}</div>`;
-  html+=`<div style="page-break-after:always"></div>`;
+  const overallAvg=overall?overall.avg:'—';
+  const overallMed=overall?overall.med:'—';
+  const overallPass=overall?overall.pass+'%':'—';
+  const overallSd=overall?overall.sd:'—';
+  let html=`<section class="class-summary">
+    <div class="summary-head"><div><span class="eyebrow">CLASS OVERVIEW</span><h2>全班學習概況</h2></div><div class="scope-chip">${isYear?'全學年':esc(sem)}</div></div>
+    <div class="kpis">
+      <div class="kpi"><span>有成績學生</span><b>${studentAvgs.length}<small> / ${_nos.length} 人</small></b><em>涵蓋率 ${coverage}%</em></div>
+      <div class="kpi"><span>全班平均</span><b>${overallAvg}</b><em>以每位學生平均計</em></div>
+      <div class="kpi"><span>中位數</span><b>${overallMed}</b><em>離散程度 SD ${overallSd}</em></div>
+      <div class="kpi"><span>及格率</span><b>${overallPass}</b><em>${assessmentCount} 次評量・${scoreCount} 筆分數</em></div>
+    </div>
+    <div class="overview-grid">
+      <div class="report-panel"><h3 class="sec">學生平均分數分布</h3>${distHtml}</div>
+      <div class="report-panel"><h3 class="sec">學科群 ${isYear?'× 學期':'× 期別'} 平均</h3>${chartImg?`<img class="class-bar-chart" src="${chartImg}" alt="全班學科群平均">`:'<div class="empty-note">尚無資料</div>'}</div>
+    </div>
+    <div class="report-panel rank-panel"><h3 class="sec">${rankTitle}</h3><div class="rank-grid">${rankTableHtml(left,0)}${right.length?rankTableHtml(right,half):''}</div></div>
+    <p class="report-note">統計口徑：全班平均與分布先計算每位學生在所選範圍內的平均，再進行班級統計，避免評量次數較多的科目被過度加權。</p>
+  </section><div class="page-break"></div>`;
   return html;
 }
 
@@ -4180,14 +4458,18 @@ function groupValsClassify(no,group,sem,periodKind,exam){
     if(isExamSubj(s)!==exam)return;
     (_scores[s]||[]).forEach(e=>{
       if(!inScope(s,e.date,sem,periodKind))return;
-      const v=e.nos&&e.nos[no];
-      if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      if(no===null){
+        vals=vals.concat(Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v)));
+      }else{
+        const v=e.nos&&e.nos[no];
+        if(v!==null&&v!==undefined&&!isNaN(v))vals.push(v);
+      }
     });
   });
   return vals;
 }
 
-// 雷達／長條圖共用繪製核心：seriesA、seriesB 為兩層對比資料，styleA/styleB={fill,stroke,lw}
+// 雷達／長條圖共用繪製核心：無資料保持空白，不再誤畫成 0 分。
 function drawRadarCore(ctx,W,H,axes,seriesA,seriesB,styleA,styleB,legendA,legendB){
   if(!axes.length){
     ctx.fillStyle='#999';ctx.font='13px sans-serif';ctx.textAlign='center';
@@ -4199,25 +4481,30 @@ function drawRadarCore(ctx,W,H,axes,seriesA,seriesB,styleA,styleB,legendA,legend
     let y=padT;
     axes.forEach((g,i)=>{
       const maxW=W-padL-padR;
-      const av=seriesA[i]||0,bv=seriesB[i]||0;
+      const av=seriesA[i],bv=seriesB[i];
       ctx.font='11px sans-serif';ctx.fillStyle='#333';ctx.textAlign='right';
       ctx.fillText(g,padL-6,y+barH/2+4);
-      ctx.fillStyle=styleA.stroke;
-      ctx.fillRect(padL,y,maxW*Math.min(Math.max(av,0),100)/100,barH/2-1);
-      ctx.fillStyle=styleB.stroke;
-      ctx.fillRect(padL,y+barH/2+1,maxW*Math.min(Math.max(bv,0),100)/100,barH/2-1);
+      ctx.fillStyle='#F1F5F9';ctx.fillRect(padL,y,maxW,barH);
+      if(av!==null&&av!==undefined&&!isNaN(av)){
+        ctx.fillStyle=styleA.stroke;
+        ctx.fillRect(padL,y,maxW*Math.min(Math.max(av,0),100)/100,barH/2-1);
+      }
+      if(bv!==null&&bv!==undefined&&!isNaN(bv)){
+        ctx.fillStyle=styleB.stroke;
+        ctx.fillRect(padL,y+barH/2+1,maxW*Math.min(Math.max(bv,0),100)/100,barH/2-1);
+      }
       ctx.fillStyle='#666';ctx.textAlign='left';ctx.font='9px sans-serif';
-      ctx.fillText(`${legendA}${seriesA[i]!==null&&seriesA[i]!==undefined?seriesA[i]:'—'}`,padL+maxW+4,y+barH/2-2);
-      ctx.fillText(`${legendB}${seriesB[i]!==null&&seriesB[i]!==undefined?seriesB[i]:'—'}`,padL+maxW+4,y+barH-2);
+      ctx.fillText(`${legendA} ${av!==null&&av!==undefined&&!isNaN(av)?av:'—'}`,padL+maxW+4,y+barH/2-2);
+      ctx.fillText(`${legendB} ${bv!==null&&bv!==undefined&&!isNaN(bv)?bv:'—'}`,padL+maxW+4,y+barH-2);
       y+=barH+gap;
     });
     return;
   }
-  const cx=W/2,cy=H/2-6,R=Math.min(W,H)/2-56;
+  const cx=W/2,cy=H/2-8,R=Math.min(W,H)/2-54;
   const n=axes.length;
   const angleFor=i=>-Math.PI/2+i*(2*Math.PI/n);
-  ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=1;
-  [0.6,0.8,1].forEach(f=>{
+  [0.2,0.4,0.6,0.8,1].forEach(f=>{
+    ctx.strokeStyle=f===1?'rgba(15,23,42,.28)':'rgba(15,23,42,.11)';ctx.lineWidth=f===1?1.2:1;
     ctx.beginPath();
     for(let i=0;i<=n;i++){
       const a=angleFor(i%n),r=R*f;
@@ -4225,38 +4512,60 @@ function drawRadarCore(ctx,W,H,axes,seriesA,seriesB,styleA,styleB,legendA,legend
       if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
     ctx.stroke();
+    ctx.fillStyle='#94A3B8';ctx.font='8px sans-serif';ctx.textAlign='left';
+    ctx.fillText(String(Math.round(f*100)),cx+3,cy-R*f+9);
   });
   for(let i=0;i<n;i++){
     const a=angleFor(i);
     ctx.strokeStyle='rgba(0,0,0,.12)';
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();
-    ctx.fillStyle='#555';ctx.font='11px sans-serif';
-    const lx=cx+Math.cos(a)*(R+14),ly=cy+Math.sin(a)*(R+14);
+    ctx.fillStyle='#334155';ctx.font='600 11px sans-serif';
+    const lx=cx+Math.cos(a)*(R+16),ly=cy+Math.sin(a)*(R+16);
     ctx.textAlign=Math.cos(a)>0.3?'left':Math.cos(a)<-0.3?'right':'center';
     ctx.fillText(axes[i],lx,ly+4);
   }
   const toPt=(vals,i)=>{
-    const v=Math.max(0,Math.min(100,vals[i]||0));
+    const raw=vals[i];
+    if(raw===null||raw===undefined||isNaN(raw))return null;
+    const v=Math.max(0,Math.min(100,raw));
     const a=angleFor(i),r=R*(v/100);
     return [cx+Math.cos(a)*r,cy+Math.sin(a)*r];
   };
-  const drawPoly=(vals,fill,stroke,lw)=>{
-    ctx.beginPath();
-    for(let i=0;i<n;i++){
-      const[x,y]=toPt(vals,i);
-      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  const drawSeries=(vals,style,marker,labelDy)=>{
+    const pts=vals.map((_,i)=>toPt(vals,i));
+    const allPresent=pts.every(Boolean);
+    if(allPresent){
+      ctx.beginPath();
+      pts.forEach((p,i)=>{if(i===0)ctx.moveTo(p[0],p[1]);else ctx.lineTo(p[0],p[1]);});
+      ctx.closePath();ctx.fillStyle=style.fill;ctx.fill();
     }
-    ctx.closePath();
-    ctx.fillStyle=fill;ctx.fill();
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+    ctx.strokeStyle=style.stroke;ctx.lineWidth=style.lw;ctx.setLineDash(style.dash||[]);
+    ctx.beginPath();let started=false;
+    pts.forEach(p=>{
+      if(!p){started=false;return;}
+      if(!started){ctx.moveTo(p[0],p[1]);started=true;}else ctx.lineTo(p[0],p[1]);
+    });
+    if(allPresent)ctx.closePath();
+    ctx.stroke();ctx.setLineDash([]);
+    pts.forEach((p,i)=>{
+      if(!p)return;
+      ctx.fillStyle='#fff';ctx.strokeStyle=style.stroke;ctx.lineWidth=1.8;
+      ctx.beginPath();
+      if(marker==='square')ctx.rect(p[0]-3.5,p[1]-3.5,7,7);else ctx.arc(p[0],p[1],3.8,0,Math.PI*2);
+      ctx.fill();ctx.stroke();
+      ctx.fillStyle=style.stroke;ctx.font='700 9px sans-serif';ctx.textAlign='center';
+      ctx.fillText(String(vals[i]),p[0],p[1]+labelDy);
+    });
   };
-  drawPoly(seriesA,styleA.fill,styleA.stroke,styleA.lw);
-  drawPoly(seriesB,styleB.fill,styleB.stroke,styleB.lw);
-  ctx.font='10px sans-serif';ctx.textAlign='left';
-  ctx.strokeStyle=styleA.stroke;ctx.lineWidth=styleA.lw;ctx.beginPath();ctx.moveTo(W-70,H-18);ctx.lineTo(W-56,H-18);ctx.stroke();
-  ctx.fillStyle='#333';ctx.fillText(legendA,W-54,H-15);
-  ctx.strokeStyle=styleB.stroke;ctx.lineWidth=styleB.lw;ctx.beginPath();ctx.moveTo(W-70,H-6);ctx.lineTo(W-56,H-6);ctx.stroke();
-  ctx.fillStyle='#333';ctx.fillText(legendB,W-54,H-3);
+  drawSeries(seriesB,styleB,'square',13);
+  drawSeries(seriesA,styleA,'circle',-8);
+  const legendY=H-12;
+  const drawLegend=(x,style,label)=>{
+    ctx.strokeStyle=style.stroke;ctx.lineWidth=style.lw;ctx.setLineDash(style.dash||[]);
+    ctx.beginPath();ctx.moveTo(x,legendY-3);ctx.lineTo(x+18,legendY-3);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#334155';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText(label,x+23,legendY);
+  };
+  drawLegend(42,styleA,legendA);drawLegend(W/2+18,styleB,legendB);
 }
 
 // 單一範圍雷達圖：個人 vs 全班（sem=null 代表不分學期；periodKind 為期別內部分期）
@@ -4272,8 +4581,8 @@ function renderRadarTo(ctx,canvasW,canvasH,no,sem,periodKind){
   const myAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,sem,periodKind));return st?st.avg:null;});
   const clsAvgs=axes.map(g=>{const st=calcStats(groupVals(null,g,sem,periodKind));return st?st.avg:null;});
   drawRadarCore(ctx,W,H,axes,myAvgs,clsAvgs,
-    {fill:'rgba(37,99,235,.2)',stroke:'#2563EB',lw:2},
-    {fill:'rgba(107,114,128,.15)',stroke:'rgba(107,114,128,.5)',lw:1.5},
+    {fill:'rgba(37,99,235,.18)',stroke:'#1D4ED8',lw:2.6,dash:[]},
+    {fill:'rgba(107,114,128,.10)',stroke:'#64748B',lw:1.8,dash:[5,4]},
     '個人','全班');
   ctx.restore();
 }
@@ -4291,8 +4600,8 @@ function renderRadarYearTo(ctx,canvasW,canvasH,no){
   const upAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,'上學期',null));return st?st.avg:null;});
   const downAvgs=axes.map(g=>{const st=calcStats(groupVals(no,g,'下學期',null));return st?st.avg:null;});
   drawRadarCore(ctx,W,H,axes,upAvgs,downAvgs,
-    {fill:'rgba(245,158,11,.15)',stroke:'#F59E0B',lw:2},
-    {fill:'rgba(37,99,235,.2)',stroke:'#2563EB',lw:2},
+    {fill:'rgba(245,158,11,.13)',stroke:'#D97706',lw:2.5,dash:[]},
+    {fill:'rgba(37,99,235,.16)',stroke:'#1D4ED8',lw:2.5,dash:[5,4]},
     '上學期','下學期');
   ctx.restore();
 }
@@ -4310,27 +4619,43 @@ function studentReportHTML(no,allSubjs,scope){
   const sem=isYear?null:scope.sem;
   const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>(sem===null||semOf(e.date)===sem)&&e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
   if(!subjs.length)return '';
-  let html=`<div class="stu"><h2>${no}號</h2>`;
+  const myOverall=calcStats(totalVals(no,sem,null));
+  const peerAvgs=_nos.map(n=>calcStats(totalVals(n,sem,null))).filter(Boolean).map(st=>st.avg);
+  const peerOverall=calcStats(peerAvgs);
+  const groupStats=ALL_GROUPS.map(g=>({g,st:calcStats(groupVals(no,g,sem,null))})).filter(x=>x.st);
+  groupStats.sort((a,b)=>b.st.avg-a.st.avg);
+  const bestGroup=groupStats.length?`${groupStats[0].g} ${groupStats[0].st.avg}`:'—';
+  const watchGroup=groupStats.length>1?`${groupStats[groupStats.length-1].g} ${groupStats[groupStats.length-1].st.avg}`:'—';
+  const diffHtml=myOverall&&peerOverall?fmtDiff(myOverall.avg,peerOverall.avg):'—';
+  const scopeText=isYear?'全學年':sem;
+  let html=`<section class="stu">
+    <div class="student-head"><div><span class="eyebrow">STUDENT REPORT</span><h2>${no}號學生成績分析</h2></div><div class="scope-chip">${esc(scopeText)}</div></div>
+    <div class="student-kpis">
+      <div class="mini-kpi"><span>個人平均</span><b>${myOverall?myOverall.avg:'—'}</b><em>${myOverall?myOverall.n:0} 筆成績</em></div>
+      <div class="mini-kpi"><span>全班平均</span><b>${peerOverall?peerOverall.avg:'—'}</b><em>差距 ${diffHtml}</em></div>
+      <div class="mini-kpi"><span>個人及格率</span><b>${myOverall?myOverall.pass+'%':'—'}</b><em>中位數 ${myOverall?myOverall.med:'—'}</em></div>
+      <div class="mini-kpi"><span>學科摘要</span><b class="text-kpi">優勢 ${bestGroup}</b><em>留意 ${watchGroup}</em></div>
+    </div>`;
 
   // 雷達圖
-  html+=`<div class="radars">`;
+  html+=`<h3 class="sec section-title">學科群輪廓</h3><div class="radars">`;
   if(isYear){
-    const off=document.createElement('canvas');off.width=360;off.height=300;
+    const off=document.createElement('canvas');off.width=360*REPORT_PIXEL_SCALE;off.height=300*REPORT_PIXEL_SCALE;
     const ctx=off.getContext('2d');
-    renderRadarYearTo(ctx,360,300,no);
-    html+=`<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:2px">上下學期對照</div><img src="${off.toDataURL('image/png')}" style="width:100%;max-width:280px;border:1px solid #eee;border-radius:8px"></div>`;
+    renderRadarYearTo(ctx,off.width,off.height,no);
+    html+=`<figure class="radar-card"><figcaption>上下學期對照</figcaption><img src="${off.toDataURL('image/png')}" alt="${no}號上下學期雷達圖"></figure>`;
   }else{
     [['第一次段考期','一'],['第二次段考期','二'],['學習總成績',null]].forEach(([title,pk])=>{
-      const off=document.createElement('canvas');off.width=360;off.height=300;
+      const off=document.createElement('canvas');off.width=360*REPORT_PIXEL_SCALE;off.height=300*REPORT_PIXEL_SCALE;
       const ctx=off.getContext('2d');
-      renderRadarTo(ctx,360,300,no,sem,pk);
-      html+=`<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:2px">${title}</div><img src="${off.toDataURL('image/png')}" style="width:100%;max-width:280px;border:1px solid #eee;border-radius:8px"></div>`;
+      renderRadarTo(ctx,off.width,off.height,no,sem,pk);
+      html+=`<figure class="radar-card"><figcaption>${title}</figcaption><img src="${off.toDataURL('image/png')}" alt="${no}號${title}雷達圖"></figure>`;
     });
   }
   html+=`</div>`;
 
   // 折線圖 / 精簡卡片
-  html+=`<div class="charts">`;
+  html+=`<h3 class="sec section-title">各科成績趨勢</h3><div class="charts">`;
   const rows=[];
   subjs.forEach(s=>{
     const entries=(_scores[s]||[]).filter(e=>sem===null||semOf(e.date)===sem);
@@ -4340,42 +4665,44 @@ function studentReportHTML(no,allSubjs,scope){
       const val=e.nos&&e.nos[no];
       const classVals=Object.values(e.nos||{}).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
       const clsAvg=classVals.length?(classVals.reduce((a,b)=>a+b,0)/classVals.length).toFixed(1):'—';
-      html+=`<div style="border:1px solid #ddd;border-radius:6px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px">
-        <div style="font-weight:700;color:${color}">${s}</div>
+      html+=`<div class="single-score">
+        <div style="font-weight:700;color:${color}">${esc(s)}</div>
         <div style="font-size:28px;font-weight:700;margin:6px 0">${val!==undefined&&val!==null?val:'—'}</div>
-        <div style="font-size:11px;color:#999">僅 1 筆・全班平均 ${clsAvg}</div>
+        <div style="font-size:11px;color:#64748B">僅 1 筆・全班平均 ${clsAvg}・差距 ${val!==undefined&&val!==null&&clsAvg!=='—'?fmtDiff(Number(val),Number(clsAvg)):'—'}</div>
       </div>`;
     }else if(entries.length>1){
-      const off=document.createElement('canvas');off.width=400;off.height=220;
+      const off=document.createElement('canvas');off.width=500*REPORT_PIXEL_SCALE;off.height=240*REPORT_PIXEL_SCALE;
       const ctx=off.getContext('2d');
-      renderChartTo(ctx,400,220,no,s,'#fff',sem);
-      html+=`<img src="${off.toDataURL('image/png')}" alt="${s}">`;
+      renderChartTo(ctx,off.width,off.height,no,s,'#fff',sem);
+      html+=`<figure class="chart-card"><img src="${off.toDataURL('image/png')}" alt="${esc(s)}成績趨勢"></figure>`;
     }
     const vals=entries.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
     const st=calcStats(vals);
-    if(st)rows.push(`<tr><td>${s}</td><td>${st.avg}</td><td>${st.sd}</td><td>${st.med}</td></tr>`);
+    const clsVals=entries.flatMap(e=>Object.values(e.nos||{})).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+    const clsSt=calcStats(clsVals);
+    if(st)rows.push(`<tr><td>${esc(s)}</td><td>${st.n}</td><td><b>${st.avg}</b></td><td>${clsSt?clsSt.avg:'—'}</td><td>${clsSt?fmtDiff(st.avg,clsSt.avg):'—'}</td><td>${st.sd}</td><td>${st.med}</td><td>${st.pass}%</td></tr>`);
   });
-  html+=`</div><table><tr><th>科目</th><th>平均</th><th>標準差</th><th>中位數</th></tr>${rows.join('')}</table>`;
+  html+=`</div><div class="table-wrap"><table class="subject-table"><tr><th>科目</th><th>次數</th><th>個人平均</th><th>全班平均</th><th>差距</th><th>標準差</th><th>中位數</th><th>及格率</th></tr>${rows.join('')}</table></div>`;
 
   if(isYear){
     // 學期對照表
     const groups=ALL_GROUPS.filter(g=>groupVals(null,g,'上學期',null).length>0||groupVals(null,g,'下學期',null).length>0);
     if(groups.length){
-      let sHtml=`<h3 class="sec">學期對照</h3><table><tr><th>學科群</th><th>上學期平均</th><th>下學期平均</th><th>差距</th></tr>`;
+      let sHtml=`<h3 class="sec section-title">學期對照</h3><div class="table-wrap"><table><tr><th>學科群</th><th>上學期平均</th><th>下學期平均</th><th>差距</th></tr>`;
       groups.forEach(g=>{
         const upSt=calcStats(groupVals(no,g,'上學期',null));
         const downSt=calcStats(groupVals(no,g,'下學期',null));
         const uAvg=upSt?upSt.avg:null,dAvg=downSt?downSt.avg:null;
         sHtml+=`<tr><td>${g}</td><td>${uAvg!==null?uAvg:'—'}</td><td>${dAvg!==null?dAvg:'—'}</td><td>${fmtDiff(dAvg,uAvg)}</td></tr>`;
       });
-      sHtml+='</table>';
+      sHtml+='</table></div>';
       html+=sHtml;
     }
   }else{
     // 三期統計表
     const groups=ALL_GROUPS.filter(g=>groupVals(null,g,sem,null).length>0);
     if(groups.length){
-      let pHtml=`<h3 class="sec">三期統計</h3><table><tr><th>期別</th>${groups.map(g=>`<th>${g}</th>`).join('')}</tr>`;
+      let pHtml=`<h3 class="sec section-title">三期統計</h3><div class="table-wrap"><table><tr><th>期別</th>${groups.map(g=>`<th>${g}</th>`).join('')}</tr>`;
       [['第一次段考期','一'],['第二次段考期','二'],['學習總成績',null]].forEach(([title,pk])=>{
         const cells=groups.map(g=>{
           const st=calcStats(groupVals(no,g,sem,pk));
@@ -4383,7 +4710,7 @@ function studentReportHTML(no,allSubjs,scope){
         }).join('');
         pHtml+=`<tr><td>${title}</td>${cells}</tr>`;
       });
-      pHtml+='</table>';
+      pHtml+='</table></div>';
       html+=pHtml;
     }
 
@@ -4401,56 +4728,276 @@ function studentReportHTML(no,allSubjs,scope){
       });
     });
     if(cRows){
-      html+=`<h3 class="sec">平時 vs 段考對照</h3><table><tr><th>學科期別</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>${cRows}</table>`;
+      html+=`<h3 class="sec section-title">平時 vs 段考對照</h3><div class="table-wrap"><table><tr><th>學科期別</th><th>平時平均</th><th>段考平均</th><th>差距</th></tr>${cRows}</table></div>`;
     }
   }
-  html+='</div>';
+  html+='</section>';
   return html;
 }
 
-function pickReportScope(){
-  const ans=prompt('報告範圍：輸入 1=上學期　2=下學期　3=全學年（預設）','3');
-  if(ans===null)return null;
-  const v=ans.trim();
-  if(v==='1')return {mode:'single',sem:'上學期'};
-  if(v==='2')return {mode:'single',sem:'下學期'};
-  return {mode:'year'};
+// 家長精簡版：每位學生固定一頁，保留可理解的重點，不放過多統計術語。
+function parentReportHTML(no,allSubjs,scope){
+  const isYear=scope.mode==='year';
+  const sem=isYear?null:scope.sem;
+  const subjs=allSubjs.filter(s=>(_scores[s]||[]).some(e=>(sem===null||semOf(e.date)===sem)&&e.nos&&e.nos[no]!==undefined&&e.nos[no]!==null));
+  if(!subjs.length)return '';
+  const mine=calcStats(totalVals(no,sem,null));
+  const classStudentAvgs=_nos.map(n=>calcStats(totalVals(n,sem,null))).filter(Boolean).map(st=>st.avg);
+  const peers=calcStats(classStudentAvgs);
+  const diff=mine&&peers?+(mine.avg-peers.avg).toFixed(1):null;
+  const groupRows=[];
+  ALL_GROUPS.forEach(g=>{
+    const my=calcStats(groupVals(no,g,sem,null));
+    if(!my)return;
+    const peerGroup=calcStats(_nos.map(n=>calcStats(groupVals(n,g,sem,null))).filter(Boolean).map(st=>st.avg));
+    groupRows.push({g,my,peer:peerGroup,d:peerGroup?+(my.avg-peerGroup.avg).toFixed(1):null});
+  });
+  groupRows.sort((a,b)=>b.my.avg-a.my.avg);
+  const strong=groupRows[0];
+  const watch=groupRows.length>1?groupRows[groupRows.length-1]:groupRows[0];
+  const p1=isYear?calcStats(totalVals(no,'上學期',null)):calcStats(totalVals(no,sem,'一'));
+  const p2=isYear?calcStats(totalVals(no,'下學期',null)):calcStats(totalVals(no,sem,'二'));
+  const trend=p1&&p2?+(p2.avg-p1.avg).toFixed(1):null;
+  const trendLabel=isYear?'上學期到下學期':'第一期到第二期';
+  const recent=[];
+  subjs.forEach(s=>{
+    (_scores[s]||[]).forEach(e=>{
+      if(sem!==null&&semOf(e.date)!==sem)return;
+      const v=e.nos&&e.nos[no];
+      if(v===null||v===undefined||isNaN(v))return;
+      recent.push({s,label:e.label,date:e.date||'',v:Number(v)});
+    });
+  });
+  recent.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const recentHtml=recent.slice(0,6).map(r=>`<div class="recent-score"><span>${esc(r.label||r.s)}</span><b class="${r.v<60?'low':''}">${r.v}</b></div>`).join('');
+  const diffText=diff===null?'資料不足':Math.abs(diff)<1?'與班級平均接近':diff>0?`高於班級平均 ${diff} 分`:`低於班級平均 ${Math.abs(diff)} 分`;
+  const trendText=trend===null?'前後期資料尚不足':Math.abs(trend)<1?'前後期表現大致持平':trend>0?`${trendLabel}提升 ${trend} 分`:`${trendLabel}下降 ${Math.abs(trend)} 分`;
+  const observation=[
+    `目前整體平均 ${mine?mine.avg:'—'} 分，${diffText}。`,
+    strong&&watch&&strong.g!==watch.g?`相對穩定的學科群為${strong.g}；可多留意${watch.g}的理解與練習。`:'目前各學科群資料仍在累積，可持續觀察。',
+    `${trendText}。`
+  ];
+  const rows=groupRows.map(r=>`<tr><td><b>${esc(r.g)}</b></td><td>${r.my.avg}</td><td>${r.peer?r.peer.avg:'—'}</td><td>${r.d===null?'—':r.d>0?'+'+r.d:r.d}</td><td>${r.my.n}</td></tr>`).join('');
+  const scopeText=isYear?'全學年':sem;
+  return `<section class="stu parent-sheet">
+    <div class="parent-head">
+      <div><span class="eyebrow">VENUS CARD SYSTEM · 家長版學習摘要</span><h2>${esc(curClassName())}・${no}號學生</h2></div>
+      <div class="parent-meta">${esc(scopeText)}<br>${new Date().toLocaleDateString('zh-TW')}<br>v${APP_VERSION}</div>
+    </div>
+    <div class="parent-kpis">
+      <div class="parent-kpi"><span>整體平均</span><b>${mine?mine.avg:'—'}</b><em>${mine?mine.n:0} 筆成績</em></div>
+      <div class="parent-kpi"><span>班級平均</span><b>${peers?peers.avg:'—'}</b><em>${diffText}</em></div>
+      <div class="parent-kpi"><span>及格率</span><b>${mine?mine.pass+'%':'—'}</b><em>60 分以上</em></div>
+      <div class="parent-kpi"><span>前後變化</span><b>${trend===null?'—':trend>0?'+'+trend:trend}</b><em>${trendLabel}</em></div>
+    </div>
+    <div class="parent-grid">
+      <div class="parent-panel"><h3>老師快速摘要</h3><ul>${observation.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div class="parent-panel"><h3>最近 6 筆評量</h3><div class="recent-grid">${recentHtml||'<div class="empty-note">尚無資料</div>'}</div></div>
+    </div>
+    <h3 class="parent-sec">學科群表現</h3>
+    <table class="parent-table"><tr><th>學科群</th><th>個人平均</th><th>班級平均</th><th>差距</th><th>資料筆數</th></tr>${rows}</table>
+    <div class="parent-focus">
+      <h3>親師合作重點</h3>
+      <div class="focus-grid"><div><b>保持優勢</b><span>${strong?esc(strong.g)+'（平均 '+strong.my.avg+'）':'持續累積資料'}</span></div><div><b>優先留意</b><span>${watch?esc(watch.g)+'（平均 '+watch.my.avg+'）':'持續觀察'}</span></div><div><b>本期方向</b><span>${trend!==null&&trend<0?'先穩定基本題與訂正':'維持規律複習與訂正'}</span></div></div>
+    </div>
+    <div class="parent-note"><b>教師補充：</b><div></div><div></div></div>
+    <div class="signature-row"><span>家長簽名：</span><i></i><span>日期：</span><i class="short"></i></div>
+    <p class="parent-foot">說明：班級平均以每位學生的平均分數計算；缺席與無資料不會當作 0 分。</p>
+  </section>`;
 }
 
+let _reportTargetNo=null;
 function exportClassReport(targetNo){
   const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
   if(!allSubjs.length){toast('尚無成績資料');return;}
-  const scope=pickReportScope();
-  if(!scope){toast('已取消');return;}
+  const single=targetNo!==undefined&&targetNo!==null&&targetNo!=='';
+  _reportTargetNo=single?parseInt(targetNo):null;
+  const label=document.getElementById('report-target-label');
+  if(label)label.textContent=single?`${_reportTargetNo}號 個人成績報告`:`${curClassName()} 全班成績報告`;
+  document.getElementById('report-scope-modal').classList.add('show');
+}
+
+function confirmReportExport(){
+  const scopeVal=document.querySelector('input[name="report-scope"]:checked')?.value||'year';
+  const colorMode=document.querySelector('input[name="report-color"]:checked')?.value||'color';
+  const reportType=document.querySelector('input[name="report-type"]:checked')?.value||'full';
+  const scope=scopeVal==='up'?{mode:'single',sem:'上學期'}:scopeVal==='down'?{mode:'single',sem:'下學期'}:{mode:'year'};
+  const targetNo=_reportTargetNo;
+  closeModal('report-scope-modal');
+  generateReportWindow(targetNo,scope,colorMode,reportType);
+}
+
+let _reportBuildCancel=false,_reportBuildRun=0,_reportBuildPopup=null;
+function showReportProgress(total,reportType){
+  _reportBuildCancel=false;
+  const modal=document.getElementById('report-progress-modal');
+  const label=document.getElementById('report-progress-label');
+  const fill=document.getElementById('report-progress-fill');
+  const detail=document.getElementById('report-progress-detail');
+  const cancel=document.getElementById('report-cancel-btn');
+  if(label)label.textContent='0%';if(fill)fill.style.width='0%';
+  if(detail)detail.textContent=`準備產生 ${total} 份${reportType==='parent'?'家長精簡':'完整分析'}報告…`;
+  if(cancel){cancel.disabled=false;cancel.textContent='取消產生';cancel.style.opacity='1';}
+  if(modal)modal.classList.add('show');
+}
+function updateReportProgress(done,total,no,w){
+  const pct=total?Math.round(done/total*100):100;
+  const label=document.getElementById('report-progress-label');
+  const fill=document.getElementById('report-progress-fill');
+  const detail=document.getElementById('report-progress-detail');
+  if(label)label.textContent=pct+'%';if(fill)fill.style.width=pct+'%';
+  if(detail)detail.textContent=done>=total?'正在完成 A4 版面…':`已完成 ${done}/${total} 份${no?`（目前 ${no}號）`:''}`;
+  try{
+    const p=w&&w.document.getElementById('popup-progress');
+    const t=w&&w.document.getElementById('popup-progress-text');
+    if(p)p.style.width=pct+'%';if(t)t.textContent=`${pct}%・${done}/${total} 份`;
+  }catch(e){}
+}
+function cancelReportBuild(){
+  _reportBuildCancel=true;
+  const btn=document.getElementById('report-cancel-btn');
+  const detail=document.getElementById('report-progress-detail');
+  if(btn){btn.disabled=true;btn.textContent='正在取消…';btn.style.opacity='.55';}
+  if(detail)detail.textContent='正在安全停止，已完成的暫存內容不會影響資料…';
+}
+function yieldReportUI(){
+  return new Promise(resolve=>{
+    const raf=window.requestAnimationFrame||function(cb){setTimeout(cb,0);};
+    raf(()=>setTimeout(resolve,0));
+  });
+}
+
+async function generateReportWindow(targetNo,scope,colorMode,reportType){
+  const allSubjs=Object.keys(_scores).filter(s=>(_scores[s]||[]).length>0);
+  if(!allSubjs.length){toast('尚無成績資料');return;}
+  reportType=reportType==='parent'?'parent':'full';
+  const runId=++_reportBuildRun;
+  const w=window.open('','_blank');
+  if(!w){toast('請允許彈出視窗');return;}
+  _reportBuildPopup=w;
+  try{
+    w.document.write('<!doctype html><meta charset="utf-8"><title>建立報告中</title><div style="font-family:-apple-system,sans-serif;max-width:520px;margin:18vh auto;padding:32px;color:#334155"><h2>正在整理圖表與 A4 版面…</h2><div style="height:12px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i id="popup-progress" style="display:block;width:0;height:100%;background:#2563eb;transition:width .2s"></i></div><p id="popup-progress-text" style="text-align:center;color:#64748b">0%</p></div>');
+    w.document.close();
+  }catch(e){}
   const scopeLabel=scope.mode==='year'?'全學年':scope.sem;
   const single=targetNo!==undefined&&targetNo!==null&&targetNo!=='';
   const no=single?parseInt(targetNo):null;
   const titleText=single?`${curClassName()} ${no}號 個人成績報告（${scopeLabel}） — ${new Date().toLocaleDateString('zh-TW')}`:`${curClassName()} 全班成績報告（${scopeLabel}） — ${new Date().toLocaleDateString('zh-TW')}`;
-  let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
-    body{font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;padding:16px;color:#222}
-    .stu{margin-bottom:28px;page-break-inside:avoid}
-    .stu h2{font-size:16px;border-bottom:2px solid #333;padding-bottom:4px;margin-bottom:8px}
-    .radars{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:10px}
-    .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
-    .charts img{width:100%;border:1px solid #ddd;border-radius:6px}
-    table{border-collapse:collapse;margin-top:6px;font-size:12px;max-width:520px}
-    td,th{border:1px solid #ccc;padding:6px;text-align:center}
-    h3.sec{font-size:14px;margin:8px 0 3px;color:#555}
-    @media print{.stu{page-break-inside:avoid}button{display:none}}
-  </style></head><body>
-  <button onclick="window.close();setTimeout(()=>history.back(),300)" style="position:fixed;top:calc(8px + env(safe-area-inset-top));left:8px;z-index:99;padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#fff;font-size:14px">← 關閉報告</button>
-  <h1 style="font-size:20px">${titleText}</h1>`;
-  if(!single)html+=classSummaryHTML(scope);
-  if(single){
-    html+=studentReportHTML(no,allSubjs,scope);
-  }else{
-    _nos.forEach(n=>{html+=studentReportHTML(n,allSubjs,scope);});
+  const sem=reportScopeSem(scope);
+  const candidates=single?[no]:[..._nos];
+  const targets=candidates.filter(studentNo=>allSubjs.some(s=>(_scores[s]||[]).some(e=>(sem===null||semOf(e.date)===sem)&&e.nos&&e.nos[studentNo]!==undefined&&e.nos[studentNo]!==null&&!isNaN(e.nos[studentNo]))));
+  if(!targets.length){
+    try{w.close();}catch(e){}
+    toast(`${scopeLabel}沒有可產生報告的成績資料`);
+    return;
   }
-  html+=`<script>window.print()<\/script></body></html>`;
-  const w=window.open('');
-  if(!w){toast('請允許彈出視窗');return;}
-  w.document.write(html);
-  w.document.close();
+  showReportProgress(targets.length,reportType);
+  const bodyClass=(single?'single-report':'full-class')+(reportType==='parent'?' parent-report':'')+(!single&&reportType==='parent'?' parent-batch':'')+(colorMode==='bw'?' report-bw':'');
+  let html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
+    @page{size:A4 portrait;margin:10mm 9mm 11mm}
+    *{box-sizing:border-box}
+    html{background:#E2E8F0}
+    body{margin:0;font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;color:#172033;background:#E2E8F0;font-size:11px;line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .report-shell{width:210mm;max-width:100%;min-height:297mm;margin:18px auto;padding:12mm 10mm;background:#fff;box-shadow:0 8px 30px rgba(15,23,42,.18)}
+    .report-actions{position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;z-index:99;display:flex;gap:8px;justify-content:flex-end;pointer-events:none}
+    .report-actions button{pointer-events:auto;padding:9px 14px;border-radius:9px;border:1px solid #CBD5E1;background:#fff;color:#172033;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(15,23,42,.15)}
+    .report-actions .print{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+    .report-title{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:3px solid #1D4ED8;padding-bottom:10px;margin-bottom:14px}
+    .report-title h1{font-size:21px;line-height:1.2;margin:2px 0 0;letter-spacing:.2px}
+    .report-meta{text-align:right;color:#64748B;font-size:10px;white-space:nowrap}
+    .eyebrow{display:block;color:#2563EB;font-size:8.5px;font-weight:900;letter-spacing:1.8px}
+    .summary-head,.student-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
+    .summary-head h2,.student-head h2{font-size:18px;margin:2px 0 0;color:#0F172A}
+    .scope-chip{display:inline-flex;align-items:center;justify-content:center;padding:5px 10px;border-radius:999px;background:#EFF6FF;border:1px solid #BFDBFE;color:#1D4ED8;font-size:10px;font-weight:800;white-space:nowrap}
+    .kpis,.student-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+    .kpi,.mini-kpi{border:1px solid #DCE4EE;border-radius:9px;padding:9px 10px;background:linear-gradient(180deg,#FFF,#F8FAFC);min-height:66px}
+    .kpi span,.mini-kpi span{display:block;color:#64748B;font-size:9px;font-weight:700;margin-bottom:2px}
+    .kpi b,.mini-kpi b{display:block;font-size:21px;line-height:1.15;color:#0F172A}
+    .kpi b small{font-size:10px;color:#64748B;font-weight:700}
+    .kpi em,.mini-kpi em{display:block;color:#64748B;font-size:8.5px;font-style:normal;margin-top:3px}
+    .mini-kpi .text-kpi{font-size:11px;line-height:1.35;margin-top:5px}
+    .overview-grid{display:grid;grid-template-columns:minmax(220px,.85fr) minmax(320px,1.35fr);gap:10px;margin-bottom:10px}
+    .report-panel{border:1px solid #DCE4EE;border-radius:9px;padding:10px;background:#fff;break-inside:avoid}
+    h3.sec{font-size:12px;margin:0 0 7px;color:#334155}
+    .section-title{border-left:4px solid #2563EB;padding-left:7px;margin:13px 0 7px!important}
+    .dist-row{display:grid;grid-template-columns:46px 1fr 60px;align-items:center;gap:6px;margin:6px 0;font-size:9.5px}
+    .dist-row b{text-align:right;font-size:9px;color:#475569}.dist-track{height:8px;border-radius:99px;background:#E2E8F0;overflow:hidden}.dist-track i{display:block;height:100%;border-radius:99px}
+    .class-bar-chart{display:block;width:100%;height:auto;max-height:92mm;object-fit:contain}
+    .rank-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rank-panel{margin-top:10px}
+    .report-note{font-size:8.5px;color:#64748B;margin:8px 2px 0}
+    .empty-note{padding:18px;text-align:center;color:#94A3B8}
+    .page-break{break-after:page;page-break-after:always;height:0}
+    .stu{margin:0 0 18px;break-inside:auto}
+    .full-class .stu{break-before:page;page-break-before:always}
+    .radars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:9px;align-items:start}
+    .radar-card,.chart-card{margin:0;border:1px solid #DCE4EE;border-radius:9px;padding:6px;background:#fff;break-inside:avoid;page-break-inside:avoid}
+    .radar-card{max-width:92mm}.radar-card figcaption{text-align:center;font-size:10px;font-weight:800;color:#334155;margin:1px 0 2px}
+    .radar-card img,.chart-card img{display:block;width:100%;height:auto}
+    .charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:9px}
+    .single-score{border:1px solid #DCE4EE;border-radius:9px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:82px;break-inside:avoid}
+    .table-wrap{width:100%;overflow:hidden;break-inside:avoid;page-break-inside:avoid;margin-bottom:9px}
+    table{width:100%;border-collapse:collapse;font-size:9px;background:#fff}
+    th{background:#EAF0F7;color:#334155;font-weight:800}
+    td,th{border:1px solid #CBD5E1;padding:4px 5px;text-align:center;vertical-align:middle}
+    tr:nth-child(even) td{background:#F8FAFC}
+    .subject-table td:first-child,.subject-table th:first-child{text-align:left;font-weight:700}
+    .rank-table{font-size:8.8px}.rank-table th:first-child,.rank-table td:first-child{width:28px;color:#64748B}
+    .parent-sheet{min-height:255mm;display:flex;flex-direction:column;gap:10px;margin:0;padding:0}
+    .parent-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:3px solid #1D4ED8;padding-bottom:10px}
+    .parent-head h2{font-size:22px;margin:2px 0 0;color:#0F172A}.parent-meta{text-align:right;color:#64748B;font-size:10px;line-height:1.65}
+    .parent-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .parent-kpi{border:1px solid #CBD5E1;border-radius:9px;padding:9px;background:#F8FAFC;min-height:68px}
+    .parent-kpi span{display:block;color:#64748B;font-size:9px;font-weight:700}.parent-kpi b{display:block;font-size:22px;color:#0F172A;line-height:1.2}.parent-kpi em{font-style:normal;color:#64748B;font-size:8.5px}
+    .parent-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:9px}.parent-panel{border:1px solid #DCE4EE;border-radius:9px;padding:10px;background:#fff;break-inside:avoid}.parent-panel h3,.parent-sec,.parent-focus h3{font-size:12px;color:#334155;margin:0 0 7px}.parent-panel ul{margin:0;padding-left:17px;line-height:1.75;font-size:10px}
+    .recent-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.recent-score{display:flex;align-items:center;justify-content:space-between;gap:6px;border-bottom:1px dotted #CBD5E1;padding:4px 1px;font-size:9px}.recent-score span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.recent-score b{font-size:12px;color:#1D4ED8}.recent-score b.low{color:#DC2626}
+    .parent-table{font-size:9.5px}.parent-table td,.parent-table th{padding:6px}.parent-table td:first-child{text-align:left}
+    .parent-focus{border:1px solid #BFDBFE;background:#EFF6FF;border-radius:9px;padding:10px}.focus-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.focus-grid div{padding-right:8px;border-right:1px solid #BFDBFE}.focus-grid div:last-child{border-right:none}.focus-grid b,.focus-grid span{display:block}.focus-grid b{font-size:9px;color:#1D4ED8;margin-bottom:2px}.focus-grid span{font-size:10px;color:#334155}
+    .parent-note{border:1px solid #CBD5E1;border-radius:9px;padding:9px;font-size:10px;min-height:44px}.parent-note div{height:13px;border-bottom:1px dotted #CBD5E1}
+    .signature-row{display:flex;align-items:center;gap:7px;margin-top:auto;font-size:10px}.signature-row i{display:block;flex:1;border-bottom:1px solid #64748B;height:14px}.signature-row i.short{max-width:40mm}.parent-foot{font-size:8px;color:#64748B;margin:0}
+    .report-bw{filter:none}.report-bw img{filter:grayscale(1) contrast(1.18)}.report-bw .scope-chip{background:#F1F5F9;border-color:#64748B;color:#111827}.report-bw .eyebrow{color:#111827}.report-bw .report-title,.report-bw .section-title{border-color:#111827}
+    @media(max-width:720px){.report-shell{width:100%;margin:0;padding:64px 14px 28px;box-shadow:none}.kpis,.student-kpis,.parent-kpis{grid-template-columns:1fr 1fr}.overview-grid,.radars,.charts,.parent-grid{grid-template-columns:1fr}.radar-card{max-width:none}.rank-grid{grid-template-columns:1fr}.report-title,.parent-head{align-items:flex-start;flex-direction:column}.report-meta,.parent-meta{text-align:left;white-space:normal}.focus-grid{grid-template-columns:1fr}.focus-grid div{border-right:none;border-bottom:1px solid #BFDBFE;padding:5px 0}}
+    @media print{
+      html,body{background:#fff!important}.report-shell{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.report-actions{display:none!important}
+      .report-title{margin-top:0}.stu,.report-panel,.radar-card,.chart-card,.single-score,.table-wrap{box-shadow:none}
+      .full-class .stu{break-before:page;page-break-before:always}.single-report .stu{break-before:auto;page-break-before:auto}
+      .parent-batch .stu:first-child{break-before:auto;page-break-before:auto}.parent-sheet{min-height:255mm;break-after:page;page-break-after:always}.parent-sheet:last-child{break-after:auto;page-break-after:auto}
+      .page-break{break-after:page;page-break-after:always}
+    }
+  </style></head><body class="${bodyClass}">
+  <div class="report-actions"><button onclick="window.close();setTimeout(()=>history.back(),300)">關閉</button><button class="print" onclick="window.print()">列印／另存 PDF</button></div>
+  <main class="report-shell">`;
+  if(reportType==='full')html+=`<header class="report-title"><div><span class="eyebrow">VENUS CARD SYSTEM · ACADEMIC REPORT</span><h1>${esc(titleText)}</h1></div><div class="report-meta">Venus Card v${APP_VERSION}<br>統計範圍：${esc(scopeLabel)}<br>產生時間：${new Date().toLocaleString('zh-TW',{hour12:false})}</div></header>`;
+  if(!single&&reportType==='full')html+=classSummaryHTML(scope);
+  for(let i=0;i<targets.length;i++){
+    if(runId!==_reportBuildRun){try{w.close();}catch(e){}return;}
+    if(_reportBuildCancel){
+      closeModal('report-progress-modal');
+      try{w.close();}catch(e){}
+      if(_reportBuildPopup===w)_reportBuildPopup=null;
+      toast('已取消產生報告，成績資料沒有變更');
+      return;
+    }
+    const studentNo=targets[i];
+    try{
+      html+=reportType==='parent'?parentReportHTML(studentNo,allSubjs,scope):studentReportHTML(studentNo,allSubjs,scope);
+    }catch(e){
+      closeModal('report-progress-modal');
+      try{w.close();}catch(_){}
+      toast(`產生 ${studentNo}號報告時失敗：${e.message}`,5000);
+      return;
+    }
+    updateReportProgress(i+1,targets.length,studentNo,w);
+    if(i<targets.length-1)await yieldReportUI();
+  }
+  await yieldReportUI();
+  html+=`</main><script>(function(){var done=false;function go(){if(done)return;done=true;setTimeout(function(){window.print()},260)}var imgs=[].slice.call(document.images);if(!imgs.length){go();return}var left=imgs.length;function one(){left--;if(left<=0)go()}imgs.forEach(function(img){if(img.complete)one();else{img.addEventListener('load',one,{once:true});img.addEventListener('error',one,{once:true})}});setTimeout(go,2600)})();<\/script></body></html>`;
+  try{
+    w.document.open();w.document.write(html);w.document.close();
+  }catch(e){closeModal('report-progress-modal');toast('報告視窗建立失敗：'+e.message,4000);try{w.close();}catch(_){}return;}
+  closeModal('report-progress-modal');
+  if(_reportBuildPopup===w)_reportBuildPopup=null;
+  const modeText=reportType==='parent'?'家長精簡報告':colorMode==='bw'?'黑白高對比報告':'彩色高對比報告';
+  toast(`✅ ${modeText}已建立，共 ${targets.length} 份`,3200);
 }
 
 // ══ 複製 AI 報告素材 ══
@@ -4588,12 +5135,15 @@ function activateUpdate(){
   // Service Worker
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').then(reg=>{
-      if(reg.waiting)showUpdateBar(reg.waiting);
+      // 有 skipWaiting，新版通常會自動接管並在 controllerchange 時 reload。
+      // 更新條僅作保險：3.5 秒後仍未自動刷新才顯示（正常情況不會閃出）。
+      const barFallback=w=>{if(!w)return;_waitingWorker=w;setTimeout(()=>{if(!_swRefreshing)showUpdateBar(w);},3500);};
+      if(reg.waiting)barFallback(reg.waiting);
       reg.addEventListener('updatefound',()=>{
         const nw=reg.installing;
         nw.addEventListener('statechange',()=>{
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            showUpdateBar(nw);
+            barFallback(nw);
           }
         });
       });
