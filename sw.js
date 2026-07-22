@@ -1,75 +1,87 @@
-// Venus Card System PWA — v2.2.0
-// 導覽頁採 Network First，確保部署後能立即拿到新版；離線時回退快取。
-const CACHE='venus-card-v2.2.0';
-const APP_SHELL=['./','./index.html'];
+/* Venus Card System Service Worker
+   每次改版：把下面 CACHE_VERSION 升號，
+   瀏覽器才會偵測到 sw.js 有變、觸發更新。
+   策略：
+   - 更新先等待使用者按「立即更新」，避免操作途中突然重載
+   - activate 只清除此 App 的舊快取 + clients.claim（不影響同網域其他 App）
+   - HTML/導覽走「網路優先」→ 線上永遠拿到最新 index.html，離線才回快取
+   - 其他同源資源走「快取優先、背景更新」
+   - 跨來源請求（Firebase / gstatic 等）完全不攔截
+*/
+const CACHE_VERSION = 'vcard-v2.2.1';
+const CACHE_NAME = CACHE_VERSION;
+const OWNED_CACHE_PREFIXES = ['vcard-', 'venus-card-'];
+const CORE = ['./', './index.html', './manifest.json'];
 
-self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)));
-});
-
-self.addEventListener('message',event=>{
-  if(event.data&&event.data.type==='SKIP_WAITING')self.skipWaiting();
-});
-
-self.addEventListener('activate',event=>{
-  event.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>key.startsWith('venus-card-')&&key!==CACHE).map(key=>caches.delete(key))))
-      .then(()=>self.clients.claim())
-  );
-});
-
-function cacheable(response){
-  return response&&(response.ok||response.type==='opaque');
-}
-
-async function networkFirst(request,fallbackUrl){
-  try{
-    const response=await fetch(request);
-    if(cacheable(response)){
-      const cache=await caches.open(CACHE);
-      cache.put(request,response.clone()).catch(()=>{});
+self.addEventListener('install', (e) => {
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE_NAME);
+    // 逐一加入，單一檔案缺失不會讓整批失敗
+    for (const u of CORE) {
+      try { await c.add(new Request(u, { cache: 'reload' })); } catch (_) {}
     }
-    return response;
-  }catch{
-    return (await caches.match(request))||
-      (fallbackUrl?await caches.match(fallbackUrl):null)||
-      new Response('Offline',{status:503,statusText:'Offline'});
-  }
-}
+  })());
+});
 
-async function staleWhileRevalidate(request){
-  const cached=await caches.match(request);
-  const update=fetch(request).then(async response=>{
-    if(cacheable(response)){
-      const cache=await caches.open(CACHE);
-      cache.put(request,response.clone()).catch(()=>{});
-    }
-    return response;
-  }).catch(()=>null);
-  return cached||(await update)||new Response('Offline',{status:503,statusText:'Offline'});
-}
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME && OWNED_CACHE_PREFIXES.some((p) => k.startsWith(p))).map((k) => caches.delete(k)));
+    await self.clients.claim();
+  })());
+});
 
-self.addEventListener('fetch',event=>{
-  const request=event.request;
-  if(request.method!=='GET')return;
-  if(request.cache==='only-if-cached'&&request.mode!=='same-origin')return;
+// index.html 的「立即更新」按鈕會送這個訊息
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
-  const url=new URL(request.url);
-  if(request.mode==='navigate'){
-    event.respondWith(networkFirst(request,'./index.html'));
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+
+  let url;
+  try { url = new URL(req.url); } catch (_) { return; }
+
+  // 跨來源（Firebase、gstatic、CDN 等）一律不攔截，交給瀏覽器原生處理
+  if (url.origin !== self.location.origin) return;
+
+  const isNav =
+    req.mode === 'navigate' ||
+    req.destination === 'document' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('.html');
+
+  if (isNav) {
+    // 網路優先：線上永遠拿最新 index.html；離線才回快取
+    e.respondWith((async () => {
+      try {
+        const freshReq = new Request(req, { cache: 'no-store' });
+        const res = await fetch(freshReq);
+        if (res && res.ok && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      } catch (_) {
+        const cached = await caches.match(req);
+        return cached || (await caches.match('./index.html')) || Response.error();
+      }
+    })());
     return;
   }
 
-  // Firebase、Google API 與試算表資料必須保持最新，不使用舊快取。
-  if(/(^|\.)firebase(app)?\.com$/.test(url.hostname)||
-     url.hostname.includes('firestore.googleapis.com')||
-     url.hostname.includes('googleapis.com')||
-     url.hostname.includes('docs.google.com')){
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // 圖示、啟動畫面、字型與程式庫：立即顯示快取，同時背景更新。
-  event.respondWith(staleWhileRevalidate(request));
+  // 其他同源資源：快取優先，背景補抓更新
+  e.respondWith((async () => {
+    const cached = await caches.match(req);
+    const net = fetch(req).then((res) => {
+      if (res && res.status === 200 && res.type === 'basic') {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => null);
+    return cached || (await net) || new Response('Offline', { status: 503, statusText: 'Offline' });
+  })());
 });

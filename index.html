@@ -790,6 +790,11 @@ tr:hover td{background:var(--accent-light)}
           <span>開啟 Venus OS</span>
           <span class="mi-arr">›</span>
         </div>
+        <div class="more-item" style="padding:14px 16px" onclick="diagExempt()">
+          <span class="mi-icon">🩺</span>
+          <span>抵免診斷</span>
+          <span class="mi-arr">›</span>
+        </div>
       </div>
     </div>
 
@@ -929,19 +934,19 @@ tr:hover td{background:var(--accent-light)}
           <hr class="sep">
           <div style="font-size:12px;color:var(--text4);line-height:1.7">
             班級清單與分組從 Venus OS（作業 App）自動同步。<br>
-            獎卡資料以班級／學年度獨立保存，並具備即時合併與衝突保護。<br>
-            資料使用獎卡專用識別，不影響作業 App。<br>
+            獎卡資料存在此 App 獨立空間，不影響作業 App。<br>
             <span id="app-version-label">版本載入中</span>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">🗂️ 學年度資料與封存</div>
-          <div id="storage-status" style="font-size:12px;color:var(--text3);line-height:1.8;margin-bottom:12px">尚未選擇班級</div>
+          <div class="card-title">🗄️ 學年度資料與封存</div>
+          <div id="sync-data-status" style="font-size:12px;color:var(--text3);line-height:1.75;margin-bottom:12px">尚未載入班級資料</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary btn-sm" onclick="archiveCurrentYear()">封存目前資料</button>
-            <button class="btn-ghost btn-sm" onclick="listCloudArchives()">查看雲端封存</button>
+            <button class="btn-ghost btn-sm" onclick="renderStorageStatus()">更新狀態</button>
+            <button class="btn-orange btn-sm" onclick="diagnoseAndRecoverData()">🛟 資料診斷與救援</button>
+            <button class="btn-primary btn-sm" onclick="archiveAcademicData()">建立封存快照</button>
           </div>
-          <div style="font-size:11px;color:var(--text4);margin-top:9px;line-height:1.6">每個班級、每個學年度分開保存；封存會建立唯讀快照並同時下載 JSON，不會清除目前資料。</div>
+          <div style="font-size:11px;color:var(--text4);margin-top:9px;line-height:1.6">診斷會檢查本機、新版雲端與舊版雲端，找到資料後才詢問是否救援；不會直接清除任何來源。封存會下載完整備份，雲端權限允許時也會保留快照。</div>
         </div>
       </div>
     </div>
@@ -1051,7 +1056,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.2.0';
+const APP_VERSION='2.2.1';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -1079,6 +1084,9 @@ async function idbGet(k){
 async function idbSet(k,v){
   try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readwrite');tx.objectStore(IDB_ST).put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}catch{return false;}
 }
+async function idbKeys(){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_ST,'readonly');const req=tx.objectStore(IDB_ST).getAllKeys();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error);});}catch{return [];}
+}
 
 // ══ localStorage wrapper ══
 const _sl={
@@ -1100,6 +1108,16 @@ async function storeSet(k,v){
   try{safeSet('vc2:'+k,JSON.stringify(v));}catch{}
   await idbSet(k,v);
 }
+async function storeKeys(){
+  const keys=new Set(await idbKeys());
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('vc2:'))keys.add(k.slice(4));
+    }
+  }catch{}
+  return[...keys].map(String);
+}
 
 // ══ Firebase ══
 let _auth=null,_db=null,_fbReady=false;
@@ -1120,7 +1138,7 @@ async function initFirebase(){
     _auth.onAuthStateChanged(user=>{
       firebaseUidRef.current=user?user.uid:null;
       updateLoginUI(user);
-      if(user)loadFromFirestore();else stopCloudListener();
+      if(user)loadFromFirestore();
       const authChecking=document.getElementById('auth-checking');
       if(authChecking)authChecking.style.display='none';
     });
@@ -1151,6 +1169,7 @@ function updateLoginUI(user){
     if(ss)ss.textContent='已登入：'+(user.email||'');
     setSyncDot('ok');
   }else{
+    _syncMode='unknown';
     // 未登入：顯示全螢幕登入頁面
     if(loginScreen)loginScreen.style.display='flex';
     if(userBtn)userBtn.style.display='none';
@@ -1190,6 +1209,7 @@ async function doLogin(){
 async function doLogout(){
   await persistLocal();
   if(_auth&&_auth.currentUser&&navigator.onLine)await doSync(true);
+  stopCloudListener();
   if(_auth)await _auth.signOut();
   toast('已登出');
 }
@@ -1225,37 +1245,17 @@ let _exemptLoadToken=0;
 let _overviewQuery='';
 let _overviewFilter='all';
 let _undoStack=[];
-let _curSchoolYear='';
-let _cloudRevision=0;
-let _cloudUnsub=null;
-let _cloudStorageMode='class-doc';
-let _deletedLogIds={};
-let _deletedScoreIds={};
-let _partUpdated={scores:0,logs:0,fixed:0,settings:0,nos:0};
-let _lastArchiveAt=0;
-const _deviceId=safeGet('vc2:deviceId')||('dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8));
+let _deleted={scores:{},logs:{}};
+let _fieldUpdatedAt={fixed:0,settings:0,nos:0};
+let _revision=0;
+let _syncMode='unknown';
+let _cloudUnsubscribe=null;
+let _listenerToken=0;
+const _deviceId=safeGet('vc2:deviceId')||((self.crypto&&crypto.randomUUID)?crypto.randomUUID():'dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
 safeSet('vc2:deviceId',_deviceId);
 
 function curPfx(){return _curClassId?'vc:'+_curClassId+':':'';}
 function pfxFor(classId){return classId?'vc:'+classId+':':'';}
-function currentAcademicStart(){const d=new Date();return d.getMonth()>=7?d.getFullYear():d.getFullYear()-1;}
-function schoolYearStartForClass(classId){
-  const cls=_classes.find(c=>c.id===classId);
-  const raw=cls&&cls.year!==undefined?parseInt(String(cls.year)):NaN;
-  let start=NaN;
-  if(!isNaN(raw)&&raw>=100&&raw<200)start=raw+1911;
-  else if(!isNaN(raw)&&raw>=2000&&raw<2200)start=raw;
-  if(!Number.isFinite(start)){
-    const remembered=parseInt(safeGet('vc2:classYear:'+classId));
-    start=Number.isFinite(remembered)?remembered:currentAcademicStart();
-  }
-  safeSet('vc2:classYear:'+classId,String(start));
-  return start;
-}
-function schoolYearKeyForClass(classId){const y=schoolYearStartForClass(classId);return `${y}-${y+1}`;}
-function safeDocPart(v){return encodeURIComponent(String(v||'')).replace(/%/g,'~').slice(0,900);}
-function classCloudDocId(classId,schoolYear){return `${safeDocPart(classId)}__${safeDocPart(schoolYear)}`;}
-function localPfxFor(classId,schoolYear){return `vc3:${classId}:${schoolYear}:`;}
 function cloneData(v){return JSON.parse(JSON.stringify(v));}
 function parseStored(v,fallback){
   if(v===undefined||v===null)return fallback;
@@ -1286,346 +1286,506 @@ function mergeScores(){
   });
   return out;
 }
-function tinyHash(value){
-  let h=2166136261;const s=String(value||'');
-  for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+
+function hashText(text){
+  let h=2166136261;
+  for(let i=0;i<text.length;i++){
+    h^=text.charCodeAt(i);
+    h=Math.imul(h,16777619);
+  }
   return (h>>>0).toString(36);
 }
-function scoreEntryId(subj,e){return e&&e.id?String(e.id):'sc-'+tinyHash([subj,e&&e.key,e&&e.label].join('|'));}
-function cleanStampMap(v){
+function scoreIdentity(subj,e){
+  if(e&&e.id)return String(e.id);
+  return 'score-'+hashText([subj,e&&e.key,e&&e.label,e&&e.date].map(v=>String(v||'')).join('|'));
+}
+function logIdentity(l){
+  if(l&&l.id)return String(l.id);
+  return 'log-'+hashText([l&&l.t,l&&l.no,l&&l.k,l&&l.v,l&&l.c,l&&l.note].map(v=>String(v||'')).join('|'));
+}
+function cleanClockMap(v){
   const out={};
-  if(Array.isArray(v)){v.forEach(id=>{if(id!==undefined&&id!==null)out[String(id)]=1;});return out;}
-  if(!v||typeof v!=='object')return out;
-  Object.keys(v).forEach(k=>{const n=Number(v[k]);if(Number.isFinite(n)&&n>0)out[String(k)]=n;});
+  if(v&&typeof v==='object')Object.keys(v).forEach(k=>{const n=Number(v[k]);if(n>0)out[k]=n;});
   return out;
 }
-function normalizePartUpdated(v,fallback){
-  const src=v&&typeof v==='object'?v:{};const out={};
-  ['scores','logs','fixed','settings','nos'].forEach(k=>{out[k]=Number(src[k])||fallback||0;});
-  return out;
-}
-function normalizeSnapshot(raw){
-  const src=raw&&typeof raw==='object'?raw:{};
-  const updatedAt=Number(src.updatedAt)||0;
-  const partUpdated=normalizePartUpdated(src.partUpdated,updatedAt);
-  const deviceId=String(src.deviceId||'');
-  const scores={};
-  Object.keys(src.scores&&typeof src.scores==='object'?src.scores:{}).forEach(subj=>{
-    scores[subj]=(Array.isArray(src.scores[subj])?src.scores[subj]:[]).map(item=>{
-      const e=cloneData(item||{});
-      e.id=scoreEntryId(subj,e);e.m=Number(e.m)||partUpdated.scores||updatedAt||1;e.d=String(e.d||deviceId);
-      return e;
+function ensureDataIdentity(stamp){
+  const ts=Number(stamp)||_dataUpdatedAt||Date.now();
+  Object.keys(_scores||{}).forEach(subj=>{
+    (_scores[subj]||[]).forEach(e=>{
+      e.id=scoreIdentity(subj,e);
+      if(!Number(e._updatedAt))e._updatedAt=ts;
     });
   });
-  const logs=(Array.isArray(src.logs)?src.logs:[]).map(item=>{
-    const l=cloneData(item||{});l.id=String(l.id||('lg-'+tinyHash(JSON.stringify([l.t,l.no,l.k,l.v,l.c,l.note]))));
-    l.m=Number(l.m)||partUpdated.logs||updatedAt||1;l.d=String(l.d||deviceId);return l;
+  (_logs||[]).forEach(l=>{
+    l.id=logIdentity(l);
+    if(!Number(l._updatedAt))l._updatedAt=ts;
   });
-  const fixed=src.fixed&&typeof src.fixed==='object'?cloneData(src.fixed):{cadre:{},toilet:[]};
-  if(Array.isArray(fixed.cadre)){const o={};fixed.cadre.forEach(n=>o[n]=1);fixed.cadre=o;}
-  if(!fixed.cadre||typeof fixed.cadre!=='object')fixed.cadre={};
-  if(!Array.isArray(fixed.toilet))fixed.toilet=[];
-  return{
-    schema:3,scores,logs,fixed,
-    settings:{threshold:300,...cloneData(src.settings&&typeof src.settings==='object'?src.settings:{})},
-    nos:Array.isArray(src.nos)?src.nos.map(Number).filter(n=>Number.isInteger(n)&&n>0).sort((a,b)=>a-b):[],
-    deletedLogIds:cleanStampMap(src.deletedLogIds),deletedScoreIds:cleanStampMap(src.deletedScoreIds),
-    partUpdated,updatedAt,revision:Number(src.revision)||0,deviceId,
-    classId:String(src.classId||''),schoolYear:String(src.schoolYear||''),lastArchiveAt:Number(src.lastArchiveAt)||0,
-    lastSyncedAt:Number(src.lastSyncedAt)||0
+}
+function markScoreDeleted(subj,entry,stamp){
+  if(!entry)return;
+  const ts=Number(stamp)||Date.now();
+  const id=scoreIdentity(subj,entry);
+  _deleted.scores[id]=Math.max(Number(_deleted.scores[id])||0,ts);
+}
+function markLogsDeleted(items,stamp){
+  const ts=Number(stamp)||Date.now();
+  (items||[]).forEach(l=>{
+    const id=logIdentity(l);
+    _deleted.logs[id]=Math.max(Number(_deleted.logs[id])||0,ts);
+  });
+}
+function replaceAllScores(nextScores){
+  const stamp=Date.now();
+  ensureDataIdentity(_dataUpdatedAt||stamp);
+  const previous=flattenScores(_scores);
+  const bySignature=new Map();
+  previous.forEach(({subj,item})=>bySignature.set([subj,item.key||'',item.label||'',item.date||''].join('|'),item.id));
+  const keep=new Set();
+  const normalized={};
+  Object.keys(nextScores||{}).forEach(subj=>{
+    normalized[subj]=(Array.isArray(nextScores[subj])?nextScores[subj]:[]).map(raw=>{
+      const item=cloneData(raw||{});
+      const sig=[subj,item.key||'',item.label||'',item.date||''].join('|');
+      item.id=item.id||bySignature.get(sig)||scoreIdentity(subj,item);
+      item._updatedAt=Math.max(stamp,(Number(_deleted.scores[item.id])||0)+1);keep.add(String(item.id));
+      return item;
+    });
+  });
+  previous.forEach(({subj,item},id)=>{if(!keep.has(String(id)))markScoreDeleted(subj,item,stamp);});
+  _scores=normalized;
+}
+function replaceCurrentWithSnapshot(raw){
+  const stamp=Date.now();
+  const before=normalizeSnapshot(currentSnapshot(),_dataUpdatedAt);
+  const target=normalizeSnapshot(raw,stamp);
+  const nextDeleted={
+    scores:mergeDeleted(before.deleted.scores,target.deleted.scores),
+    logs:mergeDeleted(before.deleted.logs,target.deleted.logs)
   };
+  const targetScoreIds=new Set();
+  Object.keys(target.scores).forEach(subj=>target.scores[subj].forEach(e=>{e.id=scoreIdentity(subj,e);e._updatedAt=Math.max(stamp,(Number(nextDeleted.scores[e.id])||0)+1);targetScoreIds.add(e.id);}));
+  flattenScores(before.scores).forEach(({item},id)=>{if(!targetScoreIds.has(id))nextDeleted.scores[id]=stamp;});
+  const targetLogIds=new Set();
+  target.logs.forEach(l=>{l.id=logIdentity(l);l._updatedAt=Math.max(stamp,(Number(nextDeleted.logs[l.id])||0)+1);targetLogIds.add(l.id);});
+  before.logs.forEach(l=>{const id=logIdentity(l);if(!targetLogIds.has(id))nextDeleted.logs[id]=stamp;});
+  target.deleted=nextDeleted;
+  target.fieldUpdatedAt={fixed:stamp,settings:stamp,nos:stamp};
+  target.updatedAt=stamp;
+  target.revision=Math.max(before.revision,target.revision);
+  applySnapshotToState(target,true);
 }
-function mergeStampMaps(a,b){
-  const out=cleanStampMap(a);const bb=cleanStampMap(b);
-  Object.keys(bb).forEach(k=>{out[k]=Math.max(Number(out[k])||0,Number(bb[k])||0);});return out;
-}
-function newerRecord(a,b){
-  if(!a)return b;if(!b)return a;
-  const am=Number(a.m)||0,bm=Number(b.m)||0;
-  if(am!==bm)return am>bm?a:b;
-  const ad=String(a.d||''),bd=String(b.d||'');
-  if(ad!==bd)return ad>bd?a:b;
-  return JSON.stringify(a)>=JSON.stringify(b)?a:b;
-}
-function choosePart(a,b,name,fallback){
-  const at=Number(a.partUpdated[name])||0,bt=Number(b.partUpdated[name])||0;
-  if(at!==bt)return cloneData(at>bt?a[name]:b[name]);
-  const av=JSON.stringify(a[name]),bv=JSON.stringify(b[name]);
-  if(av===bv)return cloneData(a[name]);
-  return cloneData(String(a.deviceId||'')>=String(b.deviceId||'')?a[name]:b[name]);
-}
-function mergeSnapshots(localRaw,cloudRaw){
-  const a=normalizeSnapshot(localRaw),b=normalizeSnapshot(cloudRaw);
-  const deletedLogIds=mergeStampMaps(a.deletedLogIds,b.deletedLogIds);
-  const deletedScoreIds=mergeStampMaps(a.deletedScoreIds,b.deletedScoreIds);
-  const logMap=new Map();
-  [...a.logs,...b.logs].forEach(l=>logMap.set(String(l.id),newerRecord(logMap.get(String(l.id)),l)));
-  const logs=[...logMap.values()].filter(l=>(Number(deletedLogIds[String(l.id)])||0)<(Number(l.m)||0));
-  logs.sort((x,y)=>(Number(x.m)||0)-(Number(y.m)||0));
-  const scoreMap=new Map();
-  function addScores(s){Object.keys(s.scores).forEach(subj=>s.scores[subj].forEach(e=>{
-    const id=String(e.id);const rec={subj,e};const old=scoreMap.get(id);
-    scoreMap.set(id,!old||newerRecord(old.e,e)===e?rec:old);
-  }));}
-  addScores(a);addScores(b);
-  const scores={};
-  scoreMap.forEach(({subj,e},id)=>{
-    if((Number(deletedScoreIds[id])||0)>=(Number(e.m)||0))return;
-    if(!scores[subj])scores[subj]=[];scores[subj].push(e);
+function normalizeSnapshot(raw,fallbackStamp){
+  const src=raw&&typeof raw==='object'?cloneData(raw):{};
+  const stamp=Number(src.updatedAt)||Number(fallbackStamp)||0;
+  const out={
+    scores:src.scores&&typeof src.scores==='object'?src.scores:{},
+    logs:Array.isArray(src.logs)?src.logs:[],
+    fixed:src.fixed&&typeof src.fixed==='object'?src.fixed:{cadre:{},toilet:[]},
+    settings:{threshold:300,...(src.settings&&typeof src.settings==='object'?src.settings:{})},
+    nos:Array.isArray(src.nos)?src.nos.map(Number).filter(n=>Number.isInteger(n)&&n>0).sort((a,b)=>a-b):[],
+    deleted:{scores:cleanClockMap(src.deleted&&src.deleted.scores),logs:cleanClockMap(src.deleted&&src.deleted.logs)},
+    fieldUpdatedAt:{
+      fixed:src.fieldUpdatedAt&&Number.isFinite(Number(src.fieldUpdatedAt.fixed))?Number(src.fieldUpdatedAt.fixed):stamp,
+      settings:src.fieldUpdatedAt&&Number.isFinite(Number(src.fieldUpdatedAt.settings))?Number(src.fieldUpdatedAt.settings):stamp,
+      nos:src.fieldUpdatedAt&&Number.isFinite(Number(src.fieldUpdatedAt.nos))?Number(src.fieldUpdatedAt.nos):stamp
+    },
+    updatedAt:stamp,
+    lastSyncedAt:Number(src.lastSyncedAt)||0,
+    revision:Number(src.revision)||0
+  };
+  Object.keys(out.scores).forEach(subj=>{
+    out.scores[subj]=(Array.isArray(out.scores[subj])?out.scores[subj]:[]).map(e=>{
+      const item=e&&typeof e==='object'?e:{};
+      item.id=scoreIdentity(subj,item);
+      if(!Number(item._updatedAt))item._updatedAt=stamp||1;
+      return item;
+    });
   });
-  Object.keys(scores).forEach(subj=>scores[subj].sort((x,y)=>String(x.date||'').localeCompare(String(y.date||''))||String(x.label||'').localeCompare(String(y.label||''))));
-  const partUpdated={};['scores','logs','fixed','settings','nos'].forEach(k=>partUpdated[k]=Math.max(Number(a.partUpdated[k])||0,Number(b.partUpdated[k])||0));
+  out.logs=out.logs.map(l=>{
+    const item=l&&typeof l==='object'?l:{};
+    item.id=logIdentity(item);
+    if(!Number(item._updatedAt))item._updatedAt=stamp||1;
+    return item;
+  });
+  if(Array.isArray(out.fixed.cadre)){const o={};out.fixed.cadre.forEach(n=>o[n]=1);out.fixed.cadre=o;}
+  if(!out.fixed.cadre||typeof out.fixed.cadre!=='object')out.fixed.cadre={};
+  if(!Array.isArray(out.fixed.toilet))out.fixed.toilet=[];
+  return out;
+}
+function mergeDeleted(a,b){
+  const out={...cleanClockMap(a)};
+  Object.entries(cleanClockMap(b)).forEach(([id,ts])=>{out[id]=Math.max(Number(out[id])||0,ts);});
+  return out;
+}
+function flattenScores(scores){
+  const map=new Map();
+  Object.keys(scores||{}).forEach(subj=>{
+    (scores[subj]||[]).forEach(e=>{
+      const item=cloneData(e);item.id=scoreIdentity(subj,item);
+      const prev=map.get(item.id);
+      if(!prev||Number(item._updatedAt)>=Number(prev.item._updatedAt))map.set(item.id,{subj,item});
+    });
+  });
+  return map;
+}
+function mergeScoreEntities(local,remote,deleted){
+  const map=flattenScores(remote);
+  flattenScores(local).forEach((v,id)=>{
+    const prev=map.get(id);
+    if(!prev||Number(v.item._updatedAt)>=Number(prev.item._updatedAt))map.set(id,v);
+  });
+  const out={};
+  map.forEach(({subj,item},id)=>{
+    if(Number(item._updatedAt)>(Number(deleted[id])||0)){
+      if(!out[subj])out[subj]=[];
+      out[subj].push(item);
+    }
+  });
+  Object.keys(out).forEach(subj=>out[subj].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.label||'').localeCompare(String(b.label||''))));
+  return out;
+}
+function mergeLogEntities(local,remote,deleted){
+  const map=new Map();
+  [...(remote||[]),...(local||[])].forEach(l=>{
+    const item=cloneData(l);item.id=logIdentity(item);
+    const prev=map.get(item.id);
+    if(!prev||Number(item._updatedAt)>=Number(prev._updatedAt))map.set(item.id,item);
+  });
+  return [...map.values()].filter(item=>Number(item._updatedAt)>(Number(deleted[item.id])||0)).sort((a,b)=>Number(a._updatedAt)-Number(b._updatedAt)||String(a.id).localeCompare(String(b.id)));
+}
+function mergeSnapshots(localRaw,remoteRaw){
+  const local=normalizeSnapshot(localRaw,localRaw&&localRaw.updatedAt);
+  const remote=normalizeSnapshot(remoteRaw,remoteRaw&&remoteRaw.updatedAt);
+  const deleted={
+    scores:mergeDeleted(local.deleted.scores,remote.deleted.scores),
+    logs:mergeDeleted(local.deleted.logs,remote.deleted.logs)
+  };
+  const pickField=name=>Number(local.fieldUpdatedAt[name])>=Number(remote.fieldUpdatedAt[name])?cloneData(local[name]):cloneData(remote[name]);
   return normalizeSnapshot({
-    schema:3,scores,logs,deletedLogIds,deletedScoreIds,partUpdated,
-    fixed:choosePart(a,b,'fixed',{cadre:{},toilet:[]}),settings:choosePart(a,b,'settings',{threshold:300}),nos:choosePart(a,b,'nos',[]),
-    updatedAt:Math.max(a.updatedAt,b.updatedAt,...Object.values(partUpdated)),revision:Math.max(a.revision,b.revision),deviceId:_deviceId,
-    classId:a.classId||b.classId,schoolYear:a.schoolYear||b.schoolYear,lastArchiveAt:Math.max(a.lastArchiveAt,b.lastArchiveAt),
-    lastSyncedAt:Math.max(a.lastSyncedAt,b.lastSyncedAt)
+    scores:mergeScoreEntities(local.scores,remote.scores,deleted.scores),
+    logs:mergeLogEntities(local.logs,remote.logs,deleted.logs),
+    fixed:pickField('fixed'),settings:pickField('settings'),nos:pickField('nos'),deleted,
+    fieldUpdatedAt:{
+      fixed:Math.max(local.fieldUpdatedAt.fixed,remote.fieldUpdatedAt.fixed),
+      settings:Math.max(local.fieldUpdatedAt.settings,remote.fieldUpdatedAt.settings),
+      nos:Math.max(local.fieldUpdatedAt.nos,remote.fieldUpdatedAt.nos)
+    },
+    updatedAt:Math.max(local.updatedAt,remote.updatedAt),
+    lastSyncedAt:Math.max(local.lastSyncedAt,remote.lastSyncedAt),
+    revision:Math.max(local.revision,remote.revision)
   });
 }
-function snapshotMeaningful(s){const n=normalizeSnapshot(s);return Object.keys(n.scores).length>0||n.logs.length>0||n.nos.length>0||Object.keys(n.fixed.cadre||{}).length>0||n.fixed.toilet.length>0;}
-function touchPart(part,stamp){
-  const t=Number(stamp)||Date.now();
-  if(part==='all')Object.keys(_partUpdated).forEach(k=>_partUpdated[k]=t);
-  else if(_partUpdated[part]!==undefined)_partUpdated[part]=t;
-  _dataUpdatedAt=Math.max(_dataUpdatedAt,t);
-}
-function markLogsDeleted(records,stamp){
-  const t=Number(stamp)||Date.now();
-  (Array.isArray(records)?records:[]).forEach(l=>{if(l&&l.id)_deletedLogIds[String(l.id)]=Math.max(Number(_deletedLogIds[String(l.id)])||0,t);});
-}
-function markScoresDeleted(scores,stamp){
-  const t=Number(stamp)||Date.now();
-  Object.keys(scores&&typeof scores==='object'?scores:{}).forEach(subj=>(scores[subj]||[]).forEach(e=>{
-    const id=scoreEntryId(subj,e);_deletedScoreIds[id]=Math.max(Number(_deletedScoreIds[id])||0,t);
-  }));
-}
-function replaceAllScores(next){
-  const t=Date.now();markScoresDeleted(_scores,t);
-  _scores=normalizeSnapshot({scores:next,partUpdated:{scores:t+1},updatedAt:t+1,deviceId:_deviceId}).scores;
-  touchPart('scores',t+1);
-}
-function replaceAllLogs(next){
-  const t=Date.now();markLogsDeleted(_logs,t);
-  _logs=normalizeSnapshot({logs:next,partUpdated:{logs:t+1},updatedAt:t+1,deviceId:_deviceId}).logs;
-  touchPart('logs',t+1);
+function snapshotFingerprint(raw){
+  const s=normalizeSnapshot(raw,0);
+  delete s.lastSyncedAt;
+  return JSON.stringify(s);
 }
 function currentSnapshot(){
+  const hasLocal=Object.keys(_scores||{}).some(k=>(_scores[k]||[]).length)||(_logs||[]).length||(_nos||[]).length||Object.keys((_fixed&&_fixed.cadre)||{}).length||((_fixed&&_fixed.toilet)||[]).length;
+  const stamp=_dataUpdatedAt||(hasLocal?Date.now():0);
+  ensureDataIdentity(stamp||1);
   return{
-    schema:3,scores:cloneData(_scores),logs:cloneData(_logs),fixed:cloneData(_fixed),
-    settings:cloneData(_settings),nos:[..._nos],deletedLogIds:cloneData(_deletedLogIds),deletedScoreIds:cloneData(_deletedScoreIds),
-    partUpdated:cloneData(_partUpdated),updatedAt:_dataUpdatedAt||Date.now(),revision:_cloudRevision,deviceId:_deviceId,
-    classId:_curClassId,schoolYear:_curSchoolYear,lastArchiveAt:_lastArchiveAt,lastSyncedAt:_lastSyncedAt
+    scores:cloneData(_scores),logs:cloneData(_logs),fixed:cloneData(_fixed),
+    settings:cloneData(_settings),nos:[..._nos],deleted:cloneData(_deleted),
+    fieldUpdatedAt:cloneData(_fieldUpdatedAt),updatedAt:stamp,
+    lastSyncedAt:_lastSyncedAt,revision:_revision
   };
 }
 
-function sched(part){
+function sched(changed){
+  const stamp=Date.now();
   _dirty=true;
-  touchPart(part||'all',Date.now());
+  _dataUpdatedAt=stamp;
+  const kinds=Array.isArray(changed)?changed:[changed||'all'];
+  if(kinds.includes('all')||kinds.includes('fixed'))_fieldUpdatedAt.fixed=stamp;
+  if(kinds.includes('all')||kinds.includes('settings'))_fieldUpdatedAt.settings=stamp;
+  if(kinds.includes('all')||kinds.includes('nos'))_fieldUpdatedAt.nos=stamp;
+  ensureDataIdentity(stamp);
   setSyncDot('ing');
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(persistLocal,250);
 }
 
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')persistLocal();});
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='hidden'){
+    await persistLocal();
+    if(navigator.onLine&&firebaseUidRef.current&&_dataUpdatedAt>_lastSyncedAt)doSync(true);
+  }else if(navigator.onLine&&firebaseUidRef.current&&(_dirty||_dataUpdatedAt>_lastSyncedAt))scheduleSync();
+});
 window.addEventListener('pagehide',()=>{persistLocal();});
 
-async function writeLocalSnapshot(classId,schoolYear,snap){
-  if(!classId||!schoolYear||!snap)return false;
-  const normalized=normalizeSnapshot({...snap,classId,schoolYear});
-  return storeSet(localPfxFor(classId,schoolYear)+'snapshot',normalized);
+async function writeLocalSnapshot(classId,snap){
+  if(!classId||!snap)return;
+  const pfx=pfxFor(classId);
+  const normalized=normalizeSnapshot(snap,snap.updatedAt);
+  await Promise.all([
+    storeSet(pfx+'snapshot:v3',normalized),
+    storeSet(pfx+'scores:all',normalized.scores),
+    storeSet(pfx+'logs:all',normalized.logs),
+    storeSet(pfx+'fixed',normalized.fixed),
+    storeSet(pfx+'settings',normalized.settings),
+    storeSet(pfx+'nos',normalized.nos),
+    storeSet(pfx+'meta',{schema:3,updatedAt:normalized.updatedAt,lastSyncedAt:normalized.lastSyncedAt,revision:normalized.revision})
+  ]);
 }
 
 async function persistLocal(force){
-  if((!_dirty&&!force)||!_curClassId||!_curSchoolYear)return;
-  const classId=_curClassId,schoolYear=_curSchoolYear;
+  if((!_dirty&&!force)||!_curClassId)return;
+  const classId=_curClassId;
   const stamp=_dataUpdatedAt||Date.now();
-  const snap=currentSnapshot();snap.updatedAt=stamp;snap.lastSyncedAt=_lastSyncedAt;
-  await writeLocalSnapshot(classId,schoolYear,snap);
-  if(_curClassId===classId&&_curSchoolYear===schoolYear&&_dataUpdatedAt===stamp)_dirty=false;
-}
-
-function applySnapshotToState(raw,markSynced){
-  const n=normalizeSnapshot(raw);
-  _scores=n.scores;_logs=n.logs;_fixed=n.fixed;_settings=n.settings;_nos=n.nos;
-  _deletedLogIds=n.deletedLogIds;_deletedScoreIds=n.deletedScoreIds;_partUpdated=n.partUpdated;
-  _dataUpdatedAt=n.updatedAt;_cloudRevision=n.revision;_lastArchiveAt=n.lastArchiveAt;
-  if(markSynced)_lastSyncedAt=Math.max(n.lastSyncedAt||0,n.updatedAt||0);
-  else _lastSyncedAt=n.lastSyncedAt||_lastSyncedAt||0;
-}
-
-async function readLegacyLocalSnapshot(classId,schoolYear){
-  const migratedYear=safeGet('vc2:legacyMigrated:'+classId);
-  if(migratedYear&&migratedYear!==schoolYear)return null;
-  const pfx=pfxFor(classId),yr=new Date().getFullYear();
-  const[scAll,lgAll,scNow,lgNow,scPrev,lgPrev,fx,st,ns,meta]=await Promise.all([
-    storeGet(pfx+'scores:all'),storeGet(pfx+'logs:all'),storeGet(pfx+'scores:'+yr),storeGet(pfx+'logs:'+yr),
-    storeGet(pfx+'scores:'+(yr-1)),storeGet(pfx+'logs:'+(yr-1)),storeGet(pfx+'fixed'),storeGet(pfx+'settings'),storeGet(pfx+'nos'),storeGet(pfx+'meta')
-  ]);
-  const has=scAll!==null||lgAll!==null||scNow!==null||lgNow!==null||scPrev!==null||lgPrev!==null||fx!==null||st!==null||ns!==null;
-  if(!has)return null;
-  return normalizeSnapshot({schema:2,scores:scAll||mergeScores(scPrev,scNow),logs:lgAll||mergeLogs(lgPrev,lgNow),fixed:fx,settings:st,nos:ns,
-    updatedAt:meta&&Number(meta.updatedAt)||0,lastSyncedAt:meta&&Number(meta.lastSyncedAt)||0,classId,schoolYear,deviceId:_deviceId});
+  const snap=currentSnapshot();
+  snap.updatedAt=stamp;snap.lastSyncedAt=_lastSyncedAt;
+  await writeLocalSnapshot(classId,snap);
+  if(_curClassId===classId&&_dataUpdatedAt===stamp)_dirty=false;
 }
 
 async function loadClass(classId){
   if(!classId)return;
-  clearTimeout(_saveTimer);clearTimeout(_syncTimer);
+  // 切班前先把原班尚未落盤的內容寫完，避免資料寫進下一班。
+  clearTimeout(_saveTimer);
+  clearTimeout(_syncTimer);
   const previousNeedsSync=!!_curClassId&&(_dirty||_dataUpdatedAt>_lastSyncedAt);
   await persistLocal();
   if(previousNeedsSync&&firebaseUidRef.current&&_db&&navigator.onLine)await doSync(true);
   stopCloudListener();
   const token=++_classLoadToken;
-  _curClassId=classId;_curSchoolYear=schoolYearKeyForClass(classId);_cloudRevision=0;_cloudStorageMode='class-doc';
+  _curClassId=classId;
+  const pfx='vc:'+classId+':';
+  const yr=new Date().getFullYear();
   try{
-    let local=await storeGet(localPfxFor(classId,_curSchoolYear)+'snapshot');
-    if(!local){
-      local=await readLegacyLocalSnapshot(classId,_curSchoolYear);
-      if(local){await writeLocalSnapshot(classId,_curSchoolYear,local);safeSet('vc2:legacyMigrated:'+classId,_curSchoolYear);}
-    }
+    const[v3,scAll,lgAll,scNow,lgNow,scPrev,lgPrev,fx,st,ns,meta]=await Promise.all([
+      storeGet(pfx+'snapshot:v3'),
+      storeGet(pfx+'scores:all'),
+      storeGet(pfx+'logs:all'),
+      storeGet(pfx+'scores:'+yr),
+      storeGet(pfx+'logs:'+yr),
+      storeGet(pfx+'scores:'+(yr-1)),
+      storeGet(pfx+'logs:'+(yr-1)),
+      storeGet(pfx+'fixed'),
+      storeGet(pfx+'settings'),
+      storeGet(pfx+'nos'),
+      storeGet(pfx+'meta'),
+    ]);
     if(token!==_classLoadToken)return;
-    applySnapshotToState(local||{classId,schoolYear:_curSchoolYear,deviceId:_deviceId},false);
-    _groups=[];_dirty=false;
+    const legacy={scores:scAll||mergeScores(scPrev,scNow),logs:lgAll||mergeLogs(lgPrev,lgNow),fixed:fx||{cadre:{},toilet:[]},settings:{threshold:300,...(st||{})},nos:Array.isArray(ns)?ns:[],updatedAt:meta&&Number(meta.updatedAt)||0,lastSyncedAt:meta&&Number(meta.lastSyncedAt)||0,revision:meta&&Number(meta.revision)||0};
+    const modern=v3?normalizeSnapshot(v3,v3.updatedAt):null;
+    const oldLocal=normalizeSnapshot(legacy,legacy.updatedAt);
+    // 舊資料與 v3 快照同時存在時一併檢查；空白 v3 不得遮住舊本機資料。
+    const snap=modern&&hasVisibleData(modern)&&hasVisibleData(oldLocal)?mergeSnapshots(modern,oldLocal):
+      modern&&hasVisibleData(modern)?modern:hasVisibleData(oldLocal)?oldLocal:(modern||oldLocal);
+    _scores=snap.scores;_logs=snap.logs;_fixed=snap.fixed;_settings=snap.settings;_nos=snap.nos;
+    _deleted=snap.deleted;_fieldUpdatedAt=snap.fieldUpdatedAt;_revision=snap.revision;
+    _groups=[];
+    _dataUpdatedAt=snap.updatedAt;
+    _lastSyncedAt=snap.lastSyncedAt;
+    _dirty=false;
     _overviewQuery='';_overviewFilter='all';
     const searchEl=document.getElementById('student-search');if(searchEl)searchEl.value='';
     const filterEl=document.getElementById('student-filter');if(filterEl)filterEl.value='all';
     _skipMap={};_exemptMap={};_qgSel.clear();_undoStack=[];updateUndoButton();
+    _syncMode='unknown';
     safeSet('vc2:lastClass',classId);
+    if(!v3&&hasMeaningfulData(snap))await writeLocalSnapshot(classId,snap);
   }catch(e){
     if(token!==_classLoadToken)return;
-    applySnapshotToState({classId,schoolYear:_curSchoolYear,deviceId:_deviceId},false);_lastSyncedAt=0;_dirty=false;
+    _scores={};_logs=[];_fixed={cadre:{},toilet:[]};_settings={threshold:300};_nos=[];_deleted={scores:{},logs:{}};_fieldUpdatedAt={fixed:0,settings:0,nos:0};_revision=0;_dataUpdatedAt=0;_lastSyncedAt=0;_dirty=false;
   }
-  renderAll();updateStorageStatus();
+  renderAll();
+  renderStorageStatus();
 }
 
-function cloudSnapshotFromDoc(data,classId,schoolYear){
+function hasMeaningfulData(snap){
+  const s=normalizeSnapshot(snap,0);
+  return Object.keys(s.scores).some(k=>(s.scores[k]||[]).length)||s.logs.length||s.nos.length||Object.keys(s.fixed.cadre||{}).length||(s.fixed.toilet||[]).length||Object.keys(s.deleted.scores).length||Object.keys(s.deleted.logs).length||Object.keys(s.settings||{}).some(k=>k!=='threshold'||Number(s.settings[k])!==300);
+}
+
+function snapshotCounts(raw){
+  const s=normalizeSnapshot(raw,0);
+  let scoreEntries=0,scoreValues=0;
+  Object.values(s.scores||{}).forEach(arr=>{
+    (Array.isArray(arr)?arr:[]).forEach(entry=>{
+      scoreEntries++;
+      scoreValues+=Object.values((entry&&entry.nos)||{}).filter(v=>v!==null&&v!==undefined&&v!=='').length;
+    });
+  });
+  const fixedCount=Object.keys((s.fixed&&s.fixed.cadre)||{}).length+(((s.fixed&&s.fixed.toilet)||[]).length);
+  const settingCount=Object.keys(s.settings||{}).filter(k=>k!=='threshold'||Number(s.settings[k])!==300).length;
+  return{scoreEntries,scoreValues,logs:s.logs.length,nos:s.nos.length,fixed:fixedCount,settings:settingCount};
+}
+
+// 「有刪除標記」不等於「有可見資料」。v2.2.0 曾把空的新文件誤認成完整資料，
+// 進而擋住仍保留在舊雲端文件中的成績、獎卡與座號。
+function hasVisibleData(raw){
+  const c=snapshotCounts(raw);
+  // 單獨只有換卡閾值等設定，不足以證明這份快照含有班級資料。
+  return c.scoreEntries>0||c.scoreValues>0||c.logs>0||c.nos>0||c.fixed>0;
+}
+
+function mergeVisibleSnapshots(items){
+  let merged=null;
+  (items||[]).forEach(raw=>{
+    if(!raw||!hasVisibleData(raw))return;
+    merged=merged?mergeSnapshots(merged,raw):normalizeSnapshot(raw,raw.updatedAt);
+  });
+  return merged;
+}
+
+function cloudSnapshotFromDoc(data,classId){
   const pfx=pfxFor(classId);
-  const yearPfx=pfx+'year:'+schoolYear+':';
-  const yearState=parseStored(data[yearPfx+'state:v3'],null);
-  if(yearState)return{snapshot:normalizeSnapshot({...yearState,classId,schoolYear}),hasData:true};
-  const stateV3=parseStored(data[pfx+'state:v3'],null);
-  if(stateV3){
-    if(stateV3.schoolYear&&String(stateV3.schoolYear)!==String(schoolYear))return{snapshot:null,hasData:false};
-    return{snapshot:normalizeSnapshot({...stateV3,classId,schoolYear}),hasData:true};
-  }
   const keys=Object.keys(data||{});
-  const stableScores=parseStored(data[pfx+'scores:all'],null),stableLogs=parseStored(data[pfx+'logs:all'],null);
-  const legacyScores=keys.filter(k=>k.indexOf(pfx+'scores:')===0&&k!==pfx+'scores:all').sort().map(k=>parseStored(data[k],{}));
-  const legacyLogs=keys.filter(k=>k.indexOf(pfx+'logs:')===0&&k!==pfx+'logs:all').sort().map(k=>parseStored(data[k],[]));
-  const meta=parseStored(data[pfx+'meta'],null)||{};
+  const v3=parseStored(data[pfx+'snapshot:v3'],null);
+  const stableScores=parseStored(data[pfx+'scores:all'],null);
+  const stableLogs=parseStored(data[pfx+'logs:all'],null);
+  const legacyScores=keys.filter(k=>k.indexOf(pfx+'scores:')===0&&k!==pfx+'scores:all')
+    .sort().map(k=>parseStored(data[k],{}));
+  const legacyLogs=keys.filter(k=>k.indexOf(pfx+'logs:')===0&&k!==pfx+'logs:all')
+    .sort().map(k=>parseStored(data[k],[]));
+  const scores=stableScores||mergeScores.apply(null,legacyScores);
+  const logs=stableLogs||mergeLogs.apply(null,legacyLogs);
+  const fixed=parseStored(data[pfx+'fixed'],{cadre:{},toilet:[]});
+  const settings={threshold:300,...parseStored(data[pfx+'settings'],{})};
+  const nos=parseStored(data[pfx+'nos'],[]);
+  const meta=parseStored(data[pfx+'meta'],null);
   const hasData=stableScores!==null||stableLogs!==null||legacyScores.length>0||legacyLogs.length>0||data[pfx+'fixed']!==undefined||data[pfx+'settings']!==undefined||data[pfx+'nos']!==undefined;
-  return{snapshot:normalizeSnapshot({schema:2,scores:stableScores||mergeScores.apply(null,legacyScores),logs:stableLogs||mergeLogs.apply(null,legacyLogs),
-    fixed:parseStored(data[pfx+'fixed'],{cadre:{},toilet:[]}),settings:parseStored(data[pfx+'settings'],{}),nos:parseStored(data[pfx+'nos'],[]),
-    updatedAt:Number(meta.updatedAt)||0,revision:Number(meta.revision)||0,classId,schoolYear,deviceId:String(meta.deviceId||'')}),hasData};
-}
-function classDocRef(uid,classId,schoolYear){return _db.collection('vc-card-users').doc(uid).collection('classes').doc(classCloudDocId(classId,schoolYear));}
-function dataDocRef(uid,classId,schoolYear){return _db.collection('users').doc(uid).collection('data').doc('vc-card:'+classCloudDocId(classId,schoolYear));}
-function classDocSnapshot(doc,classId,schoolYear){
-  if(!doc||!doc.exists)return null;
-  const data=doc.data()||{};let state=parseStored(data.snapshot,null);
-  if(!state)return null;
-  state={...state,revision:Number(data.revision)||Number(state.revision)||0,classId,schoolYear};
-  return normalizeSnapshot(state);
-}
-function dataDocSnapshot(doc,classId,schoolYear){
-  if(!doc||!doc.exists)return null;
-  const data=doc.data()||{};let state=parseStored(data.value,null);
-  if(!state)return null;
-  state={...state,revision:Number(data.revision)||Number(state.revision)||0,classId,schoolYear};
-  return normalizeSnapshot(state);
-}
-function isPermissionError(e){return !!(e&&(e.code==='permission-denied'||String(e.message||'').toLowerCase().includes('permission')));}
-function stopCloudListener(){if(_cloudUnsub){try{_cloudUnsub();}catch{} _cloudUnsub=null;}}
-function snapshotDigest(raw){const n=normalizeSnapshot(raw);return JSON.stringify({scores:n.scores,logs:n.logs,fixed:n.fixed,settings:n.settings,nos:n.nos,deletedLogIds:n.deletedLogIds,deletedScoreIds:n.deletedScoreIds,partUpdated:n.partUpdated});}
-
-async function acceptRemoteSnapshot(remote,showNotice){
-  if(!remote||!_curClassId||remote.classId!==_curClassId||remote.schoolYear!==_curSchoolYear)return;
-  const local=currentSnapshot();const merged=mergeSnapshots(local,remote);
-  const needsUpload=snapshotDigest(merged)!==snapshotDigest(remote);
-  const hadRemoteChange=remote.revision>_cloudRevision&&String(remote.deviceId||'')!==_deviceId;
-  applySnapshotToState({...merged,revision:remote.revision,lastSyncedAt:remote.updatedAt},!needsUpload);
-  _dirty=needsUpload;
-  await writeLocalSnapshot(_curClassId,_curSchoolYear,currentSnapshot());
-  refreshVisiblePanel();updateStorageStatus();setSyncDot(needsUpload?'ing':'ok');
-  if(needsUpload)scheduleSync();
-  if(showNotice&&hadRemoteChange)toast('☁️ 已合併另一台裝置的新資料');
+  const oldSnapshot=normalizeSnapshot({scores,logs,fixed,settings,nos:Array.isArray(nos)?nos:[],updatedAt:meta&&Number(meta.updatedAt)||0,revision:meta&&Number(meta.revision)||0,hasData},meta&&Number(meta.updatedAt)||0);
+  const modern=v3?normalizeSnapshot(v3,v3.updatedAt):null;
+  // 同一份舊雲端文件內若同時存在 v3 與舊欄位，兩邊都檢查；空的 v3 不得遮住舊資料。
+  if(modern&&hasVisibleData(modern)&&hasVisibleData(oldSnapshot))return mergeSnapshots(modern,oldSnapshot);
+  if(modern&&hasVisibleData(modern))return modern;
+  if(hasVisibleData(oldSnapshot))return oldSnapshot;
+  return modern||oldSnapshot;
 }
 
-function startCloudListener(uid,classId,schoolYear){
+function academicYearKey(classId){
+  const cls=_classes.find(c=>c.id===classId);
+  if(cls&&cls.year!==undefined&&cls.year!==null&&String(cls.year).trim())return String(cls.year).trim();
+  const now=new Date();
+  return String(now.getMonth()>=7?now.getFullYear():now.getFullYear()-1);
+}
+function classCloudDocId(classId){
+  return encodeURIComponent(academicYearKey(classId)+'__'+classId).replace(/\./g,'%2E');
+}
+function classCloudRef(uid,classId){
+  return _db.collection('vc-card-users').doc(uid).collection('classes').doc(classCloudDocId(classId));
+}
+function legacyCloudRef(uid){return _db.collection('vc-card-users').doc(uid);}
+function snapshotFromClassDoc(doc){
+  if(!doc||!doc.exists)return null;
+  const data=doc.data()||{};
+  const raw=parseStored(data.data,null)||parseStored(data.snapshot,null);
+  return raw?normalizeSnapshot({...raw,revision:Math.max(Number(raw.revision)||0,Number(data.revision)||0)},raw.updatedAt||data.clientUpdatedAt):null;
+}
+function stopCloudListener(){
+  _listenerToken++;
+  if(_cloudUnsubscribe){try{_cloudUnsubscribe();}catch{};_cloudUnsubscribe=null;}
+}
+function applySnapshotToState(raw,dirty){
+  const snap=normalizeSnapshot(raw,raw&&raw.updatedAt);
+  _scores=snap.scores;_logs=snap.logs;_fixed=snap.fixed;_settings=snap.settings;_nos=snap.nos;
+  _deleted=snap.deleted;_fieldUpdatedAt=snap.fieldUpdatedAt;_revision=snap.revision;
+  _dataUpdatedAt=snap.updatedAt;_lastSyncedAt=snap.lastSyncedAt;_dirty=!!dirty;
+  return snap;
+}
+async function readCloudSnapshot(uid,classId){
+  let modern=null,legacy=null,separateReadable=false;
+  try{
+    const doc=await classCloudRef(uid,classId).get();
+    separateReadable=true;
+    _syncMode='separate';
+    modern=snapshotFromClassDoc(doc);
+  }catch(e){
+    if(!['permission-denied','failed-precondition','unimplemented'].includes(e&&e.code))console.warn('Separated cloud read unavailable',e);
+    _syncMode='legacy';
+  }
+  try{
+    const legacyDoc=await legacyCloudRef(uid).get();
+    legacy=legacyDoc.exists?cloudSnapshotFromDoc(legacyDoc.data()||{},classId):null;
+  }catch(e){
+    if(!separateReadable)throw e;
+    console.warn('Legacy cloud read unavailable',e);
+  }
+  const modernVisible=!!modern&&hasVisibleData(modern);
+  const legacyVisible=!!legacy&&hasVisibleData(legacy);
+  // 新文件空白時，明確忽略它的空狀態／刪除標記，優先救回舊文件中的可見資料。
+  const snapshot=modernVisible&&legacyVisible?mergeSnapshots(modern,legacy):
+    modernVisible?modern:legacyVisible?legacy:(modern&&hasMeaningfulData(modern)?modern:null);
+  const needsMigration=separateReadable&&legacyVisible&&(!modernVisible||snapshotFingerprint(snapshot)!==snapshotFingerprint(modern));
+  return{snapshot,needsMigration,recoveredLegacy:legacyVisible&&!modernVisible};
+}
+function startCloudListener(uid,classId){
   stopCloudListener();
-  const token=_classLoadToken;
-  if(_cloudStorageMode==='data-doc'){
-    _cloudUnsub=dataDocRef(uid,classId,schoolYear).onSnapshot({includeMetadataChanges:true},doc=>{
-      if(doc.metadata&&doc.metadata.hasPendingWrites)return;
-      if(token!==_classLoadToken||classId!==_curClassId||schoolYear!==_curSchoolYear)return;
-      const remote=dataDocSnapshot(doc,classId,schoolYear);
-      if(remote)acceptRemoteSnapshot(remote,true);
-    },e=>{if(isPermissionError(e)){_cloudStorageMode='legacy';startCloudListener(uid,classId,schoolYear);}else console.warn('Data listener fail',e);});
-    return;
-  }
-  if(_cloudStorageMode==='legacy'){
-    _cloudUnsub=_db.collection('vc-card-users').doc(uid).onSnapshot({includeMetadataChanges:true},doc=>{
-      if(doc.metadata&&doc.metadata.hasPendingWrites)return;
-      if(token!==_classLoadToken||classId!==_curClassId||schoolYear!==_curSchoolYear)return;
-      const parsed=cloudSnapshotFromDoc(doc.data()||{},classId,schoolYear);
-      if(parsed.hasData)acceptRemoteSnapshot(parsed.snapshot,true);
-    },e=>console.warn('Legacy listener fail',e));
-    return;
-  }
-  _cloudUnsub=classDocRef(uid,classId,schoolYear).onSnapshot({includeMetadataChanges:true},doc=>{
+  if(!uid||!_db||!classId)return;
+  const token=_listenerToken;
+  const useLegacy=_syncMode==='legacy';
+  const ref=useLegacy?legacyCloudRef(uid):classCloudRef(uid,classId);
+  _cloudUnsubscribe=ref.onSnapshot({includeMetadataChanges:true},async doc=>{
+    if(token!==_listenerToken||classId!==_curClassId||uid!==firebaseUidRef.current)return;
     if(doc.metadata&&doc.metadata.hasPendingWrites)return;
-    if(token!==_classLoadToken||classId!==_curClassId||schoolYear!==_curSchoolYear)return;
-    const remote=classDocSnapshot(doc,classId,schoolYear);
-    if(remote)acceptRemoteSnapshot(remote,true);
-  },e=>{if(isPermissionError(e)){_cloudStorageMode='legacy';startCloudListener(uid,classId,schoolYear);}else console.warn('Class listener fail',e);});
-}
-
-async function loadLegacyCloud(uid,classId,schoolYear){
-  const doc=await _db.collection('vc-card-users').doc(uid).get();
-  if(!doc.exists)return null;
-  const parsed=cloudSnapshotFromDoc(doc.data()||{},classId,schoolYear);
-  return parsed.hasData?parsed.snapshot:null;
-}
-async function loadDataCloud(uid,classId,schoolYear){
-  const doc=await dataDocRef(uid,classId,schoolYear).get();
-  return dataDocSnapshot(doc,classId,schoolYear);
+    const local=currentSnapshot();
+    const remote=useLegacy?(doc.exists?cloudSnapshotFromDoc(doc.data()||{},classId):null):snapshotFromClassDoc(doc);
+    // tombstone-only／空白文件不可在背景監聽時把目前仍看得到的整班資料清空。
+    if(!remote||(!hasVisibleData(remote)&&hasVisibleData(local)))return;
+    if(!hasMeaningfulData(remote))return;
+    const merged=mergeSnapshots(local,remote);
+    const localChanged=snapshotFingerprint(merged)!==snapshotFingerprint(local);
+    const cloudMissing=snapshotFingerprint(merged)!==snapshotFingerprint(remote);
+    merged.lastSyncedAt=Date.now();
+    if(localChanged){
+      applySnapshotToState(merged,cloudMissing);
+      await persistLocal(true);
+      refreshVisiblePanel();
+    }else{
+      _lastSyncedAt=merged.lastSyncedAt;
+      _revision=Math.max(_revision,merged.revision);
+      await persistLocal(true);
+    }
+    setSyncDot(cloudMissing?'ing':'ok');
+    renderStorageStatus();
+    if(cloudMissing)scheduleSync();
+  },err=>{
+    if(token!==_listenerToken)return;
+    console.warn('Cloud listener stopped',err);
+    if(!useLegacy&&err&&err.code==='permission-denied'){
+      _syncMode='legacy';
+      startCloudListener(uid,classId);
+      loadCardClassFromFirestore(classId);
+    }else setSyncDot('off');
+  });
 }
 
 async function loadCardClassFromFirestore(classId){
-  const uid=firebaseUidRef.current;if(!uid||!_db||!classId)return false;
-  const token=_classLoadToken,schoolYear=_curSchoolYear||schoolYearKeyForClass(classId);
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db||!classId)return false;
+  const token=_classLoadToken;
   try{
-    setSyncDot('ing');let remote=null,migrateLegacy=false;
-    try{
-      const doc=await classDocRef(uid,classId,schoolYear).get();
-      remote=classDocSnapshot(doc,classId,schoolYear);
-      if(remote)_cloudStorageMode='class-doc';
-      else{
-        try{remote=await loadDataCloud(uid,classId,schoolYear);_cloudStorageMode=remote?'data-doc':'class-doc';}
-        catch(dataErr){if(!isPermissionError(dataErr))throw dataErr;_cloudStorageMode='class-doc';}
-      }
-      if(!remote){remote=await loadLegacyCloud(uid,classId,schoolYear);migrateLegacy=!!remote;}
-    }catch(e){
-      if(!isPermissionError(e))throw e;
-      try{remote=await loadDataCloud(uid,classId,schoolYear);_cloudStorageMode='data-doc';}
-      catch(dataErr){if(!isPermissionError(dataErr))throw dataErr;_cloudStorageMode='legacy';remote=await loadLegacyCloud(uid,classId,schoolYear);}
+    setSyncDot('ing');
+    const cloudResult=await readCloudSnapshot(uid,classId);
+    if(token!==_classLoadToken||classId!==_curClassId)return false;
+    const local=currentSnapshot();
+    const cloud=cloudResult.snapshot;
+    if(!cloud){
+      startCloudListener(uid,classId);
+      if(hasMeaningfulData(local))scheduleSync();
+      renderStorageStatus();
+      return false;
     }
-    if(!remote&&_cloudStorageMode==='data-doc'){
-      const legacy=await loadLegacyCloud(uid,classId,schoolYear);
-      if(legacy){remote=legacy;migrateLegacy=true;}
-    }
-    if(token!==_classLoadToken||classId!==_curClassId||schoolYear!==_curSchoolYear)return false;
-    if(remote){
-      const merged=mergeSnapshots(currentSnapshot(),remote);
-      const needsUpload=migrateLegacy||snapshotDigest(merged)!==snapshotDigest(remote);
-      applySnapshotToState({...merged,revision:remote.revision,lastSyncedAt:remote.updatedAt},!needsUpload);_dirty=needsUpload;
-      await writeLocalSnapshot(classId,schoolYear,currentSnapshot());renderAll();updateStorageStatus();
-      if(needsUpload)scheduleSync();else setSyncDot('ok');
-    }else{
-      if(snapshotMeaningful(currentSnapshot()))scheduleSync();else setSyncDot('ok');
-    }
-    startCloudListener(uid,classId,schoolYear);return true;
-  }catch(e){setSyncDot('off');console.warn('Card data read fail',e);return false;}
+    const merged=mergeSnapshots(local,cloud);
+    const needsUpload=cloudResult.needsMigration||snapshotFingerprint(merged)!==snapshotFingerprint(cloud);
+    merged.lastSyncedAt=Date.now();
+    applySnapshotToState(merged,needsUpload);
+    await persistLocal(true);
+    refreshVisiblePanel();
+    startCloudListener(uid,classId);
+    setSyncDot(needsUpload?'ing':'ok');
+    renderStorageStatus();
+    if(needsUpload)scheduleSync();
+    if(cloudResult.recoveredLegacy)toast('✅ 已從舊版雲端找回本班資料，正在安全轉存',4200);
+    return true;
+  }catch(e){
+    setSyncDot('off');
+    console.warn('Card data read fail',e);
+    return false;
+  }
 }
 
 // ══ 從 Firestore 讀取 Venus OS 的班級/分組（只讀）══
@@ -1651,13 +1811,10 @@ async function loadFromFirestore(){
       return;
     }
     _classes=parsed.classes;
-    _classes.forEach(c=>{if(c&&c.id)schoolYearStartForClass(c.id);});
     renderClassDD();
     toast(`✅ 讀到 ${_classes.length} 個班級`);
     // 如果已有 _curClassId（離線恢復），確保顯示正確的班級名稱
     if(_curClassId){
-      const correctSchoolYear=schoolYearKeyForClass(_curClassId);
-      if(correctSchoolYear!==_curSchoolYear)await loadClass(_curClassId);
       const curCls=_classes.find(c=>c.id===_curClassId);
       if(curCls)document.getElementById('chip-text').textContent=curCls.className||curCls.id;
       await loadCardClassFromFirestore(_curClassId);
@@ -1701,94 +1858,92 @@ async function loadFromFirestore(){
   }catch(e){setSyncDot('off');toast('❌ 讀取失敗：'+e.message);console.warn('Firestore read fail',e);}
 }
 
-function classDocPayload(snap,classId,schoolYear,revision,kind){
-  const n=normalizeSnapshot({...snap,classId,schoolYear,revision,deviceId:_deviceId});
-  return{schema:3,kind:kind||'active',classId,schoolYear,revision,deviceId:_deviceId,clientUpdatedAt:n.updatedAt,
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:APP_VERSION,snapshot:JSON.stringify(n)};
-}
-
-async function syncClassDocument(uid,classId,schoolYear,local){
-  const ref=classDocRef(uid,classId,schoolYear),legacyRef=_db.collection('vc-card-users').doc(uid);
-  let result=null;
-  await _db.runTransaction(async tx=>{
-    const doc=await tx.get(ref);let remote=classDocSnapshot(doc,classId,schoolYear);
-    if(!remote){
-      const legacy=await tx.get(legacyRef);
-      if(legacy.exists){const parsed=cloudSnapshotFromDoc(legacy.data()||{},classId,schoolYear);if(parsed.hasData)remote=parsed.snapshot;}
-    }
-    const merged=mergeSnapshots(local,remote||{classId,schoolYear});
-    merged.revision=Math.max(Number(remote&&remote.revision)||0,Number(local.revision)||0)+1;
-    merged.updatedAt=Math.max(Number(merged.updatedAt)||0,Date.now());merged.deviceId=_deviceId;
-    tx.set(ref,classDocPayload(merged,classId,schoolYear,merged.revision,'active'));
-    result=normalizeSnapshot(merged);
-  });
-  return result;
-}
-
-async function syncDataDocument(uid,classId,schoolYear,local){
-  const ref=dataDocRef(uid,classId,schoolYear);let result=null;
-  await _db.runTransaction(async tx=>{
-    const doc=await tx.get(ref);const remote=dataDocSnapshot(doc,classId,schoolYear);
-    const merged=mergeSnapshots(local,remote||{classId,schoolYear});
-    merged.revision=Math.max(Number(remote&&remote.revision)||0,Number(local.revision)||0)+1;
-    merged.updatedAt=Math.max(Number(merged.updatedAt)||0,Date.now());merged.deviceId=_deviceId;
-    tx.set(ref,{value:JSON.stringify(merged),schema:3,kind:'vc-card-active',classId,schoolYear,revision:merged.revision,deviceId:_deviceId,
-      clientUpdatedAt:merged.updatedAt,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:APP_VERSION});
-    result=normalizeSnapshot(merged);
-  });
-  return result;
-}
-
-async function syncLegacyDocument(uid,classId,schoolYear,local){
-  const ref=_db.collection('vc-card-users').doc(uid);let result=null;
-  await _db.runTransaction(async tx=>{
-    const doc=await tx.get(ref);let remote=null;
-    if(doc.exists){const parsed=cloudSnapshotFromDoc(doc.data()||{},classId,schoolYear);if(parsed.hasData)remote=parsed.snapshot;}
-    const merged=mergeSnapshots(local,remote||{classId,schoolYear});
-    merged.revision=Math.max(Number(remote&&remote.revision)||0,Number(local.revision)||0)+1;
-    merged.updatedAt=Math.max(Number(merged.updatedAt)||0,Date.now());merged.deviceId=_deviceId;
-    const pfx=pfxFor(classId),yearPfx=pfx+'year:'+schoolYear+':',payload={};
-    payload[yearPfx+'state:v3']=JSON.stringify(merged);
-    payload[pfx+'state:v3']=JSON.stringify(merged);payload[pfx+'scores:all']=JSON.stringify(merged.scores);payload[pfx+'logs:all']=JSON.stringify(merged.logs);
-    payload[pfx+'fixed']=JSON.stringify(merged.fixed);payload[pfx+'settings']=JSON.stringify(merged.settings);payload[pfx+'nos']=JSON.stringify(merged.nos);
-    payload[pfx+'meta']=JSON.stringify({schema:3,revision:merged.revision,updatedAt:merged.updatedAt,deviceId:_deviceId,schoolYear,appVersion:APP_VERSION});
-    payload.updatedAt=firebase.firestore.FieldValue.serverTimestamp();tx.set(ref,payload,{merge:true});result=normalizeSnapshot(merged);
-  });
-  return result;
-}
-
 async function doSync(silent){
   const uid=firebaseUidRef.current;
-  if(!uid||!_db||!_curClassId){setSyncDot('off');return false;}
+  if(!uid||!_db||!_curClassId){setSyncDot('off');return;}
   if(!navigator.onLine){setSyncDot('off');return false;}
   if(_syncInFlight){_syncQueued=true;return false;}
   _syncInFlight=true;
-  const classId=_curClassId,schoolYear=_curSchoolYear;const local=normalizeSnapshot(currentSnapshot());const stamp=local.updatedAt;
+  const classId=_curClassId;
+  const startStamp=_dataUpdatedAt;
+  const snap=normalizeSnapshot(currentSnapshot(),Date.now());
+  if(!snap.updatedAt)snap.updatedAt=Date.now();
   setSyncDot('ing');
   try{
-    await persistLocal();let synced;
-    try{
-      synced=_cloudStorageMode==='legacy'?await syncLegacyDocument(uid,classId,schoolYear,local):
-        _cloudStorageMode==='data-doc'?await syncDataDocument(uid,classId,schoolYear,local):await syncClassDocument(uid,classId,schoolYear,local);
-    }catch(e){
-      if(_cloudStorageMode==='class-doc'&&isPermissionError(e)){
-        try{_cloudStorageMode='data-doc';synced=await syncDataDocument(uid,classId,schoolYear,local);}
-        catch(dataErr){if(!isPermissionError(dataErr))throw dataErr;_cloudStorageMode='legacy';synced=await syncLegacyDocument(uid,classId,schoolYear,local);}
-        startCloudListener(uid,classId,schoolYear);
-      }else if(_cloudStorageMode==='data-doc'&&isPermissionError(e)){
-        _cloudStorageMode='legacy';synced=await syncLegacyDocument(uid,classId,schoolYear,local);startCloudListener(uid,classId,schoolYear);
-      }else throw e;
+    await persistLocal();
+    let merged;
+    if(_syncMode!=='legacy'){
+      try{
+        const ref=classCloudRef(uid,classId);
+        merged=await _db.runTransaction(async tx=>{
+          const doc=await tx.get(ref);
+          let remote=snapshotFromClassDoc(doc);
+          // 防止空白的新分班文件覆蓋舊主文件：新文件沒有可見資料時，同一交易內再讀舊來源。
+          if(!remote||!hasVisibleData(remote)){
+            const legacyDoc=await tx.get(legacyCloudRef(uid));
+            const legacy=legacyDoc.exists?cloudSnapshotFromDoc(legacyDoc.data()||{},classId):null;
+            if(legacy&&hasVisibleData(legacy))remote=legacy;
+          }
+          const next=remote&&hasVisibleData(remote)?
+            (hasVisibleData(snap)?mergeSnapshots(snap,remote):normalizeSnapshot(remote,remote.updatedAt)):
+            normalizeSnapshot(snap,snap.updatedAt);
+          next.revision=Math.max(Number(remote&&remote.revision)||0,Number(next.revision)||0)+1;
+          next.updatedAt=Math.max(next.updatedAt,Date.now());
+          tx.set(ref,{
+            schema:3,classId,academicYear:academicYearKey(classId),revision:next.revision,
+            clientUpdatedAt:next.updatedAt,updatedBy:_deviceId,appVersion:APP_VERSION,
+            data:JSON.stringify(next),updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+          });
+          return next;
+        });
+        _syncMode='separate';
+      }catch(separateErr){
+        if(!['permission-denied','failed-precondition','unimplemented'].includes(separateErr&&separateErr.code))throw separateErr;
+        _syncMode='legacy';
+      }
     }
-    if(classId===_curClassId&&schoolYear===_curSchoolYear){
-      const changedDuringSync=_dataUpdatedAt>stamp;
-      const finalSnap=changedDuringSync?mergeSnapshots(currentSnapshot(),synced):synced;
-      applySnapshotToState({...finalSnap,lastSyncedAt:synced.updatedAt},!changedDuringSync);_dirty=changedDuringSync;
-      await writeLocalSnapshot(classId,schoolYear,currentSnapshot());refreshVisiblePanel();updateStorageStatus();
+    if(_syncMode==='legacy'){
+      const ref=legacyCloudRef(uid);
+      merged=await _db.runTransaction(async tx=>{
+        const doc=await tx.get(ref);
+        const remote=doc.exists?cloudSnapshotFromDoc(doc.data()||{},classId):null;
+        const next=remote&&hasVisibleData(remote)?
+          (hasVisibleData(snap)?mergeSnapshots(snap,remote):normalizeSnapshot(remote,remote.updatedAt)):
+          normalizeSnapshot(snap,snap.updatedAt);
+        next.revision=Math.max(Number(remote&&remote.revision)||0,Number(next.revision)||0)+1;
+        next.updatedAt=Math.max(next.updatedAt,Date.now());
+        const pfx=pfxFor(classId);
+        const payload={};
+        payload[pfx+'snapshot:v3']=JSON.stringify(next);
+        payload[pfx+'scores:all']=JSON.stringify(next.scores);
+        payload[pfx+'logs:all']=JSON.stringify(next.logs);
+        payload[pfx+'fixed']=JSON.stringify(next.fixed);
+        payload[pfx+'settings']=JSON.stringify(next.settings);
+        payload[pfx+'nos']=JSON.stringify(next.nos);
+        payload[pfx+'meta']=JSON.stringify({schema:3,updatedAt:next.updatedAt,revision:next.revision,appVersion:APP_VERSION});
+        payload.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+        tx.set(ref,payload,{merge:true});
+        return next;
+      });
+    }
+    if(classId===_curClassId){
+      const changedDuringSync=_dataUpdatedAt>startStamp;
+      const newest=changedDuringSync?mergeSnapshots(currentSnapshot(),merged):merged;
+      newest.lastSyncedAt=Date.now();
+      applySnapshotToState(newest,changedDuringSync);
+      await persistLocal(true);
       if(changedDuringSync)_syncQueued=true;
     }
-    setSyncDot('ok');if(!silent)toast('☁️ 已安全同步到雲端');return true;
-  }catch(e){setSyncDot('off');if(!silent)toast('同步失敗：'+e.message);console.warn('Sync fail',e);return false;}
-  finally{_syncInFlight=false;if(_syncQueued){_syncQueued=false;setTimeout(()=>doSync(true),100);}}
+    setSyncDot('ok');
+    startCloudListener(uid,classId);
+    renderStorageStatus();
+    if(!silent)toast('\u2601\ufe0f 已同步到雲端');
+    return true;
+  }catch(e){setSyncDot('off');if(!silent)toast('同步失敗：'+e.message);console.warn('Card sync fail',e);return false;}
+  finally{
+    _syncInFlight=false;
+    if(_syncQueued){_syncQueued=false;setTimeout(()=>doSync(true),100);}
+  }
 }
 
 function scheduleSync(){
@@ -1879,18 +2034,7 @@ async function undoLastAction(){
   const item=_undoStack.pop();
   if(!item){updateUndoButton();return;}
   if(item.classId!==_curClassId){_undoStack=[];updateUndoButton();toast('切換班級後無法撤銷上一班操作');return;}
-  _scores=cloneData(item.snapshot.scores||{});
-  _logs=cloneData(item.snapshot.logs||[]);
-  _fixed=cloneData(item.snapshot.fixed||{cadre:{},toilet:[]});
-  _settings=cloneData(item.snapshot.settings||{threshold:300});
-  _nos=[...(item.snapshot.nos||[])];
-  _deletedLogIds=cloneData(item.snapshot.deletedLogIds||{});
-  _deletedScoreIds=cloneData(item.snapshot.deletedScoreIds||{});
-  const undoStamp=Date.now();
-  Object.keys(_scores).forEach(subj=>(_scores[subj]||[]).forEach(e=>{e.m=undoStamp;e.d=_deviceId;}));
-  _logs.forEach(l=>{l.m=undoStamp;l.d=_deviceId;});
-  _partUpdated=normalizePartUpdated(item.snapshot.partUpdated,undoStamp);
-  _dirty=true;touchPart('all',undoStamp);
+  replaceCurrentWithSnapshot(item.snapshot);
   await persistLocal(true);scheduleSync();refreshVisiblePanel();updateUndoButton();
   toast(`↶ 已撤銷「${item.label}」`);
 }
@@ -1994,7 +2138,10 @@ function academicRangeForClass(classId){
     const now=new Date();
     startYear=now.getMonth()>=7?now.getFullYear():now.getFullYear()-1;
   }
-  return{start:`${startYear}-08-01`,end:`${startYear+1}-07-31`,startYear};
+  // 掃描窗前後各擴一年：Venus OS 把同一班所有 day 資料塞在同一個 {年}_{班名}: 前綴下，
+  // 而 cls.year 可能代表學年起始年或結束年，日期實際可能落在 startYear 的前一個學年。
+  // 前綴已鎖定單一班級，擴大日期窗只會多讀同班自己的文件，不會跨班污染。
+  return{start:`${startYear-1}-08-01`,end:`${startYear+1}-07-31`,startYear};
 }
 
 async function loadExemptFromVenusOS(classId){
@@ -2006,7 +2153,14 @@ async function loadExemptFromVenusOS(classId){
   try{
     const dataCol=_db.collection('users').doc(uid).collection('data');
     const cls=_classes.find(c=>c.id===classId);
-    const pfx=cls?`${cls.year}_${cls.className}:day:`:`${classId}:day:`;
+    // 建構候選前綴：Venus OS 的學年可能存西元或民國，三種都試（去重），哪個對得上就抓到，其餘回空無副作用。
+    let pfxList;
+    if(cls){
+      const yrTokens=new Set([String(cls.year),String(range.startYear),String(range.startYear-1911)]);
+      pfxList=[...yrTokens].map(y=>`${y}_${cls.className}:day:`);
+    }else{
+      pfxList=[`${classId}:day:`];
+    }
 
     // 先顯示上次結果，切頁時不必重新等待；同一次開啟 App 每班只完整掃描一次。
     const cached=await storeGet(cacheKey);
@@ -2034,17 +2188,21 @@ async function loadExemptFromVenusOS(classId){
     // 優先用文件 ID 範圍查詢，一次只取實際存在的日期；若規則不允許 list，再退回逐日讀取。
     try{
       const fid=firebase.firestore.FieldPath.documentId();
-      const snap=await dataCol.where(fid,'>=',pfx+range.start).where(fid,'<=',pfx+range.end).get();
-      snap.forEach(ingest);
+      for(const pfx of pfxList){
+        const snap=await dataCol.where(fid,'>=',pfx+range.start).where(fid,'<=',pfx+range.end).get();
+        snap.forEach(ingest);
+      }
     }catch(queryErr){
       const dates=[];
       for(let d=new Date(range.start+'T00:00:00');d<=new Date(range.end+'T00:00:00');d.setDate(d.getDate()+1)){
         dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
       }
+      const ids=[];
+      for(const pfx of pfxList){for(const ds of dates)ids.push(pfx+ds);}
       const BATCH=25;
-      for(let i=0;i<dates.length;i+=BATCH){
-        await Promise.all(dates.slice(i,i+BATCH).map(async ds=>{
-          try{ingest(await dataCol.doc(pfx+ds).get());}catch{}
+      for(let i=0;i<ids.length;i+=BATCH){
+        await Promise.all(ids.slice(i,i+BATCH).map(async id=>{
+          try{ingest(await dataCol.doc(id).get());}catch{}
         }));
         if(token!==_exemptLoadToken||classId!==_curClassId)return;
         _exemptMap={...newExempt};renderOverview();renderExemptSummary();
@@ -2060,6 +2218,61 @@ async function loadExemptFromVenusOS(classId){
     setSyncDot('off');
     console.warn('loadExempt fail',e);
   }
+}
+
+// 🩺 抵免診斷：保留原有入口，寬範圍檢查 Venus OS 的 day 文件與 exempt 內容。
+async function diagExempt(){
+  const uid=firebaseUidRef.current;
+  const cls=_classes.find(c=>c.id===_curClassId);
+  const range=academicRangeForClass(_curClassId);
+  const lines=[];
+  lines.push('抵免診斷｜Venus Card v'+APP_VERSION);
+  lines.push('登入：'+(uid?'正常':'未登入'));
+  lines.push('資料庫：'+(_db?'正常':'未連線'));
+  lines.push('班級：'+(cls?(cls.className||cls.id):_curClassId||'(未選擇)'));
+  lines.push('班級代碼：'+(_curClassId||'(無)'));
+  lines.push('學年度原值：'+(cls?JSON.stringify(cls.year):'(找不到班級)'));
+  lines.push('掃描日期：'+range.start+' ～ '+range.end);
+  if(!uid||!_db||!cls){alert(lines.join('\n'));return;}
+  toast('🩺 正在診斷抵免資料…');
+  const nm=cls.className;
+  const years=new Set();
+  for(let y=range.startYear-2;y<=range.startYear+2;y++){
+    years.add(String(y));
+    years.add(String(y-1911));
+  }
+  if(cls.year!==undefined&&cls.year!==null)years.add(String(cls.year));
+  const dataCol=_db.collection('users').doc(uid).collection('data');
+  const fid=firebase.firestore.FieldPath.documentId();
+  let sampleKeys=[],sampleExempt='',anyDoc=false,totalDocs=0,totalWithExempt=0,totalExempt=0;
+  for(const y of years){
+    const pfx=y+'_'+nm+':day:';
+    try{
+      const snap=await dataCol.where(fid,'>=',pfx+'2020-01-01').where(fid,'<=',pfx+'2035-12-31').get();
+      if(snap.size>0){
+        anyDoc=true;let withEx=0,cnt=0;
+        snap.forEach(d=>{
+          if(sampleKeys.length<4)sampleKeys.push(d.id);
+          const p=parseStored(d.data().value,null);
+          if(p&&p.exempt){
+            withEx++;
+            cnt+=Object.values(p.exempt).reduce((a,v)=>a+(Array.isArray(v)?v.length:0),0);
+            if(!sampleExempt)sampleExempt=d.id+' → '+JSON.stringify(p.exempt).slice(0,140);
+          }
+        });
+        totalDocs+=snap.size;totalWithExempt+=withEx;totalExempt+=cnt;
+        lines.push('✔ '+pfx+' 文件 '+snap.size+'｜含抵免 '+withEx+'｜筆數 '+cnt);
+      }
+    }catch(e){
+      lines.push('✖ '+pfx+'｜'+(e.code||e.message));
+    }
+  }
+  if(!anyDoc)lines.push('結果：所有候選年度都找不到 day 文件');
+  else lines.push('合計：文件 '+totalDocs+'｜含抵免文件 '+totalWithExempt+'｜抵免 '+totalExempt+' 筆');
+  if(sampleKeys.length)lines.push('樣本：'+sampleKeys.join('｜'));
+  if(sampleExempt)lines.push('抵免樣本：'+sampleExempt);
+  else if(anyDoc)lines.push('結果：有 day 文件，但未找到 exempt 欄位');
+  alert(lines.join('\n'));
 }
 
 // 在總覽頁顯示「作業抵免統計」卡片
@@ -2523,13 +2736,16 @@ function submitPaste(){
   _pasteData.forEach(r=>{if(r.val!==null)nosMap[r.no]=r.val;});
 
   const existIdx=_scores[subj].findIndex(e=>e.label===fullLabel);
-  const rec={key:fullLabel,label:fullLabel,date:extractDate(label)||todayISO(),nos:nosMap};
+  const stamp=Date.now();
+  const rec={key:fullLabel,label:fullLabel,date:extractDate(label)||todayISO(),nos:nosMap,_updatedAt:stamp};
   if(existIdx>=0){
     if(!confirm(`「${fullLabel}」已存在，確定覆蓋嗎？`))return;
     pushUndo('覆蓋成績');
+    rec.id=_scores[subj][existIdx].id||scoreIdentity(subj,_scores[subj][existIdx]);
     _scores[subj][existIdx]=rec;
   }else{
     pushUndo('新增成績');
+    rec.id=scoreIdentity(subj,rec);
     _scores[subj].push(rec);
   }
 
@@ -2718,12 +2934,17 @@ function renderScoreLog(){
 function delEntry(subj,idx){
   if(!confirm(`確定刪除「${_scores[subj][idx].label}」？`))return;
   pushUndo('刪除成績');
-  markScoresDeleted({[subj]:[_scores[subj][idx]]});
+  markScoreDeleted(subj,_scores[subj][idx]);
   _scores[subj].splice(idx,1);
   sched('scores');scheduleSync();renderScoreLog();renderOverview();toast('已刪除');
 }
 
-function clearScores(){pushUndo('清除全部成績');markScoresDeleted(_scores);_scores={};sched('scores');scheduleSync();renderScoreLog();renderOverview();toast('已清除');}
+function clearScores(){
+  pushUndo('清除全部成績');
+  const stamp=Date.now();
+  Object.keys(_scores).forEach(subj=>(_scores[subj]||[]).forEach(e=>markScoreDeleted(subj,e,stamp)));
+  _scores={};sched('scores');scheduleSync();renderScoreLog();renderOverview();toast('已清除');
+}
 
 // ══ 兌換獎卡 ══
 function renderRedeem(){
@@ -3451,8 +3672,7 @@ function renderLog(){
 function delLog(id){
   if(!confirm('確定刪除這筆紀錄？'))return;
   pushUndo('刪除紀錄');
-  const removed=_logs.filter(l=>String(l.id)===String(id));
-  markLogsDeleted(removed);
+  markLogsDeleted(_logs.filter(l=>String(l.id)===String(id)));
   _logs=_logs.filter(l=>String(l.id)!==String(id));
   sched('logs');scheduleSync();renderLog();renderNoonList();renderOverview();renderGiveDetail();toast('已刪除');
 }
@@ -3462,7 +3682,7 @@ function clearLogs(){pushUndo('清除全部紀錄');markLogsDeleted(_logs);_logs
 function renderSettings(){
   document.getElementById('set-thr').value=_settings.threshold||300;
   renderNosPicker();
-  updateStorageStatus();
+  renderStorageStatus();
 }
 
 function saveBasic(){
@@ -3481,7 +3701,7 @@ function switchStab(id){
     document.getElementById('stab-panel-'+t).style.display=t===id?'':'none';
   });
   if(id==='nos')renderNosPicker();
-  if(id==='sync')updateStorageStatus();
+  if(id==='sync')renderStorageStatus();
 }
 
 // ── 座號管理 ──
@@ -3541,7 +3761,7 @@ function saveNos(){
   _fixed.toilet=_fixed.toilet.filter(n=>_nos.includes(n));
   Object.keys(_fixed.cadre).forEach(n=>{if(!_nos.includes(parseInt(n)))delete _fixed.cadre[n];});
   _qgSel.clear();
-  const stamp=Date.now();touchPart('fixed',stamp);sched('nos');scheduleSync();
+  sched(['nos','fixed']);scheduleSync();
   toast(`✅ 已儲存 ${_nos.length} 個座號`);
   renderOverview();
   if(wasEmpty&&_nos.length){
@@ -3554,6 +3774,178 @@ function saveNos(){
         if(b)b.classList.remove('active');
       });
     },600);
+  }
+}
+
+function renderStorageStatus(){
+  const el=document.getElementById('sync-data-status');
+  if(!el)return;
+  if(!_curClassId){el.textContent='尚未選擇班級';return;}
+  const snap=currentSnapshot();
+  const bytes=new Blob([JSON.stringify(snap)]).size;
+  const scoreEntries=Object.values(_scores).reduce((sum,arr)=>sum+(Array.isArray(arr)?arr.length:0),0);
+  const deletedCount=Object.keys(_deleted.scores||{}).length+Object.keys(_deleted.logs||{}).length;
+  const modeLabel=_syncMode==='separate'?'獨立文件（最佳）':_syncMode==='legacy'?'相容模式':firebaseUidRef.current?'等待雲端確認':'僅本機';
+  const size=bytes<1024?bytes+' B':(bytes/1024).toFixed(1)+' KB';
+  const synced=_lastSyncedAt?new Date(_lastSyncedAt).toLocaleString('zh-TW',{hour12:false}):'尚未同步';
+  const sizeWarn=bytes>750*1024?'<br><span style="color:var(--red);font-weight:700">⚠ 資料量偏大，請先建立封存快照</span>':'';
+  el.innerHTML=`<b>${esc(curClassName()||_curClassId)}</b>｜學年度 ${esc(academicYearKey(_curClassId))}<br>`+
+    `同步：${modeLabel}｜版本 r${_revision}｜${synced}<br>`+
+    `資料量：約 ${size}｜成績 ${scoreEntries} 次｜紀錄 ${_logs.length} 筆${deletedCount?`｜刪除保護 ${deletedCount} 筆`:''}${sizeWarn}`;
+}
+
+function recoverySummary(raw){
+  const c=snapshotCounts(raw);
+  return `座號 ${c.nos}｜成績欄 ${c.scoreEntries}｜成績值 ${c.scoreValues}｜紀錄 ${c.logs}`;
+}
+
+function parseRecoveryDoc(doc){
+  if(!doc||!doc.exists)return null;
+  const data=doc.data()||{};
+  const raw=parseStored(data.data,null)||parseStored(data.snapshot,null)||parseStored(data.value,null);
+  if(!raw||typeof raw!=='object')return null;
+  return normalizeSnapshot({...raw,revision:Math.max(Number(raw.revision)||0,Number(data.revision)||0)},raw.updatedAt||data.clientUpdatedAt||0);
+}
+
+async function readLocalRecoverySnapshot(classId){
+  const pfx=pfxFor(classId);
+  const keys=(await storeKeys()).filter(k=>k.startsWith(pfx));
+  const scoreKeys=keys.filter(k=>k.startsWith(pfx+'scores:'));
+  const logKeys=keys.filter(k=>k.startsWith(pfx+'logs:'));
+  const scoreParts=await Promise.all(scoreKeys.map(k=>storeGet(k)));
+  const logParts=await Promise.all(logKeys.map(k=>storeGet(k)));
+  const[v3,fixed,settings,nos,meta]=await Promise.all([
+    storeGet(pfx+'snapshot:v3'),storeGet(pfx+'fixed'),storeGet(pfx+'settings'),storeGet(pfx+'nos'),storeGet(pfx+'meta')
+  ]);
+  const legacy=normalizeSnapshot({
+    scores:mergeScores.apply(null,scoreParts),logs:mergeLogs.apply(null,logParts),
+    fixed:fixed||{cadre:{},toilet:[]},settings:{threshold:300,...(settings||{})},nos:Array.isArray(nos)?nos:[],
+    updatedAt:meta&&Number(meta.updatedAt)||0,revision:meta&&Number(meta.revision)||0
+  },meta&&Number(meta.updatedAt)||0);
+  return mergeVisibleSnapshots([v3,legacy])||v3||legacy;
+}
+
+function classIdsInLegacyDoc(data){
+  const ids=new Set();
+  Object.keys(data||{}).forEach(k=>{
+    const m=k.match(/^vc:(.+):(?:snapshot:v3|scores:all|scores:\d{4}|logs:all|logs:\d{4}|fixed|settings|nos|meta)$/);
+    if(m&&m[1])ids.add(m[1]);
+  });
+  return[...ids];
+}
+
+async function collectRecoveryCandidates(){
+  const classId=_curClassId;
+  const className=curClassName();
+  const candidates=[];
+  const seen=new Set();
+  const related=id=>id===classId||!!(className&&String(id||'').includes(className));
+  const add=(source,snapshot,id,exact)=>{
+    if(!snapshot||!hasVisibleData(snapshot))return;
+    const fp=snapshotFingerprint(snapshot);
+    const key=source+'|'+fp;
+    if(seen.has(key))return;
+    seen.add(key);
+    candidates.push({source,snapshot:normalizeSnapshot(snapshot,snapshot.updatedAt),classId:id||classId,exact:exact!==false});
+  };
+
+  add('目前畫面',currentSnapshot(),classId,true);
+  try{add('本機新舊儲存區',await readLocalRecoverySnapshot(classId),classId,true);}catch(e){console.warn('Local recovery scan fail',e);}
+
+  // 本機若殘留相同班名但不同代碼，也列入候選（常見於班級代碼格式改版）。
+  try{
+    const localIds=new Set();
+    (await storeKeys()).forEach(k=>{
+      const m=k.match(/^vc:(.+):(?:snapshot:v3|scores:all|scores:\d{4}|logs:all|logs:\d{4}|fixed|settings|nos|meta)$/);
+      if(m&&m[1]&&m[1]!==classId&&related(m[1]))localIds.add(m[1]);
+    });
+    for(const id of localIds)add('本機相近班級代碼 '+id,await readLocalRecoverySnapshot(id),id,false);
+  }catch(e){console.warn('Related local scan fail',e);}
+
+  const uid=firebaseUidRef.current;
+  if(!uid||!_db||!navigator.onLine)return candidates;
+
+  // 目前 v2.2 分班文件。
+  try{add('新版分班雲端',snapshotFromClassDoc(await classCloudRef(uid,classId).get()),classId,true);}catch(e){console.warn('Current class recovery scan fail',e);}
+
+  // v2.1 舊主文件；同時掃描可能因班級代碼格式改變而留下的相近前綴。
+  try{
+    const root=await legacyCloudRef(uid).get();
+    if(root.exists){
+      const data=root.data()||{};
+      add('舊版雲端主文件',cloudSnapshotFromDoc(data,classId),classId,true);
+      classIdsInLegacyDoc(data).forEach(id=>{
+        if(id!==classId&&related(id))add('舊版雲端相近班級 '+id,cloudSnapshotFromDoc(data,id),id,false);
+      });
+    }
+  }catch(e){console.warn('Legacy recovery scan fail',e);}
+
+  // 掃描不同 v2.2 測試版曾使用的文件 ID；以 classId 欄位鎖定，避免讀到其他班級。
+  try{
+    const snap=await _db.collection('vc-card-users').doc(uid).collection('classes').where('classId','==',classId).limit(50).get();
+    snap.forEach(doc=>add('分班雲端 '+doc.id,parseRecoveryDoc(doc),classId,true));
+  }catch(e){console.warn('Class collection recovery scan fail',e);}
+  try{
+    const snap=await _db.collection('users').doc(uid).collection('data').where('classId','==',classId).limit(50).get();
+    snap.forEach(doc=>{
+      const data=doc.data()||{};
+      if(String(data.kind||'').startsWith('vc-card'))add('相容雲端 '+doc.id,parseRecoveryDoc(doc),classId,true);
+    });
+  }catch(e){console.warn('Data collection recovery scan fail',e);}
+  return candidates;
+}
+
+async function diagnoseAndRecoverData(){
+  if(!_curClassId){alert('請先選擇班級，再執行資料診斷。');return;}
+  toast('🛟 正在檢查本機與新舊雲端資料…',5000);
+  let candidates;
+  try{candidates=await collectRecoveryCandidates();}
+  catch(e){alert('資料診斷未完成：'+e.message);return;}
+
+  const exact=candidates.filter(c=>c.exact);
+  const related=candidates.filter(c=>!c.exact);
+  const pool=exact.concat(related);
+  const report=['資料診斷｜'+(curClassName()||_curClassId),''];
+  if(!pool.length){
+    report.push('本機、新版雲端與舊版雲端目前都沒有找到可見資料。');
+    report.push(firebaseUidRef.current?'已登入雲端；可確認班級是否選對。':'目前未登入；登入原本使用的 Google 帳號後再診斷一次。');
+    alert(report.join('\n'));return;
+  }
+  pool.slice(0,12).forEach(c=>report.push((c.exact?'✓ ':'△ ')+c.source+'：'+recoverySummary(c.snapshot)));
+  if(pool.length>12)report.push('其餘來源 '+(pool.length-12)+' 個');
+
+  // 救援模式刻意不採用舊刪除標記，避免 v2.2.0 的空文件／錯誤標記再次壓掉仍存在的資料。
+  let recovered=null;
+  pool.forEach(c=>{
+    const s=normalizeSnapshot(c.snapshot,c.snapshot.updatedAt);
+    s.deleted={scores:{},logs:{}};
+    recovered=recovered?mergeSnapshots(recovered,s):s;
+  });
+  if(!recovered||!hasVisibleData(recovered)){report.push('沒有可救援的成績、紀錄或座號。');alert(report.join('\n'));return;}
+  recovered.deleted={scores:{},logs:{}};
+  const current=currentSnapshot();
+  report.push('');
+  report.push('合併後：'+recoverySummary(recovered));
+  if(related.length)report.push('△ 包含相同班名但舊代碼的來源，請確認班級名稱正確。');
+  report.push('');
+  report.push('按「確定」才會寫回目前班級；不會刪除任何原始來源。');
+  if(!confirm(report.join('\n')))return;
+
+  try{
+    if(hasVisibleData(current)){
+      const before=await createBackupPackage('pre-recovery');
+      downloadBackupPackage(before,'資料救援前備份');
+    }
+    pushUndo('資料診斷救援');
+    replaceCurrentWithSnapshot(recovered);
+    await persistLocal(true);
+    refreshVisiblePanel();renderStorageStatus();
+    if(firebaseUidRef.current&&navigator.onLine)await doSync(true);
+    toast('✅ 資料已找回並安全寫回目前班級',5000);
+    alert('資料救援完成\n\n'+recoverySummary(currentSnapshot())+'\n\n請回到總覽確認座號、成績與持卡紀錄。');
+  }catch(e){
+    console.warn('Data recovery fail',e);
+    alert('資料已找到，但寫回失敗：'+e.message+'\n請先不要重新設定座號，稍後再執行診斷。');
   }
 }
 
@@ -3577,16 +3969,53 @@ function exportLogCSV(){
   dlText(csv,`獎卡紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`,'text/csv;charset=utf-8');
 }
 
-function exportBackup(){
-  if(!_curClassId){toast('請先選擇班級');return;}
-  const backup={
-    type:'venus-card-backup',schema:3,appVersion:APP_VERSION,
-    exportedAt:new Date().toISOString(),classId:_curClassId,className:curClassName(),schoolYear:_curSchoolYear,
-    data:currentSnapshot()
+async function sha256Hex(text){
+  try{
+    if(!crypto||!crypto.subtle)return null;
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch{return null;}
+}
+async function createBackupPackage(kind){
+  const data=currentSnapshot();
+  const checksum=await sha256Hex(JSON.stringify(data));
+  return{
+    type:'venus-card-backup',schema:3,complete:true,kind:kind||'manual',appVersion:APP_VERSION,
+    exportedAt:new Date().toISOString(),classId:_curClassId,className:curClassName(),
+    academicYear:academicYearKey(_curClassId),revision:_revision,sha256:checksum,data
   };
+}
+function downloadBackupPackage(backup,prefix){
   const safeName=(curClassName()||_curClassId||'班級').replace(/[\\/:*?"<>|]/g,'_');
-  dlText(JSON.stringify(backup,null,2),`獎卡完整備份_${safeName}_${todayISO()}.json`,'application/json;charset=utf-8');
+  dlText(JSON.stringify(backup,null,2),`${prefix||'獎卡完整備份'}_${safeName}_${todayISO()}.json`,'application/json;charset=utf-8');
+}
+async function exportBackup(){
+  if(!_curClassId){toast('請先選擇班級');return;}
+  const backup=await createBackupPackage('manual');
+  downloadBackupPackage(backup,'獎卡完整備份');
   toast('✅ 完整備份已下載');
+}
+
+async function archiveAcademicData(){
+  if(!_curClassId){toast('請先選擇班級');return;}
+  if(!confirm(`確定建立「${curClassName()||_curClassId}」學年度 ${academicYearKey(_curClassId)} 的封存快照？\n會下載完整 JSON，不會清除目前資料。`))return;
+  if(firebaseUidRef.current&&navigator.onLine)await doSync(true);
+  const backup=await createBackupPackage('archive');
+  downloadBackupPackage(backup,'獎卡學年度封存');
+  let cloudSaved=false;
+  if(firebaseUidRef.current&&_db&&navigator.onLine&&_syncMode==='separate'){
+    try{
+      const id=new Date().toISOString().replace(/[:.]/g,'-');
+      await classCloudRef(firebaseUidRef.current,_curClassId).collection('archives').doc(id).set({
+        schema:3,classId:_curClassId,academicYear:academicYearKey(_curClassId),appVersion:APP_VERSION,
+        revision:_revision,sha256:backup.sha256||null,archivedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        data:JSON.stringify(backup.data)
+      });
+      cloudSaved=true;
+    }catch(e){console.warn('Cloud archive unavailable',e);}
+  }
+  renderStorageStatus();
+  toast(cloudSaved?'✅ 封存已下載並保存雲端快照':'✅ 封存已下載（雲端快照目前使用相容模式）',4200);
 }
 
 function importBackup(input){
@@ -3597,23 +4026,19 @@ function importBackup(input){
     try{
       const backup=JSON.parse(e.target.result);
       if(!backup||backup.type!=='venus-card-backup'||!backup.data)throw new Error('不是有效的 Venus Card 備份檔');
+      if(Number(backup.schema)>=3&&backup.complete!==true)throw new Error('備份檔尚未完整寫入');
       const d=backup.data;
       if(!d.scores||typeof d.scores!=='object'||!Array.isArray(d.logs)||!Array.isArray(d.nos))throw new Error('備份內容不完整');
-      if((backup.classId&&backup.classId!==_curClassId)||(backup.schoolYear&&backup.schoolYear!==_curSchoolYear)){
-        const source=`${backup.className||backup.classId||'未知班級'}${backup.schoolYear?' '+backup.schoolYear:''}`;
-        const target=`${curClassName()||_curClassId}${_curSchoolYear?' '+_curSchoolYear:''}`;
-        const ok=confirm(`此備份來自「${source}」，目前是「${target}」。\n確定要還原到目前班級與學年度嗎？`);
+      if(backup.sha256){
+        const actual=await sha256Hex(JSON.stringify(d));
+        if(actual&&actual!==backup.sha256)throw new Error('備份檔完整性檢查失敗，檔案可能不完整');
+      }
+      if(backup.classId&&backup.classId!==_curClassId){
+        const ok=confirm(`此備份來自「${backup.className||backup.classId}」，目前是「${curClassName()||_curClassId}」。\n確定要還原到目前班級嗎？`);
         if(!ok)return;
       }else if(!confirm(`確定還原「${backup.className||curClassName()||'目前班級'}」的完整備份？\n目前資料會被替換，但可用畫面上的撤銷按鈕復原。`))return;
       pushUndo('還原完整備份');
-      replaceAllScores(cloneData(d.scores));
-      replaceAllLogs(cloneData(d.logs));
-      _deletedScoreIds=mergeStampMaps(_deletedScoreIds,d.deletedScoreIds);
-      _deletedLogIds=mergeStampMaps(_deletedLogIds,d.deletedLogIds);
-      _fixed=cloneData(d.fixed||{cadre:{},toilet:[]});
-      _settings={threshold:300,...cloneData(d.settings||{})};
-      _nos=[...d.nos].map(Number).filter(n=>Number.isInteger(n)&&n>0).sort((a,b)=>a-b);
-      touchPart('all',Date.now());_dirty=true;
+      replaceCurrentWithSnapshot(d);
       await persistLocal(true);scheduleSync();refreshVisiblePanel();
       toast('✅ 完整備份已還原');
     }catch(err){toast('還原失敗：'+err.message,4000);}
@@ -3621,66 +4046,6 @@ function importBackup(input){
   };
   reader.onerror=()=>{input.value='';toast('無法讀取備份檔');};
   reader.readAsText(file);
-}
-
-function updateStorageStatus(){
-  const el=document.getElementById('storage-status');if(!el)return;
-  if(!_curClassId||!_curSchoolYear){el.textContent='尚未選擇班級';return;}
-  const bytes=new Blob([JSON.stringify(currentSnapshot())]).size;
-  const start=parseInt(_curSchoolYear),roc=Number.isFinite(start)?start-1911:null;
-  const mode=_cloudStorageMode==='legacy'?'相容同步模式':'獨立雲端文件';
-  const capacity=bytes>700*1024?'<br><span style="color:var(--red);font-weight:700">⚠️ 資料量偏大，建議立即封存後開始新學年度</span>':'';
-  const archived=_lastArchiveAt?`<br>最近封存：${new Date(_lastArchiveAt).toLocaleString('zh-TW',{hour12:false})}`:'';
-  el.innerHTML=`<b>${esc(curClassName()||_curClassId)}</b>｜${roc?roc+' 學年度 ':''}(${esc(_curSchoolYear)})<br>`+
-    `資料量：約 ${(bytes/1024).toFixed(1)} KB｜${_scores?Object.values(_scores).reduce((a,v)=>a+(v||[]).length,0):0} 次成績｜${_logs.length} 筆紀錄｜${mode}${capacity}${archived}`;
-}
-
-async function archiveCurrentYear(){
-  if(!_curClassId||!_curSchoolYear){toast('請先選擇班級');return;}
-  if(!confirm(`確定封存「${curClassName()||_curClassId}」${_curSchoolYear} 的目前資料？\n封存不會清除或改變現有資料。`))return;
-  await persistLocal(true);
-  if(firebaseUidRef.current&&navigator.onLine)await doSync(true);
-  const archivedAt=Date.now(),snap=normalizeSnapshot({...currentSnapshot(),lastArchiveAt:archivedAt});
-  const archive={type:'venus-card-year-archive',schema:3,appVersion:APP_VERSION,archivedAt:new Date(archivedAt).toISOString(),
-    classId:_curClassId,className:curClassName(),schoolYear:_curSchoolYear,data:snap};
-  const safeName=(curClassName()||_curClassId||'班級').replace(/[\\/:*?"<>|]/g,'_');
-  dlText(JSON.stringify(archive,null,2),`獎卡封存_${safeName}_${_curSchoolYear}_${todayISO()}.json`,'application/json;charset=utf-8');
-  let cloudSaved=false;
-  if(firebaseUidRef.current&&_db&&navigator.onLine&&_cloudStorageMode!=='legacy'){
-    try{
-      const sourceId=classCloudDocId(_curClassId,_curSchoolYear);
-      const archiveId=`${sourceId}__archive__${archivedAt}`;
-      if(_cloudStorageMode==='data-doc'){
-        await _db.collection('users').doc(firebaseUidRef.current).collection('data').doc('vc-card-archive:'+archiveId).set({
-          value:JSON.stringify(snap),schema:3,kind:'vc-card-archive',classId:_curClassId,schoolYear:_curSchoolYear,sourceDocId:sourceId,
-          archivedClientAt:archivedAt,archiveLabel:`${curClassName()||_curClassId} ${_curSchoolYear}`,updatedAt:firebase.firestore.FieldValue.serverTimestamp(),appVersion:APP_VERSION
-        });
-      }else{
-        const payload=classDocPayload(snap,_curClassId,_curSchoolYear,snap.revision,'archive');
-        payload.sourceDocId=sourceId;payload.archivedClientAt=archivedAt;payload.archiveLabel=`${curClassName()||_curClassId} ${_curSchoolYear}`;
-        await _db.collection('vc-card-users').doc(firebaseUidRef.current).collection('classes').doc(archiveId).set(payload);
-      }
-      cloudSaved=true;
-    }catch(e){console.warn('Cloud archive fail',e);}
-  }
-  _lastArchiveAt=archivedAt;_dataUpdatedAt=Math.max(_dataUpdatedAt,archivedAt);_dirty=true;
-  await persistLocal(true);if(cloudSaved)scheduleSync();updateStorageStatus();
-  toast(cloudSaved?'✅ 已完成雲端封存並下載備份':'✅ 已下載封存備份；目前雲端為相容模式',4000);
-}
-
-async function listCloudArchives(){
-  if(!firebaseUidRef.current||!_db||!navigator.onLine){toast('請先連線並登入');return;}
-  if(_cloudStorageMode==='legacy'){toast('目前為相容模式，請使用已下載的封存 JSON');return;}
-  try{
-    const sourceId=classCloudDocId(_curClassId,_curSchoolYear);
-    const qs=_cloudStorageMode==='data-doc'?
-      await _db.collection('users').doc(firebaseUidRef.current).collection('data').where('kind','==','vc-card-archive').where('sourceDocId','==',sourceId).limit(20).get():
-      await _db.collection('vc-card-users').doc(firebaseUidRef.current).collection('classes').where('kind','==','archive').where('sourceDocId','==',sourceId).limit(20).get();
-    const items=[];qs.forEach(doc=>{const d=doc.data()||{};items.push({at:Number(d.archivedClientAt)||0,label:d.archiveLabel||''});});
-    items.sort((a,b)=>b.at-a.at);
-    if(!items.length){toast('目前沒有雲端封存');return;}
-    alert(`「${curClassName()||_curClassId}」${_curSchoolYear} 雲端封存\n\n`+items.map((x,i)=>`${i+1}. ${new Date(x.at).toLocaleString('zh-TW',{hour12:false})}`).join('\n'));
-  }catch(e){toast('讀取封存失敗：'+e.message,4000);}
 }
 
 function dlText(text,filename,type){
