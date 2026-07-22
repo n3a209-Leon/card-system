@@ -1141,7 +1141,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.5';
+const APP_VERSION='2.4.6';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -4985,6 +4985,9 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   }
   showReportProgress(targets.length,reportType);
   _rptCache={};
+  const _perf={t0:performance.now(),summary:0,studentCpu:0,write:0,tdu:0,tduN:0};
+  const _origTDU=HTMLCanvasElement.prototype.toDataURL;
+  HTMLCanvasElement.prototype.toDataURL=function(){const _s=performance.now();const _r=_origTDU.apply(this,arguments);_perf.tdu+=performance.now()-_s;_perf.tduN++;return _r;};
   try{
   const bodyClass=(single?'single-report':'full-class')+(reportType==='parent'?' parent-report':'')+(!single&&reportType==='parent'?' parent-batch':'')+(colorMode==='bw'?' report-bw':'');
   let html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${single?'個人成績報告':'全班成績報告'}</title><style>
@@ -5061,7 +5064,7 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   <div class="report-actions"><button onclick="window.close();setTimeout(()=>history.back(),300)">關閉</button><button class="print" onclick="window.print()">列印／另存 PDF</button></div>
   <main class="report-shell">`;
   if(reportType==='full')html+=`<header class="report-title"><div><span class="eyebrow">VENUS CARD SYSTEM · ACADEMIC REPORT</span><h1>${esc(titleText)}</h1></div><div class="report-meta">Venus Card v${APP_VERSION}<br>統計範圍：${esc(scopeLabel)}<br>產生時間：${new Date().toLocaleString('zh-TW',{hour12:false})}</div></header>`;
-  if(!single&&reportType==='full')html+=classSummaryHTML(scope);
+  if(!single&&reportType==='full'){const _sSum=performance.now();html+=classSummaryHTML(scope);_perf.summary=performance.now()-_sSum;}
   for(let i=0;i<targets.length;i++){
     if(runId!==_reportBuildRun){try{w.close();}catch(e){}return;}
     if(w.closed){
@@ -5079,7 +5082,9 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
     }
     const studentNo=targets[i];
     try{
+      const _sStu=performance.now();
       html+=reportType==='parent'?parentReportHTML(studentNo,allSubjs,scope):studentReportHTML(studentNo,allSubjs,scope);
+      _perf.studentCpu+=performance.now()-_sStu;
     }catch(e){
       closeModal('report-progress-modal');
       try{w.close();}catch(_){}
@@ -5092,13 +5097,15 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   await yieldReportUI();
   html+=`</main><script>(function(){var done=false;function go(){if(done)return;done=true;setTimeout(function(){window.print()},260)}var imgs=[].slice.call(document.images);if(!imgs.length){go();return}var left=imgs.length;function one(){left--;if(left<=0)go()}imgs.forEach(function(img){if(img.complete)one();else{img.addEventListener('load',one,{once:true});img.addEventListener('error',one,{once:true})}});setTimeout(go,2600)})();<\/script></body></html>`;
   try{
-    w.document.open();w.document.write(html);w.document.close();
+    const _sW=performance.now();w.document.open();w.document.write(html);w.document.close();_perf.write=performance.now()-_sW;
   }catch(e){closeModal('report-progress-modal');toast('報告視窗建立失敗：'+e.message,4000);try{w.close();}catch(_){}return;}
   closeModal('report-progress-modal');
   if(_reportBuildPopup===w)_reportBuildPopup=null;
   const modeText=reportType==='parent'?'家長精簡報告':colorMode==='bw'?'黑白高對比報告':'彩色高對比報告';
   toast(`✅ ${modeText}已建立，共 ${targets.length} 份`,3200);
-  }finally{_rptCache=null;}
+  const _tot=performance.now()-_perf.t0;
+  alert('⏱ 報告耗時 v'+APP_VERSION+'\n總計:'+Math.round(_tot)+' ms\n班級摘要:'+Math.round(_perf.summary)+' ms\n學生運算(CPU):'+Math.round(_perf.studentCpu)+' ms\n圖片編碼:'+Math.round(_perf.tdu)+' ms ×'+_perf.tduN+' 張\n寫入視窗:'+Math.round(_perf.write)+' ms\n人數:'+targets.length+'　科目:'+allSubjs.length+'\nHTML大小:'+Math.round(html.length/1024)+' KB');
+  }finally{_rptCache=null;HTMLCanvasElement.prototype.toDataURL=_origTDU;}
 }
 
 // ══ 複製 AI 報告素材 ══
