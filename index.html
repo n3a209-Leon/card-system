@@ -417,6 +417,9 @@ tr:hover td{background:var(--accent-light)}
 .modal-center{align-items:center}
 .modal.center-modal{border-radius:16px;max-width:440px;margin:auto}
 .modal-bg.center .modal{border-radius:16px;max-width:440px;margin:auto;padding-bottom:20px}
+.ropt{border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .12s,background .12s}
+.ropt.ropt-on{border-color:var(--accent);background:var(--accent-light)}
+.ropt:active{background:var(--bg3)}
 
 /* ══ MORE SHEET ══ */
 .more-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;font-weight:600;font-size:14px}
@@ -1045,7 +1048,7 @@ tr:hover td{background:var(--accent-light)}
 </div>
 
 <!-- MODAL: report scope / print mode -->
-<div class="modal-bg center" id="report-scope-modal">
+<div class="modal-bg center" id="report-scope-modal" onclick="if(event.target===this)closeModal('report-scope-modal')">
   <div class="modal" style="max-width:520px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <h3 style="margin:0">🖨 產生成績報告</h3>
@@ -1055,36 +1058,36 @@ tr:hover td{background:var(--accent-light)}
     <div class="fg" style="margin-bottom:14px">
       <label style="font-weight:800;margin-bottom:7px;display:block">報告範圍</label>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-        <label style="border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer">
-          <input type="radio" name="report-scope" value="up"> 上學期
+        <label class="ropt" style="padding:10px 6px;text-align:center">
+          <input type="radio" name="report-scope" value="up" onchange="markRadio(this)"> 上學期
         </label>
-        <label style="border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer">
-          <input type="radio" name="report-scope" value="down"> 下學期
+        <label class="ropt" style="padding:10px 6px;text-align:center">
+          <input type="radio" name="report-scope" value="down" onchange="markRadio(this)"> 下學期
         </label>
-        <label style="border:1px solid var(--accent);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;background:var(--accent-light)">
-          <input type="radio" name="report-scope" value="year" checked> 全學年
+        <label class="ropt ropt-on" style="padding:10px 6px;text-align:center">
+          <input type="radio" name="report-scope" value="year" checked onchange="markRadio(this)"> 全學年
         </label>
       </div>
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label style="font-weight:800;margin-bottom:7px;display:block">列印模式</label>
-      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer">
-        <input type="radio" name="report-color" value="color" checked style="margin-top:2px">
+      <label class="ropt ropt-on" style="display:flex;align-items:flex-start;gap:8px;padding:10px;margin-bottom:7px">
+        <input type="radio" name="report-color" value="color" checked onchange="markRadio(this)" style="margin-top:2px">
         <span><b>彩色高對比（建議）</b><br><small style="color:var(--text4)">保留學科色彩，並加粗線條與標記</small></span>
       </label>
-      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer">
-        <input type="radio" name="report-color" value="bw" style="margin-top:2px">
+      <label class="ropt" style="display:flex;align-items:flex-start;gap:8px;padding:10px">
+        <input type="radio" name="report-color" value="bw" onchange="markRadio(this)" style="margin-top:2px">
         <span><b>黑白省墨</b><br><small style="color:var(--text4)">改用灰階、高對比與實線／虛線區分</small></span>
       </label>
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label style="font-weight:800;margin-bottom:7px;display:block">報告內容</label>
-      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;cursor:pointer">
-        <input type="radio" name="report-type" value="full" checked style="margin-top:2px">
+      <label class="ropt ropt-on" style="display:flex;align-items:flex-start;gap:8px;padding:10px;margin-bottom:7px">
+        <input type="radio" name="report-type" value="full" checked onchange="markRadio(this)" style="margin-top:2px">
         <span><b>完整分析版</b><br><small style="color:var(--text4)">雷達圖、折線圖、班級比較與完整統計</small></span>
       </label>
-      <label style="display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer">
-        <input type="radio" name="report-type" value="parent" style="margin-top:2px">
+      <label class="ropt" style="display:flex;align-items:flex-start;gap:8px;padding:10px">
+        <input type="radio" name="report-type" value="parent" onchange="markRadio(this)" style="margin-top:2px">
         <span><b>家長精簡版</b><br><small style="color:var(--text4)">每位學生一頁，重點數字與說明更容易閱讀</small></span>
       </label>
     </div>
@@ -1138,7 +1141,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.3';
+const APP_VERSION='2.4.4';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -2086,6 +2089,7 @@ function setSyncDot(s){
   d.title=s==='ing'?'尚有資料待同步':s==='off'?'目前離線或未登入':'資料已同步';
 }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
+function markRadio(r){try{document.querySelectorAll('input[name="'+r.name+'"]').forEach(function(x){var l=x.closest('label');if(l)l.classList.toggle('ropt-on',x.checked);});}catch(e){}}
 
 function pushUndo(label){
   if(!_curClassId)return;
@@ -3704,6 +3708,85 @@ function dateBoundaryX(entries,boundaryDateStr,toX){
 }
 
 // 圖表繪製核心（螢幕畫面與離屏匯出共用）。座標系固定 500x240，依實際尺寸等比縮放。
+// ══ 折線圖 SVG（向量版，報告用；免 toDataURL、免圖片載入、列印更清晰）══
+function lineChartSVG(no,subj,scopeSem){
+  const W=500,H=240,pad={l:40,r:16,t:32,b:72};
+  const color=CHART_COLORS[subj]||'#2563EB';
+  const allEntries=_scores[subj]||[];
+  const entries=scopeSem?allEntries.filter(e=>semOf(e.date)===scopeSem):allEntries;
+  const data=entries.map(e=>({label:e.label,val:e.nos&&e.nos[no]}));
+  const classAvgs=entries.map(e=>{const st=calcStats(Object.values(e.nos||{}));return st?st.avg:null;});
+  const vals=data.map(d=>d.val).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" style="display:block;width:100%;height:auto">`;
+  s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`;
+  s+=`<text x="${pad.l}" y="14" font-size="13" font-weight="bold" fill="${color}">${esc(subj)}</text>`;
+  s+=`<line x1="${W-160}" y1="11" x2="${W-143}" y2="11" stroke="${color}" stroke-width="2.5"/><text x="${W-139}" y="14" font-size="10" fill="#475569">個人</text>`;
+  s+=`<line x1="${W-94}" y1="11" x2="${W-77}" y2="11" stroke="#64748B" stroke-width="1.6" stroke-dasharray="3 3"/><text x="${W-73}" y="14" font-size="10" fill="#64748B">全班平均</text>`;
+  if(!vals.length){s+=`<text x="${W/2}" y="${H/2}" font-size="13" fill="#999" text-anchor="middle">無資料</text></svg>`;return s;}
+  const rangeVals=[...vals,...classAvgs.filter(v=>v!==null&&!isNaN(v))];
+  const mn=Math.max(0,Math.min(...rangeVals)-10),mx=Math.min(100,Math.max(...rangeVals)+10);
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const toX=i=>pad.l+(i/(data.length-1||1))*cW;
+  const toY=v=>pad.t+cH-((v-mn)/(mx-mn||1))*cH;
+  for(let y=Math.ceil(mn/10)*10;y<=mx;y+=10){
+    const yy=toY(y);
+    s+=`<line x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}" stroke="rgba(0,0,0,.06)" stroke-width="1"/>`;
+    s+=`<text x="${pad.l-3}" y="${yy+3}" font-size="10" fill="#999" text-anchor="end">${y}</text>`;
+  }
+  if(mn<=60&&mx>=60){
+    const passY=toY(60);
+    s+=`<line x1="${pad.l}" y1="${passY}" x2="${W-pad.r}" y2="${passY}" stroke="rgba(220,38,38,.38)" stroke-width="1.2" stroke-dasharray="6 4"/>`;
+    s+=`<text x="${pad.l+4}" y="${passY-4}" font-size="9" fill="#B91C1C">及格線</text>`;
+  }
+  data.forEach((d,i)=>{
+    let short=String(d.label||'').replace(/^[^-]+-/,'');
+    if(short.length>4)short=short.slice(-4);
+    s+=`<text x="${toX(i)}" y="${H-pad.b+12}" font-size="10" fill="#999" text-anchor="middle">${esc(short)}</text>`;
+  });
+  const drawBoundary=(lab,dt)=>{
+    if(!dt)return'';
+    const bx=dateBoundaryX(entries,dt,toX);
+    if(bx===null)return'';
+    let o=`<line x1="${bx}" y1="${pad.t}" x2="${bx}" y2="${H-pad.b}" stroke="rgba(0,0,0,.25)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    o+=`<text x="${Math.min(Math.max(bx,pad.l+8),W-pad.r-8)}" y="${pad.t-4}" font-size="10" fill="#999" text-anchor="middle">${lab}</text>`;
+    return o;
+  };
+  if(scopeSem){
+    const bnds=examBoundaries(scopeSem);
+    s+=drawBoundary('一段',bnds['一'])+drawBoundary('二段',bnds['二'])+drawBoundary('三段',bnds['三']);
+  }else{
+    const bU=examBoundaries('上學期'),bD=examBoundaries('下學期');
+    s+=drawBoundary('上一段',bU['一'])+drawBoundary('上二段',bU['二'])+drawBoundary('下一段',bD['一'])+drawBoundary('下二段',bD['二']);
+  }
+  const avg=+(vals.reduce((a,b)=>a+b)/vals.length).toFixed(1);
+  const ay=toY(avg);
+  s+=`<line x1="${pad.l}" y1="${ay}" x2="${W-pad.r}" y2="${ay}" stroke="rgba(234,88,12,.35)" stroke-width="1" stroke-dasharray="4 4"/>`;
+  const seg=[];const segs=[];
+  classAvgs.forEach((v,i)=>{if(v===null||isNaN(v)){if(seg.length){segs.push(seg.slice());seg.length=0;}}else seg.push(`${toX(i)},${toY(v)}`);});
+  if(seg.length)segs.push(seg.slice());
+  segs.forEach(pts=>{s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="rgba(107,114,128,.5)" stroke-width="1.5" stroke-dasharray="2 3"/>`;});
+  classAvgs.forEach((v,i)=>{if(v===null||isNaN(v))return;s+=`<circle cx="${toX(i)}" cy="${toY(v)}" r="3" fill="#fff" stroke="#64748B" stroke-width="1.2"/>`;});
+  const pseg=[];const psegs=[];
+  data.forEach((d,i)=>{if(d.val===null||d.val===undefined||isNaN(d.val)){if(pseg.length){psegs.push(pseg.slice());pseg.length=0;}}else pseg.push(`${toX(i)},${toY(d.val)}`);});
+  if(pseg.length)psegs.push(pseg.slice());
+  psegs.forEach(pts=>{s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;});
+  const spacing=cW/(data.length-1||1);
+  data.forEach((d,i)=>{
+    if(d.val===null||d.val===undefined||isNaN(d.val))return;
+    s+=`<circle cx="${toX(i)}" cy="${toY(d.val)}" r="5" fill="${color}"/><circle cx="${toX(i)}" cy="${toY(d.val)}" r="2.5" fill="#fff"/>`;
+    if(spacing<24&&i%2!==0)return;
+    const py=toY(d.val);const labelY=py<pad.t+12?py+14:py-8;
+    s+=`<text x="${toX(i)}" y="${labelY}" font-size="11" font-weight="bold" fill="${color}" text-anchor="middle">${d.val}</text>`;
+  });
+  const myStats=calcStats(vals);
+  const classAll=entries.flatMap(e=>Object.values(e.nos||{}));
+  const clsStats=calcStats(classAll);
+  if(myStats)s+=`<text x="${pad.l}" y="${H-pad.b+30}" font-size="11" fill="#666">我的：平均 ${myStats.avg}｜標準差 ${myStats.sd}｜中位數 ${myStats.med}</text>`;
+  if(clsStats)s+=`<text x="${pad.l}" y="${H-pad.b+46}" font-size="11" fill="#999">全班：平均 ${clsStats.avg}｜標準差 ${clsStats.sd}｜中位數 ${clsStats.med}</text>`;
+  s+=`</svg>`;
+  return s;
+}
+
 function renderChartTo(ctx,canvasW,canvasH,no,subj,bgColor,scopeSem){
   const baseW=500,baseH=240;
   const scale=Math.min(canvasW/baseW,canvasH/baseH);
@@ -4671,10 +4754,7 @@ function studentReportHTML(no,allSubjs,scope){
         <div style="font-size:11px;color:#64748B">僅 1 筆・全班平均 ${clsAvg}・差距 ${val!==undefined&&val!==null&&clsAvg!=='—'?fmtDiff(Number(val),Number(clsAvg)):'—'}</div>
       </div>`;
     }else if(entries.length>1){
-      const off=document.createElement('canvas');off.width=500*REPORT_PIXEL_SCALE;off.height=240*REPORT_PIXEL_SCALE;
-      const ctx=off.getContext('2d');
-      renderChartTo(ctx,off.width,off.height,no,s,'#fff',sem);
-      html+=`<figure class="chart-card"><img src="${off.toDataURL('image/png')}" alt="${esc(s)}成績趨勢"></figure>`;
+      html+=`<figure class="chart-card">${lineChartSVG(no,s,sem)}</figure>`;
     }
     const vals=entries.map(e=>e.nos&&e.nos[no]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
     const st=calcStats(vals);
@@ -4932,7 +5012,7 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
     .radars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:9px;align-items:start}
     .radar-card,.chart-card{margin:0;border:1px solid #DCE4EE;border-radius:9px;padding:6px;background:#fff;break-inside:avoid;page-break-inside:avoid}
     .radar-card{max-width:92mm}.radar-card figcaption{text-align:center;font-size:10px;font-weight:800;color:#334155;margin:1px 0 2px}
-    .radar-card img,.chart-card img{display:block;width:100%;height:auto}
+    .radar-card img,.chart-card img,.radar-card svg,.chart-card svg{display:block;width:100%;height:auto}
     .charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:9px}
     .single-score{border:1px solid #DCE4EE;border-radius:9px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:82px;break-inside:avoid}
     .table-wrap{width:100%;overflow:hidden;break-inside:avoid;page-break-inside:avoid;margin-bottom:9px}
