@@ -1143,7 +1143,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.8';
+const APP_VERSION='2.4.9';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -5106,11 +5106,50 @@ function showReportViewer(html){
     const f=document.getElementById('report-frame');
     const d=f.contentWindow.document;
     d.open();d.write(html);d.close();
+    setTimeout(function(){try{fitReportPages();}catch(e){}},60);
   }catch(e){toast('報告顯示失敗：'+e.message,4000);}
+}
+
+// 列印時讓「一位學生 = 剛好一頁 A4」：以 A4 實際寬度量測每位學生高度，
+// 超出一頁者等比縮小到剛好塞滿。所有規則只寫在 @media print，螢幕檢視完全不受影響。
+function fitReportPages(){
+  const f=document.getElementById('report-frame');
+  if(!f||!f.contentWindow)return;
+  const d=f.contentWindow.document;
+  if(!d.body||!d.body.classList.contains('full-class'))return;   // 只處理全班完整版
+  if(d.body.classList.contains('parent-report'))return;          // 家長版本來就一人一頁
+  const stus=d.querySelectorAll('.stu');
+  if(!stus.length)return;
+  if(d.documentElement.getAttribute('data-fitted')==='1')return;
+  d.documentElement.setAttribute('data-fitted','1');
+  const prevW=f.style.width;
+  f.style.width='794px';        // A4 寬 210mm，讓螢幕量測等同列印版面
+  const PAGE=1043;              // 297mm − 上下邊界 21mm ≈ 276mm ≈ 1043px
+  const rules=[];
+  for(let i=0;i<stus.length;i++){
+    const el=stus[i];
+    let fit=el.querySelector('.stu-fit');
+    if(!fit){
+      fit=d.createElement('div');fit.className='stu-fit';
+      while(el.firstChild)fit.appendChild(el.firstChild);
+      el.appendChild(fit);
+    }
+    el.setAttribute('data-fit',i);
+    const h=fit.getBoundingClientRect().height;
+    if(h>PAGE+2){
+      const k=Math.max(.55,PAGE/h);
+      rules.push('.full-class .stu[data-fit="'+i+'"] .stu-fit{transform:scale('+k.toFixed(4)+');width:'+(100/k).toFixed(2)+'%}');
+    }
+  }
+  const st=d.createElement('style');
+  st.textContent='@media print{.full-class .stu{height:276mm;overflow:hidden}.full-class .stu-fit{transform-origin:top left;display:block}'+rules.join('')+'}';
+  d.head.appendChild(st);
+  f.style.width=prevW||'';
 }
 function closeReportViewer(){const ov=document.getElementById('report-viewer');if(ov)ov.remove();}
 function printReportViewer(){
   try{
+    try{fitReportPages();}catch(_){}
     const f=document.getElementById('report-frame');
     if(f&&f.contentWindow){f.contentWindow.focus();f.contentWindow.print();}
   }catch(e){toast('列印失敗，可改用截圖或稍後再試',4000);}
