@@ -8,7 +8,7 @@
    - 其他同源資源走「快取優先、背景更新」
    - 跨來源請求（Firebase / gstatic 等）完全不攔截
 */
-const CACHE_VERSION = 'vcard-v2.4.7';
+const CACHE_VERSION = 'vcard-v2.4.8';
 const CACHE_NAME = CACHE_VERSION;
 const OWNED_CACHE_PREFIXES = ['vcard-', 'venus-card-'];
 const CORE = ['./', './index.html', './manifest.json'];

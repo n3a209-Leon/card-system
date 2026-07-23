@@ -1143,7 +1143,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.7';
+const APP_VERSION='2.4.8';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -4968,13 +4968,6 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   if(!allSubjs.length){toast('尚無成績資料');return;}
   reportType=reportType==='parent'?'parent':'full';
   const runId=++_reportBuildRun;
-  const w=window.open('','_blank');
-  if(!w){toast('請允許彈出視窗');return;}
-  _reportBuildPopup=w;
-  try{
-    w.document.write('<!doctype html><html lang="zh-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>建立報告中</title></head><body style="margin:0"><div style="font-family:-apple-system,\'PingFang TC\',sans-serif;max-width:560px;margin:12vh auto;padding:28px 22px;color:#334155"><h2 style="font-size:23px;margin:0 0 18px;text-align:center;line-height:1.35">正在整理圖表與 A4 版面…</h2><div style="height:18px;border-radius:99px;background:#e2e8f0;overflow:hidden"><i id="popup-progress" style="display:block;width:0;height:100%;background:#2563eb;transition:width .2s"></i></div><p id="popup-progress-text" style="text-align:center;color:#334155;font-size:20px;font-weight:800;margin:14px 0 6px">0%</p><p id="popup-perf" style="text-align:center;color:#94a3b8;font-size:14px;margin:0 0 22px;line-height:1.5">量測中…</p><button onclick="try{window.opener&&window.opener.cancelReportBuild()}catch(e){}window.close()" style="display:block;width:100%;padding:16px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;color:#334155;font-size:18px;font-weight:800;min-height:56px">取消並關閉</button><p style="text-align:center;color:#94a3b8;font-size:14px;margin-top:14px;line-height:1.5">產生較久時可隨時點此返回，成績資料不會變更</p></div></body></html>');
-    w.document.close();
-  }catch(e){}
   const scopeLabel=scope.mode==='year'?'全學年':scope.sem;
   const single=targetNo!==undefined&&targetNo!==null&&targetNo!=='';
   const no=single?parseInt(targetNo):null;
@@ -4983,7 +4976,6 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
   const candidates=single?[no]:[..._nos];
   const targets=candidates.filter(studentNo=>allSubjs.some(s=>(_scores[s]||[]).some(e=>(sem===null||semOf(e.date)===sem)&&e.nos&&e.nos[studentNo]!==undefined&&e.nos[studentNo]!==null&&!isNaN(e.nos[studentNo]))));
   if(!targets.length){
-    try{w.close();}catch(e){}
     toast(`${scopeLabel}沒有可產生報告的成績資料`);
     return;
   }
@@ -5065,22 +5057,13 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
       .page-break{break-after:page;page-break-after:always}
     }
   </style></head><body class="${bodyClass}">
-  <div class="report-actions"><button onclick="window.close();setTimeout(()=>history.back(),300)">關閉</button><button class="print" onclick="window.print()">列印／另存 PDF</button></div>
   <main class="report-shell">`;
   if(reportType==='full')html+=`<header class="report-title"><div><span class="eyebrow">VENUS CARD SYSTEM · ACADEMIC REPORT</span><h1>${esc(titleText)}</h1></div><div class="report-meta">Venus Card v${APP_VERSION}<br>統計範圍：${esc(scopeLabel)}<br>產生時間：${new Date().toLocaleString('zh-TW',{hour12:false})}</div></header>`;
   if(!single&&reportType==='full'){const _sSum=performance.now();html+=classSummaryHTML(scope);_perf.summary=performance.now()-_sSum;}
   for(let i=0;i<targets.length;i++){
-    if(runId!==_reportBuildRun){try{w.close();}catch(e){}return;}
-    if(w.closed){
-      closeModal('report-progress-modal');
-      if(_reportBuildPopup===w)_reportBuildPopup=null;
-      toast('已關閉報告視窗，成績資料沒有變更');
-      return;
-    }
+    if(runId!==_reportBuildRun)return;
     if(_reportBuildCancel){
       closeModal('report-progress-modal');
-      try{w.close();}catch(e){}
-      if(_reportBuildPopup===w)_reportBuildPopup=null;
       toast('已取消產生報告，成績資料沒有變更');
       return;
     }
@@ -5091,25 +5074,46 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
       _perf.studentCpu+=performance.now()-_sStu;
     }catch(e){
       closeModal('report-progress-modal');
-      try{w.close();}catch(_){}
       toast(`產生 ${studentNo}號報告時失敗：${e.message}`,5000);
       return;
     }
-    updateReportProgress(i+1,targets.length,studentNo,w);
+    updateReportProgress(i+1,targets.length,studentNo,null);
     if(i<targets.length-1)await yieldReportUI();
   }
   await yieldReportUI();
-  html+=`</main><script>(function(){var done=false;function go(){if(done)return;done=true;setTimeout(function(){window.print()},260)}var imgs=[].slice.call(document.images);if(!imgs.length){go();return}var left=imgs.length;function one(){left--;if(left<=0)go()}imgs.forEach(function(img){if(img.complete)one();else{img.addEventListener('load',one,{once:true});img.addEventListener('error',one,{once:true})}});setTimeout(go,2600)})();<\/script></body></html>`;
-  try{
-    const _sW=performance.now();w.document.open();w.document.write(html);w.document.close();_perf.write=performance.now()-_sW;
-  }catch(e){closeModal('report-progress-modal');toast('報告視窗建立失敗：'+e.message,4000);try{w.close();}catch(_){}return;}
+  html+=`</main></body></html>`;
   closeModal('report-progress-modal');
-  if(_reportBuildPopup===w)_reportBuildPopup=null;
+  showReportViewer(html);
   const modeText=reportType==='parent'?'家長精簡報告':colorMode==='bw'?'黑白高對比報告':'彩色高對比報告';
-  toast(`✅ ${modeText}已建立，共 ${targets.length} 份`,3200);
-  const _tot=performance.now()-_perf.t0;
-  alert('⏱ 報告耗時 v'+APP_VERSION+'\n總計:'+Math.round(_tot)+' ms\n班級摘要:'+Math.round(_perf.summary)+' ms\n學生運算(CPU):'+Math.round(_perf.studentCpu)+' ms\n圖片編碼:'+Math.round(_perf.tdu)+' ms ×'+_perf.tduN+' 張\n寫入視窗:'+Math.round(_perf.write)+' ms\n人數:'+targets.length+'　科目:'+allSubjs.length+'\nHTML大小:'+Math.round(html.length/1024)+' KB');
+  toast(`✅ ${modeText}已建立，共 ${targets.length} 份；點上方「列印／存 PDF」即可`,3600);
   }finally{_rptCache=null;HTMLCanvasElement.prototype.toDataURL=_origTDU;}
+}
+
+// 報告檢視器：在 App 內用 iframe 呈現（全程前景，不會被 iOS 凍結），用內建列印存 PDF
+function showReportViewer(html){
+  closeReportViewer();
+  const ov=document.createElement('div');
+  ov.id='report-viewer';
+  ov.style.cssText='position:fixed;inset:0;z-index:9500;background:#334155;display:flex;flex-direction:column';
+  ov.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:#1e293b;flex-shrink:0">'
+    +'<button onclick="closeReportViewer()" style="padding:10px 16px;border-radius:9px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;font-size:15px;font-weight:700;min-height:44px">← 關閉</button>'
+    +'<div style="flex:1"></div>'
+    +'<button onclick="printReportViewer()" style="padding:10px 18px;border-radius:9px;border:0;background:#2563eb;color:#fff;font-size:15px;font-weight:800;min-height:44px">🖨 列印／存 PDF</button>'
+    +'</div>'
+    +'<iframe id="report-frame" style="flex:1;border:0;width:100%;background:#fff"></iframe>';
+  document.body.appendChild(ov);
+  try{
+    const f=document.getElementById('report-frame');
+    const d=f.contentWindow.document;
+    d.open();d.write(html);d.close();
+  }catch(e){toast('報告顯示失敗：'+e.message,4000);}
+}
+function closeReportViewer(){const ov=document.getElementById('report-viewer');if(ov)ov.remove();}
+function printReportViewer(){
+  try{
+    const f=document.getElementById('report-frame');
+    if(f&&f.contentWindow){f.contentWindow.focus();f.contentWindow.print();}
+  }catch(e){toast('列印失敗，可改用截圖或稍後再試',4000);}
 }
 
 // ══ 複製 AI 報告素材 ══
