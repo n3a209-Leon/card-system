@@ -1143,7 +1143,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.4.9';
+const APP_VERSION='2.5.0';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -5055,6 +5055,27 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
       .full-class .stu{break-before:page;page-break-before:always}.single-report .stu{break-before:auto;page-break-before:auto}
       .parent-batch .stu:first-child{break-before:auto;page-break-before:auto}.parent-sheet{min-height:255mm;break-after:page;page-break-after:always}.parent-sheet:last-child{break-after:auto;page-break-after:auto}
       .page-break{break-after:page;page-break-after:always}
+      /* ── 一位學生 = 一張 A4：列印專用緊湊版面 ── */
+      .stu{break-inside:auto}
+      .stu .radars{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:6px}
+      .stu .radar-card{max-width:78mm;padding:4px}
+      .stu .radar-card svg,.stu .radar-card img{max-height:50mm;object-fit:contain}
+      .stu .charts{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:6px}
+      .stu .chart-card{padding:4px}
+      .stu .chart-card svg,.stu .chart-card img{max-height:33mm;object-fit:contain}
+      .stu .student-kpis{gap:6px;margin-bottom:8px}
+      .stu .kpi,.stu .mini-kpi{min-height:0;padding:6px 7px}
+      .stu .kpi b,.stu .mini-kpi b{font-size:15px}
+      .stu table{font-size:8px}
+      .stu td,.stu th{padding:2.5px 4px}
+      .stu .section-title{margin:8px 0 5px!important}
+      .stu .table-wrap{margin-bottom:6px}
+      .parent-sheet{min-height:0}
+      .parent-report .parent-kpi{min-height:0;padding:7px}
+      .parent-report .parent-kpi b{font-size:18px}
+      .parent-report .parent-panel ul{line-height:1.5;font-size:9px}
+      .parent-report .parent-note{min-height:0}
+      .parent-report .signature-row{margin-top:10px}
     }
   </style></head><body class="${bodyClass}">
   <main class="report-shell">`;
@@ -5106,45 +5127,58 @@ function showReportViewer(html){
     const f=document.getElementById('report-frame');
     const d=f.contentWindow.document;
     d.open();d.write(html);d.close();
-    setTimeout(function(){try{fitReportPages();}catch(e){}},60);
+    setTimeout(function(){try{scheduleReportFit();}catch(e){}},60);
   }catch(e){toast('報告顯示失敗：'+e.message,4000);}
 }
 
-// 列印時讓「一位學生 = 剛好一頁 A4」：以 A4 實際寬度量測每位學生高度，
-// 超出一頁者等比縮小到剛好塞滿。所有規則只寫在 @media print，螢幕檢視完全不受影響。
+// 列印時讓「一位學生 = 剛好一張 A4」：以 A4 實際寬度量測每位學生高度，
+// 超出一頁者用 zoom 等比縮小（zoom 會真正重排，不會被裁切）。
+// 規則只寫進 @media print，螢幕檢視完全不受影響。
 function fitReportPages(){
   const f=document.getElementById('report-frame');
   if(!f||!f.contentWindow)return;
   const d=f.contentWindow.document;
-  if(!d.body||!d.body.classList.contains('full-class'))return;   // 只處理全班完整版
-  if(d.body.classList.contains('parent-report'))return;          // 家長版本來就一人一頁
+  if(!d.body)return;
   const stus=d.querySelectorAll('.stu');
   if(!stus.length)return;
   if(d.documentElement.getAttribute('data-fitted')==='1')return;
   d.documentElement.setAttribute('data-fitted','1');
   const prevW=f.style.width;
-  f.style.width='794px';        // A4 寬 210mm，讓螢幕量測等同列印版面
-  const PAGE=1043;              // 297mm − 上下邊界 21mm ≈ 276mm ≈ 1043px
+  f.style.width='794px';                 // A4 寬 210mm，讓量測等同列印版面
+  void d.body.offsetHeight;              // 強制重排
+  const PAGE=1035;                       // 297mm − 上下邊界 ≈ 274mm ≈ 1035px
   const rules=[];
   for(let i=0;i<stus.length;i++){
     const el=stus[i];
-    let fit=el.querySelector('.stu-fit');
-    if(!fit){
-      fit=d.createElement('div');fit.className='stu-fit';
-      while(el.firstChild)fit.appendChild(el.firstChild);
-      el.appendChild(fit);
-    }
     el.setAttribute('data-fit',i);
-    const h=fit.getBoundingClientRect().height;
+    const h=el.getBoundingClientRect().height;
     if(h>PAGE+2){
-      const k=Math.max(.55,PAGE/h);
-      rules.push('.full-class .stu[data-fit="'+i+'"] .stu-fit{transform:scale('+k.toFixed(4)+');width:'+(100/k).toFixed(2)+'%}');
+      const k=Math.max(.6,Math.floor(PAGE/h*1000)/1000);
+      rules.push('.stu[data-fit="'+i+'"]{zoom:'+k+'}');
     }
   }
-  const st=d.createElement('style');
-  st.textContent='@media print{.full-class .stu{height:276mm;overflow:hidden}.full-class .stu-fit{transform-origin:top left;display:block}'+rules.join('')+'}';
-  d.head.appendChild(st);
   f.style.width=prevW||'';
+  if(!rules.length)return;
+  const st=d.createElement('style');
+  st.textContent='@media print{'+rules.join('')+'}';
+  (d.head||d.documentElement).appendChild(st);
+}
+
+// 等 iframe 內圖片載入完成再量測，避免量到 0 高度導致縮放失效
+function scheduleReportFit(){
+  const f=document.getElementById('report-frame');
+  if(!f||!f.contentWindow)return;
+  const d=f.contentWindow.document;
+  let done=false;
+  const run=()=>{if(done)return;done=true;try{fitReportPages();}catch(e){}};
+  try{
+    const imgs=[].slice.call(d.images||[]);
+    let left=imgs.filter(im=>!im.complete).length;
+    if(!left){setTimeout(run,120);return;}
+    const one=()=>{left--;if(left<=0)setTimeout(run,60);};
+    imgs.forEach(im=>{if(!im.complete){im.addEventListener('load',one,{once:true});im.addEventListener('error',one,{once:true});}});
+  }catch(e){}
+  setTimeout(run,2500);   // 保險：最多等 2.5 秒
 }
 function closeReportViewer(){const ov=document.getElementById('report-viewer');if(ov)ov.remove();}
 function printReportViewer(){
