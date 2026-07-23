@@ -1143,7 +1143,7 @@ tr:hover td{background:var(--accent-light)}
 // ══════════════════════════════════════════
 // Firebase 設定
 // ══════════════════════════════════════════
-const APP_VERSION='2.5.0';
+const APP_VERSION='2.5.1';
 const FB_CONFIG = {
   apiKey: "AIzaSyAqgA9pYvOduWypEE5kxVNlq9fEfrEMV0c",
   authDomain: "attendance-pwa-9fa73.firebaseapp.com",
@@ -5070,12 +5070,26 @@ async function generateReportWindow(targetNo,scope,colorMode,reportType){
       .stu td,.stu th{padding:2.5px 4px}
       .stu .section-title{margin:8px 0 5px!important}
       .stu .table-wrap{margin-bottom:6px}
-      .parent-sheet{min-height:0}
-      .parent-report .parent-kpi{min-height:0;padding:7px}
-      .parent-report .parent-kpi b{font-size:18px}
-      .parent-report .parent-panel ul{line-height:1.5;font-size:9px}
-      .parent-report .parent-note{min-height:0}
-      .parent-report .signature-row{margin-top:10px}
+      .parent-sheet{min-height:0;gap:5px}
+      .parent-report .parent-head{padding-bottom:6px}
+      .parent-report .parent-head h2{font-size:18px}
+      .parent-report .parent-kpis{gap:5px}
+      .parent-report .parent-kpi{min-height:0;padding:6px 7px}
+      .parent-report .parent-kpi b{font-size:16px;line-height:1.1}
+      .parent-report .parent-grid{gap:6px}
+      .parent-report .parent-panel{padding:7px}
+      .parent-report .parent-panel h3,.parent-report .parent-sec,.parent-report .parent-focus h3{font-size:10.5px;margin:0 0 4px}
+      .parent-report .parent-panel ul{line-height:1.45;font-size:8.6px;padding-left:14px}
+      .parent-report .recent-score{padding:2px 1px;font-size:8.2px}
+      .parent-report .recent-score b{font-size:10px}
+      .parent-report .parent-table{font-size:8.4px}
+      .parent-report .parent-table td,.parent-report .parent-table th{padding:3px}
+      .parent-report .parent-focus{padding:7px}
+      .parent-report .focus-grid span{font-size:9px}
+      .parent-report .parent-note{min-height:0;padding:7px;font-size:9px}
+      .parent-report .parent-note div{height:11px}
+      .parent-report .signature-row{margin-top:8px;font-size:9px}
+      .parent-report .parent-foot{font-size:7px}
     }
   </style></head><body class="${bodyClass}">
   <main class="report-shell">`;
@@ -5141,18 +5155,19 @@ function fitReportPages(){
   if(!d.body)return;
   const stus=d.querySelectorAll('.stu');
   if(!stus.length)return;
-  if(d.documentElement.getAttribute('data-fitted')==='1')return;
-  d.documentElement.setAttribute('data-fitted','1');
+  const old=d.getElementById('vc-fit-style');
+  if(old)old.remove();                   // 允許重算（列印前會再量一次）
   const prevW=f.style.width;
   f.style.width='794px';                 // A4 寬 210mm，讓量測等同列印版面
-  void d.body.offsetHeight;              // 強制重排
-  const PAGE=1035;                       // 297mm − 上下邊界 ≈ 274mm ≈ 1035px
+  void f.offsetWidth;
+  void d.body.offsetHeight;              // 強制兩份文件都重排
+  const PAGE=1040;                       // 297mm − 上下邊界 ≈ 276mm ≈ 1043px（留一點餘裕）
   const rules=[];
   for(let i=0;i<stus.length;i++){
     const el=stus[i];
     el.setAttribute('data-fit',i);
     const h=el.getBoundingClientRect().height;
-    if(h>PAGE+2){
+    if(h>PAGE){
       const k=Math.max(.6,Math.floor(PAGE/h*1000)/1000);
       rules.push('.stu[data-fit="'+i+'"]{zoom:'+k+'}');
     }
@@ -5160,6 +5175,7 @@ function fitReportPages(){
   f.style.width=prevW||'';
   if(!rules.length)return;
   const st=d.createElement('style');
+  st.id='vc-fit-style';
   st.textContent='@media print{'+rules.join('')+'}';
   (d.head||d.documentElement).appendChild(st);
 }
